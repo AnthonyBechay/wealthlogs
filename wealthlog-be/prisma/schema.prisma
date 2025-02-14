@@ -7,22 +7,37 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+
 model User {
-  id       Int    @id @default(autoincrement())
-  username String @unique
-  password String
-  role     String
-  trades   Trade[]
+  id           Int    @id @default(autoincrement())
+  username     String @unique
+  password     String
+  role         String
+  accountBalance Float @default(0)
+  trades       Trade[]
+  settings     Settings?
 }
 
 model Trade {
   id         Int      @id @default(autoincrement())
   instrument String
-  session    String   // Auto-detected (London/US/Other)
-  outcome    String   // Profit, Loss, BE
-  amount     Float
-  dateTime   DateTime @default(now()) // Store time of trade
-  pattern    String   // Trade pattern (set via settings)
+  session    String
+  percentage Float?
+  amount     Float?
+  fees       Float    @default(0)  //  Default value added
+  dateTime   DateTime @default(now())
+  pattern    String
   userId     Int
   user       User     @relation(fields: [userId], references: [id])
+}
+
+
+model Settings {
+  id          Int    @id @default(autoincrement())
+  userId      Int    @unique
+  user        User   @relation(fields: [userId], references: [id])
+  instruments Json  
+  patterns    Json  
+  beMin       Float  @default(-0.2)
+  beMax       Float  @default(0.3)
 }

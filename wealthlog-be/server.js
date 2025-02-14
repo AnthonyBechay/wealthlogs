@@ -21,7 +21,7 @@ app.post('/register', async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 10);
     try {
         const user = await prisma.user.create({
-            data: { username, password: hashedPassword, role }
+            data: { username, password: hashedPassword, role, accountBalance: 0 }
         });
         res.json(user);
     } catch (error) {
@@ -53,10 +53,9 @@ const authenticate = (req, res, next) => {
     }
 };
 
-// Add Trade with Auto-Detected Session
+// Add Trade with Auto-Detected Session and Account Balance Update
 app.post('/trades', authenticate, async (req, res) => {
-    const { instrument, outcome, amount, dateTime, pattern } = req.body;
-    
+    const { instrument, percentage, amount, fees, dateTime, pattern } = req.body;
     const tradeTime = new Date(dateTime || Date.now());
     let session = "Other";
     const hour = tradeTime.getHours();
@@ -68,73 +67,114 @@ app.post('/trades', authenticate, async (req, res) => {
     }
 
     try {
+        const user = await prisma.user.findUnique({ where: { id: req.user.userId } });
+        let newBalance = user.accountBalance;
+
+        if (percentage !== undefined && percentage !== 0) {
+            newBalance *= (1 + percentage / 100);
+        } else {
+            newBalance += amount;
+        }
+        newBalance -= fees;
+
         const trade = await prisma.trade.create({
-            data: { 
-                instrument, 
-                session, 
-                outcome, 
-                amount, 
-                dateTime: tradeTime, 
-                pattern, 
-                userId: req.user.userId 
-            }
+            data: { instrument, session, percentage, amount, fees, dateTime: tradeTime, pattern, userId: req.user.userId }
         });
+
+        await prisma.user.update({
+            where: { id: req.user.userId },
+            data: { accountBalance: newBalance }
+        });
+
         res.json(trade);
     } catch (error) {
         res.status(500).json({ error: "Failed to add trade" });
     }
 });
 
-// Edit Trade
-app.put('/trades/:id', authenticate, async (req, res) => {
-    const { instrument, outcome, amount, dateTime, pattern } = req.body;
-    const tradeId = parseInt(req.params.id);
-
-    const tradeTime = new Date(dateTime);
-    let session = "Other";
-    const hour = tradeTime.getHours();
-
-    if (hour >= 10 && hour <= 12) {
-        session = "London";
-    } else if (hour >= 16 && hour <= 19) {
-        session = "US";
-    }
-
+// Get Account Balance
+app.get('/account', authenticate, async (req, res) => {
     try {
-        const updatedTrade = await prisma.trade.update({
-            where: { id: tradeId, userId: req.user.userId },
-            data: { instrument, session, outcome, amount, dateTime: tradeTime, pattern }
-        });
-        res.json(updatedTrade);
+        const user = await prisma.user.findUnique({ where: { id: req.user.userId }, select: { accountBalance: true } });
+        res.json(user);
     } catch (error) {
-        res.status(500).json({ error: "Failed to update trade" });
+        res.status(500).json({ error: "Failed to fetch account balance" });
     }
 });
 
-// Delete Trade
-app.delete('/trades/:id', authenticate, async (req, res) => {
-    const tradeId = parseInt(req.params.id);
-    
+// Update Account Balance (Add Money to Account)
+app.post('/account/add', authenticate, async (req, res) => {
+    const { amount } = req.body;
     try {
-        await prisma.trade.delete({
-            where: { id: tradeId, userId: req.user.userId }
+        const user = await prisma.user.findUnique({ where: { id: req.user.userId } });
+        const newBalance = user.accountBalance + amount;
+
+        await prisma.user.update({
+            where: { id: req.user.userId },
+            data: { accountBalance: newBalance }
         });
-        res.json({ message: "Trade deleted successfully" });
+
+        res.json({ message: "Balance updated successfully", newBalance });
     } catch (error) {
-        res.status(500).json({ error: "Failed to delete trade" });
+        res.status(500).json({ error: "Failed to update balance" });
     }
 });
+
+// Get User Settings (Instruments, Patterns, BE Range)
+app.get('/settings', authenticate, async (req, res) => {
+    try {
+        let settings = await prisma.settings.findUnique({
+            where: { userId: req.user.userId }
+        });
+
+        if (!settings) {
+            settings = await prisma.settings.create({
+                data: { userId: req.user.userId, instruments: [], patterns: [] }
+            });
+        }
+
+        res.json({
+            instruments: settings.instruments || [],
+            patterns: settings.patterns || [],
+            beMin: settings.beMin,
+            beMax: settings.beMax
+        });
+    } catch (error) {
+        res.status(500).json({ error: "Failed to fetch settings" });
+    }
+});
+
+// Update Instruments, Patterns & BE Range
+app.post('/settings/update', authenticate, async (req, res) => {
+    const { instruments, patterns, beMin, beMax } = req.body;
+    try {
+        const updatedSettings = await prisma.settings.upsert({
+            where: { userId: req.user.userId },
+            update: { instruments, patterns, beMin, beMax },
+            create: { userId: req.user.userId, instruments, patterns, beMin, beMax }
+        });
+
+        res.json(updatedSettings);
+    } catch (error) {
+        res.status(500).json({ error: "Failed to update settings" });
+    }
+});
+
 
 // Get Trades with Filtering
 app.get('/trades', authenticate, async (req, res) => {
-    const { instrument, session, outcome } = req.query;
-    const filters = { where: {} };
-    if (instrument) filters.where.instrument = instrument;
-    if (session) filters.where.session = session;
-    if (outcome) filters.where.outcome = outcome;
-    
-    const trades = await prisma.trade.findMany({ ...filters });
-    res.json(trades);
+    try {
+        const trades = await prisma.trade.findMany({
+            where: { userId: req.user.userId }, // Fetch only logged-in user's trades
+            orderBy: { dateTime: 'desc' } // Sort trades by latest date first
+        });
+
+        res.json(trades);
+    } catch (error) {
+        console.error("Error fetching trades:", error);
+        res.status(500).json({ error: "Failed to fetch trades" });
+    }
 });
+
 
 app.listen(PORT, () => console.log(`WealthLog API running on port ${PORT}`));
