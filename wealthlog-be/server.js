@@ -1,3 +1,5 @@
+// Backend: Express.js + PostgreSQL + Prisma
+
 const express = require('express');
 const cors = require('cors');
 const { PrismaClient } = require('@prisma/client');
@@ -13,7 +15,7 @@ const SECRET_KEY = process.env.SECRET_KEY;
 app.use(cors());
 app.use(express.json());
 
-// Register User
+// User Authentication - Register
 app.post('/register', async (req, res) => {
     const { username, password, role } = req.body;
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -27,7 +29,7 @@ app.post('/register', async (req, res) => {
     }
 });
 
-// Login User
+// User Authentication - Login
 app.post('/login', async (req, res) => {
     const { username, password } = req.body;
     const user = await prisma.user.findUnique({ where: { username } });
@@ -51,13 +53,76 @@ const authenticate = (req, res, next) => {
     }
 };
 
-// Add Trade (FX Trade Management Module)
+// Add Trade with Auto-Detected Session
 app.post('/trades', authenticate, async (req, res) => {
-    const { instrument, session, outcome, amount } = req.body;
-    const trade = await prisma.trade.create({
-        data: { instrument, session, outcome, amount, userId: req.user.userId }
-    });
-    res.json(trade);
+    const { instrument, outcome, amount, dateTime, pattern } = req.body;
+    
+    const tradeTime = new Date(dateTime || Date.now());
+    let session = "Other";
+    const hour = tradeTime.getHours();
+
+    if (hour >= 10 && hour <= 12) {
+        session = "London";
+    } else if (hour >= 16 && hour <= 19) {
+        session = "US";
+    }
+
+    try {
+        const trade = await prisma.trade.create({
+            data: { 
+                instrument, 
+                session, 
+                outcome, 
+                amount, 
+                dateTime: tradeTime, 
+                pattern, 
+                userId: req.user.userId 
+            }
+        });
+        res.json(trade);
+    } catch (error) {
+        res.status(500).json({ error: "Failed to add trade" });
+    }
+});
+
+// Edit Trade
+app.put('/trades/:id', authenticate, async (req, res) => {
+    const { instrument, outcome, amount, dateTime, pattern } = req.body;
+    const tradeId = parseInt(req.params.id);
+
+    const tradeTime = new Date(dateTime);
+    let session = "Other";
+    const hour = tradeTime.getHours();
+
+    if (hour >= 10 && hour <= 12) {
+        session = "London";
+    } else if (hour >= 16 && hour <= 19) {
+        session = "US";
+    }
+
+    try {
+        const updatedTrade = await prisma.trade.update({
+            where: { id: tradeId, userId: req.user.userId },
+            data: { instrument, session, outcome, amount, dateTime: tradeTime, pattern }
+        });
+        res.json(updatedTrade);
+    } catch (error) {
+        res.status(500).json({ error: "Failed to update trade" });
+    }
+});
+
+// Delete Trade
+app.delete('/trades/:id', authenticate, async (req, res) => {
+    const tradeId = parseInt(req.params.id);
+    
+    try {
+        await prisma.trade.delete({
+            where: { id: tradeId, userId: req.user.userId }
+        });
+        res.json({ message: "Trade deleted successfully" });
+    } catch (error) {
+        res.status(500).json({ error: "Failed to delete trade" });
+    }
 });
 
 // Get Trades with Filtering
@@ -67,7 +132,7 @@ app.get('/trades', authenticate, async (req, res) => {
     if (instrument) filters.where.instrument = instrument;
     if (session) filters.where.session = session;
     if (outcome) filters.where.outcome = outcome;
-
+    
     const trades = await prisma.trade.findMany({ ...filters });
     res.json(trades);
 });

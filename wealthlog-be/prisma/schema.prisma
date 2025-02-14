@@ -16,11 +16,13 @@ model User {
 }
 
 model Trade {
-  id         Int    @id @default(autoincrement())
+  id         Int      @id @default(autoincrement())
   instrument String
-  session    String
-  outcome    String
+  session    String   // Auto-detected (London/US/Other)
+  outcome    String   // Profit, Loss, BE
   amount     Float
+  dateTime   DateTime @default(now()) // Store time of trade
+  pattern    String   // Trade pattern (set via settings)
   userId     Int
-  user       User   @relation(fields: [userId], references: [id])
+  user       User     @relation(fields: [userId], references: [id])
 }
