@@ -380,33 +380,48 @@ app.get('/settings', authenticate, async (req, res) => {
  * instruments, patterns, and Break-Even range (beMin, beMax).
  * Body params: instruments, patterns, beMin, beMax
  */
-app.post('/settings/update', authenticate, async (req, res) => {
-    const { instruments, patterns, beMin, beMax } = req.body;
-    try {
-        const updatedSettings = await prisma.settings.upsert({
-            where: { userId: req.user.userId },
-            update: {
-                instruments: instruments || [],
-                patterns: patterns || [],
-                beMin,
-                beMax
-            },
-            create: {
-                userId: req.user.userId,
-                instruments: instruments || [],
-                patterns: patterns || [],
-                beMin,
-                beMax
-            }
-        });
-
-        res.json(updatedSettings);
-    } catch (error) {
-        console.error("Error updating settings:", error);
-        res.status(500).json({ error: "Failed to update settings" });
+// POST /settings/beRange/update
+// POST /settings/beRange/update
+app.post('/settings/beRange/update', authenticate, async (req, res) => {
+    const { beMin, beMax } = req.body;
+  
+    // 1) Double-check on server
+    if (beMin >= beMax) {
+      return res.status(400).json({ error: "beMin must be less than beMax" });
     }
-});
-
+  
+    try {
+      let userSettings = await prisma.settings.findUnique({
+        where: { userId: req.user.userId },
+      });
+  
+      // If none exists, create a default
+      if (!userSettings) {
+        userSettings = await prisma.settings.create({
+          data: {
+            userId: req.user.userId,
+            instruments: [],
+            patterns: [],
+            beMin,
+            beMax,
+          },
+        });
+      } else {
+        // Update ONLY beMin and beMax
+        userSettings = await prisma.settings.update({
+          where: { userId: req.user.userId },
+          data: { beMin, beMax },
+        });
+      }
+  
+      res.json(userSettings);
+    } catch (error) {
+      console.error("Error updating BE range:", error);
+      res.status(500).json({ error: "Failed to update BE range" });
+    }
+  });
+  
+  
 
 /************************************************************
  *  Transactions
