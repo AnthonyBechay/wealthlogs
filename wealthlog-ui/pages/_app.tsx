@@ -6,7 +6,7 @@ export default function App({ Component, pageProps }: AppProps) {
   return (
     <div>
       <nav className="p-4 bg-gray-800 text-white flex space-x-4">
-        <Link href="/dashboard" className="hover:underline">Dashboard</Link>
+        <Link href="/tradeManagement" className="hover:underline">Trade management</Link>
         <Link href="/settings" className="hover:underline">Settings</Link>
         <Link href="/login" className="hover:underline">Logout</Link>
       </nav>
