@@ -41,11 +41,24 @@ export default function Settings() {
       const response = await api.get("/settings", {
         headers: { Authorization: `Bearer ${token}` },
       });
-      setInstruments(response.data.instruments || []);
-      setPatterns(response.data.patterns || []);
-      setBeRange({ min: response.data.beMin, max: response.data.beMax });
+
+      console.log("Fetched Settings:", response.data); // Debugging log
+
+      setInstruments(
+        Array.isArray(response.data.instruments) ? response.data.instruments : []
+      );
+
+      setPatterns(
+        Array.isArray(response.data.patterns) ? response.data.patterns : []
+      );
+
+      setBeRange({
+        min: response.data.beMin ?? -0.2,
+        max: response.data.beMax ?? 0.3,
+      });
+
     } catch (err) {
-      console.error("Failed to fetch settings.");
+      console.error("Failed to fetch settings.", err);
     }
   };
 
@@ -54,11 +67,16 @@ export default function Settings() {
     e.preventDefault();
     const token = localStorage.getItem("token");
 
+    if (!token) {
+      console.error("No token found");
+      return;
+    }
+
     try {
       await api.post("/account/add", { amount }, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      fetchAccountBalance(token!);
+      fetchAccountBalance(token);
       setAmount(0);
     } catch (err) {
       console.error("Failed to add money.");
@@ -68,6 +86,12 @@ export default function Settings() {
   // Save instruments, patterns, and BE range in the backend
   const handleUpdateSettings = async () => {
     const token = localStorage.getItem("token");
+    
+    if (!token) {
+      console.error("No token found");
+      return;
+    }
+
     try {
       await api.post("/settings/update", {
         instruments,
@@ -118,9 +142,13 @@ export default function Settings() {
       <div className="mt-6 p-4 border rounded">
         <h2 className="text-lg font-semibold">Manage Instruments</h2>
         <ul>
-          {instruments.map((instrument, index) => (
-            <li key={index} className="p-2 border-b">{instrument}</li>
-          ))}
+          {Array.isArray(instruments) ? (
+            instruments.map((instrument, index) => (
+              <li key={index} className="p-2 border-b">{instrument}</li>
+            ))
+          ) : (
+            <p>Loading or Invalid Data...</p>
+          )}
         </ul>
         <input type="text" className="w-full p-2 border rounded mt-2" value={newInstrument} onChange={(e) => setNewInstrument(e.target.value)} />
         <button className="w-full mt-2 bg-blue-500 text-white py-2 rounded" onClick={handleAddInstrument}>Add Instrument</button>
@@ -130,9 +158,13 @@ export default function Settings() {
       <div className="mt-6 p-4 border rounded">
         <h2 className="text-lg font-semibold">Manage Trade Patterns</h2>
         <ul>
-          {patterns.map((pattern, index) => (
-            <li key={index} className="p-2 border-b">{pattern}</li>
-          ))}
+          {Array.isArray(patterns) ? (
+            patterns.map((pattern, index) => (
+              <li key={index} className="p-2 border-b">{pattern}</li>
+            ))
+          ) : (
+            <p>Loading or Invalid Data...</p>
+          )}
         </ul>
         <input type="text" className="w-full p-2 border rounded mt-2" value={newPattern} onChange={(e) => setNewPattern(e.target.value)} />
         <button className="w-full mt-2 bg-blue-500 text-white py-2 rounded" onClick={handleAddPattern}>Add Pattern</button>
