@@ -22,6 +22,7 @@ export default function Dashboard() {
   const [balance, setBalance] = useState<number | null>(null);
   const [instruments, setInstruments] = useState<string[]>([]);
   const [patterns, setPatterns] = useState<string[]>([]);
+  const [editingTrade, setEditingTrade] = useState<Trade | null>(null);
 
   const [newTrade, setNewTrade] = useState({
     instrument: "",
@@ -89,8 +90,8 @@ export default function Dashboard() {
       await api.post("/trades", newTrade, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      fetchTrades(token!);
-      fetchAccountBalance(token!);
+      fetchTrades(token);
+      fetchAccountBalance(token);
       setNewTrade({
         instrument: "",
         percentage: 0,
@@ -102,6 +103,36 @@ export default function Dashboard() {
       });
     } catch (err) {
       setError("Failed to add trade.");
+    }
+  };
+
+  const handleEditTrade = async () => {
+    if (!editingTrade) return;
+    const token = localStorage.getItem("token");
+
+    try {
+      await api.put(`/trades/${editingTrade.id}`, editingTrade, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setEditingTrade(null);
+      fetchTrades(token);
+      fetchAccountBalance(token);
+    } catch (err) {
+      setError("Failed to update trade.");
+    }
+  };
+
+  const handleDeleteTrade = async (tradeId: number) => {
+    const token = localStorage.getItem("token");
+
+    try {
+      await api.delete(`/trades/${tradeId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      fetchTrades(token);
+      fetchAccountBalance(token);
+    } catch (err) {
+      setError("Failed to delete trade.");
     }
   };
 
@@ -162,11 +193,6 @@ export default function Dashboard() {
           <input type="number" className="w-full p-2 border rounded" value={newTrade.fees} onChange={(e) => setNewTrade({ ...newTrade, fees: Number(e.target.value) })} required />
         </div>
 
-        <div className="mt-2">
-          <label>Date:</label>
-          <input type="datetime-local" className="w-full p-2 border rounded" value={newTrade.dateTime} onChange={(e) => setNewTrade({ ...newTrade, dateTime: e.target.value })} />
-        </div>
-
         <button type="submit" className="w-full mt-4 bg-blue-500 text-white py-2 rounded">Add Trade</button>
       </form>
 
@@ -181,8 +207,7 @@ export default function Dashboard() {
               <th className="border p-2">Percentage</th>
               <th className="border p-2">Amount</th>
               <th className="border p-2">Fees</th>
-              <th className="border p-2">Pattern</th>
-              <th className="border p-2">Date</th>
+              <th className="border p-2">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -194,8 +219,10 @@ export default function Dashboard() {
                 <td className="border p-2">{trade.percentage?.toFixed(2) ?? "N/A"}%</td>
                 <td className="border p-2">${trade.amount?.toFixed(2) ?? "N/A"}</td>
                 <td className="border p-2">${trade.fees.toFixed(2)}</td>
-                <td className="border p-2">{trade.pattern}</td>
-                <td className="border p-2">{new Date(trade.dateTime).toLocaleString()}</td>
+                <td className="border p-2">
+                  <button onClick={() => setEditingTrade(trade)}>Edit</button>
+                  <button onClick={() => handleDeleteTrade(trade.id)}>Delete</button>
+                </td>
               </tr>
             ))}
           </tbody>

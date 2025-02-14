@@ -195,5 +195,86 @@ app.post('/settings/update', authenticate, async (req, res) => {
     }
 });
 
+// Edit Trade and Adjust Balance
+app.put('/trades/:id', authenticate, async (req, res) => {
+    const { id } = req.params;
+    const { instrument, percentage, amount, fees, dateTime, pattern, direction } = req.body;
+    try {
+        const updatedTrade = await prisma.trade.update({
+            where: { id: parseInt(id) },
+            data: { instrument, percentage, amount, fees, dateTime, pattern, direction }
+        });
+
+        // Fetch all trades after this one to recalculate balance
+        const user = await prisma.user.findUnique({ where: { id: req.user.userId } });
+        let newBalance = 0; // Start recalculating
+
+        const trades = await prisma.trade.findMany({
+            where: { userId: req.user.userId },
+            orderBy: { dateTime: "asc" }
+        });
+
+        for (const trade of trades) {
+            newBalance -= trade.fees;
+            if (trade.percentage !== undefined && trade.percentage !== 0) {
+                newBalance *= (1 + trade.percentage / 100);
+            } else {
+                newBalance += trade.amount;
+            }
+        }
+
+        await prisma.user.update({
+            where: { id: req.user.userId },
+            data: { accountBalance: newBalance }
+        });
+
+        res.json(updatedTrade);
+    } catch (error) {
+        res.status(500).json({ error: "Failed to update trade" });
+    }
+});
+
+
+// Delete Trade and Recalculate Balance
+app.delete('/trades/:id', authenticate, async (req, res) => {
+    const { id } = req.params;
+    try {
+        const trade = await prisma.trade.findUnique({ where: { id: parseInt(id) } });
+
+        if (!trade) {
+            return res.status(404).json({ error: "Trade not found" });
+        }
+
+        await prisma.trade.delete({ where: { id: parseInt(id) } });
+
+        // Recalculate balance after deletion
+        const user = await prisma.user.findUnique({ where: { id: req.user.userId } });
+        let newBalance = 0;
+
+        const trades = await prisma.trade.findMany({
+            where: { userId: req.user.userId },
+            orderBy: { dateTime: "asc" }
+        });
+
+        for (const trade of trades) {
+            newBalance -= trade.fees;
+            if (trade.percentage !== undefined && trade.percentage !== 0) {
+                newBalance *= (1 + trade.percentage / 100);
+            } else {
+                newBalance += trade.amount;
+            }
+        }
+
+        await prisma.user.update({
+            where: { id: req.user.userId },
+            data: { accountBalance: newBalance }
+        });
+
+        res.json({ message: "Trade deleted successfully" });
+    } catch (error) {
+        res.status(500).json({ error: "Failed to delete trade" });
+    }
+});
+
 
 app.listen(PORT, () => console.log(`WealthLog API running on port ${PORT}`));
