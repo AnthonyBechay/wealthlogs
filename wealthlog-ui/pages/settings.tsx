@@ -134,7 +134,14 @@ export default function Settings() {
   const handleTransactionSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const token = localStorage.getItem("token");
+    
     if (!token) return console.error("No token found.");
+
+    const amountNum = Number(transactionAmount);
+    if (!amountNum || amountNum <= 0) {
+      console.error("Transaction amount must be > 0");
+      return;
+    }
 
     try {
       await api.post(

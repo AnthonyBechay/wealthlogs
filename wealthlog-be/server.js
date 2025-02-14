@@ -340,8 +340,10 @@ app.get('/account', authenticate, async (req, res) => {
 /**
  * GET user settings:
  * instruments, patterns, and Break-Even range (beMin, beMax).
- * If no settings exist for the user, create default settings.
+ * Getting these setting for patterns and instruments list of values filling
  */
+
+
 app.get('/settings', authenticate, async (req, res) => {
     try {
         let settings = await prisma.settings.findUnique({
@@ -373,37 +375,37 @@ app.get('/settings', authenticate, async (req, res) => {
     }
 });
 
-// /**
-//  * UPDATE user settings:
-//  * instruments, patterns, and Break-Even range (beMin, beMax).
-//  * Body params: instruments, patterns, beMin, beMax
-//  */
-// app.post('/settings/update', authenticate, async (req, res) => {
-//     const { instruments, patterns, beMin, beMax } = req.body;
-//     try {
-//         const updatedSettings = await prisma.settings.upsert({
-//             where: { userId: req.user.userId },
-//             update: {
-//                 instruments: instruments || [],
-//                 patterns: patterns || [],
-//                 beMin,
-//                 beMax
-//             },
-//             create: {
-//                 userId: req.user.userId,
-//                 instruments: instruments || [],
-//                 patterns: patterns || [],
-//                 beMin,
-//                 beMax
-//             }
-//         });
+/**
+ * UPDATE user settings:
+ * instruments, patterns, and Break-Even range (beMin, beMax).
+ * Body params: instruments, patterns, beMin, beMax
+ */
+app.post('/settings/update', authenticate, async (req, res) => {
+    const { instruments, patterns, beMin, beMax } = req.body;
+    try {
+        const updatedSettings = await prisma.settings.upsert({
+            where: { userId: req.user.userId },
+            update: {
+                instruments: instruments || [],
+                patterns: patterns || [],
+                beMin,
+                beMax
+            },
+            create: {
+                userId: req.user.userId,
+                instruments: instruments || [],
+                patterns: patterns || [],
+                beMin,
+                beMax
+            }
+        });
 
-//         res.json(updatedSettings);
-//     } catch (error) {
-//         console.error("Error updating settings:", error);
-//         res.status(500).json({ error: "Failed to update settings" });
-//     }
-// });
+        res.json(updatedSettings);
+    } catch (error) {
+        console.error("Error updating settings:", error);
+        res.status(500).json({ error: "Failed to update settings" });
+    }
+});
 
 
 /************************************************************
