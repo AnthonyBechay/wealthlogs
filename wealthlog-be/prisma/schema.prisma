@@ -16,6 +16,8 @@ model User {
   accountBalance Float @default(0)
   trades       Trade[]
   settings     Settings?
+  transactions  Transaction[]
+
 }
 
 model Trade {
@@ -41,4 +43,15 @@ model Settings {
   patterns    Json  
   beMin       Float  @default(-0.2)
   beMax       Float  @default(0.3)
+}
+
+
+model Transaction {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id])
+  amount    Float
+  type      String   // e.g. "deposit" or "withdraw"
+  dateTime  DateTime @default(now())
+  currency  String   @default("USD")
 }
