@@ -55,7 +55,7 @@ const authenticate = (req, res, next) => {
 
 // Add Trade with Auto-Detected Session and Account Balance Update
 app.post('/trades', authenticate, async (req, res) => {
-    const { instrument, percentage, amount, fees, dateTime, pattern } = req.body;
+    const { instrument, percentage, amount, fees, dateTime, pattern, direction } = req.body;
     const tradeTime = new Date(dateTime || Date.now());
     let session = "Other";
     const hour = tradeTime.getHours();
@@ -68,6 +68,11 @@ app.post('/trades', authenticate, async (req, res) => {
 
     try {
         const user = await prisma.user.findUnique({ where: { id: req.user.userId } });
+        if (!user) {
+            console.error("User not found in database.");
+            return res.status(404).json({ error: "User not found" });
+        }
+
         let newBalance = user.accountBalance;
 
         if (percentage !== undefined && percentage !== 0) {
@@ -78,7 +83,17 @@ app.post('/trades', authenticate, async (req, res) => {
         newBalance -= fees;
 
         const trade = await prisma.trade.create({
-            data: { instrument, session, percentage, amount, fees, dateTime: tradeTime, pattern, userId: req.user.userId }
+            data: {
+                instrument,
+                session,
+                percentage,
+                amount,
+                fees,
+                dateTime: tradeTime,
+                pattern,
+                direction,
+                userId: req.user.userId
+            }
         });
 
         await prisma.user.update({
@@ -88,7 +103,23 @@ app.post('/trades', authenticate, async (req, res) => {
 
         res.json(trade);
     } catch (error) {
-        res.status(500).json({ error: "Failed to add trade" });
+        console.error("Error adding trade:", error);
+        res.status(500).json({ error: "Failed to add trade", details: error.message });
+    }
+});
+
+// Get Trades with Filtering
+app.get('/trades', authenticate, async (req, res) => {
+    try {
+        const trades = await prisma.trade.findMany({
+            where: { userId: req.user.userId },
+            orderBy: { dateTime: 'desc' }
+        });
+
+        res.json(trades);
+    } catch (error) {
+        console.error("Error fetching trades:", error);
+        res.status(500).json({ error: "Failed to fetch trades" });
     }
 });
 
@@ -127,9 +158,10 @@ app.get('/settings', authenticate, async (req, res) => {
             where: { userId: req.user.userId }
         });
 
+        // Ensure settings exist for the user
         if (!settings) {
             settings = await prisma.settings.create({
-                data: { userId: req.user.userId, instruments: [], patterns: [] }
+                data: { userId: req.user.userId, instruments: [], patterns: [], beMin: -0.2, beMax: 0.3 }
             });
         }
 
@@ -140,9 +172,11 @@ app.get('/settings', authenticate, async (req, res) => {
             beMax: settings.beMax
         });
     } catch (error) {
+        console.error("Error fetching settings:", error);
         res.status(500).json({ error: "Failed to fetch settings" });
     }
 });
+
 
 // Update Instruments, Patterns & BE Range
 app.post('/settings/update', authenticate, async (req, res) => {
@@ -150,29 +184,14 @@ app.post('/settings/update', authenticate, async (req, res) => {
     try {
         const updatedSettings = await prisma.settings.upsert({
             where: { userId: req.user.userId },
-            update: { instruments, patterns, beMin, beMax },
-            create: { userId: req.user.userId, instruments, patterns, beMin, beMax }
+            update: { instruments: instruments || [], patterns: patterns || [], beMin, beMax },
+            create: { userId: req.user.userId, instruments: instruments || [], patterns: patterns || [], beMin, beMax }
         });
 
         res.json(updatedSettings);
     } catch (error) {
+        console.error("Error updating settings:", error);
         res.status(500).json({ error: "Failed to update settings" });
-    }
-});
-
-
-// Get Trades with Filtering
-app.get('/trades', authenticate, async (req, res) => {
-    try {
-        const trades = await prisma.trade.findMany({
-            where: { userId: req.user.userId }, // Fetch only logged-in user's trades
-            orderBy: { dateTime: 'desc' } // Sort trades by latest date first
-        });
-
-        res.json(trades);
-    } catch (error) {
-        console.error("Error fetching trades:", error);
-        res.status(500).json({ error: "Failed to fetch trades" });
     }
 });
 

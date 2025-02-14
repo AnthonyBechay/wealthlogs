@@ -27,6 +27,7 @@ model Trade {
   fees       Float    @default(0)  //  Default value added
   dateTime   DateTime @default(now())
   pattern    String
+  direction  String   @default("Long")
   userId     Int
   user       User     @relation(fields: [userId], references: [id])
 }

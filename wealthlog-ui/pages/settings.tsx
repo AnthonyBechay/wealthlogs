@@ -22,6 +22,7 @@ export default function Settings() {
     }
   }, []);
 
+  // Fetch account balance from the backend
   const fetchAccountBalance = async (token: string) => {
     try {
       const response = await api.get("/account", {
@@ -34,6 +35,7 @@ export default function Settings() {
     }
   };
 
+  // Fetch settings (instruments, patterns, BE range) from the backend
   const fetchSettings = async (token: string) => {
     try {
       const response = await api.get("/settings", {
@@ -47,6 +49,7 @@ export default function Settings() {
     }
   };
 
+  // Handle adding money to account balance
   const handleAddMoney = async (e: React.FormEvent) => {
     e.preventDefault();
     const token = localStorage.getItem("token");
@@ -62,19 +65,26 @@ export default function Settings() {
     }
   };
 
+  // Save instruments, patterns, and BE range in the backend
   const handleUpdateSettings = async () => {
     const token = localStorage.getItem("token");
     try {
       await api.post("/settings/update", {
-        instruments, patterns, beMin: beRange.min, beMax: beRange.max
+        instruments,
+        patterns,
+        beMin: beRange.min,
+        beMax: beRange.max
       }, {
         headers: { Authorization: `Bearer ${token}` },
       });
+
+      fetchSettings(token);
     } catch (err) {
       console.error("Failed to update settings.");
     }
   };
 
+  // Add new instrument to the list
   const handleAddInstrument = () => {
     if (newInstrument.trim() !== "") {
       setInstruments([...instruments, newInstrument]);
@@ -82,6 +92,7 @@ export default function Settings() {
     }
   };
 
+  // Add new pattern to the list
   const handleAddPattern = () => {
     if (newPattern.trim() !== "") {
       setPatterns([...patterns, newPattern]);
