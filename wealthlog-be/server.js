@@ -35,77 +35,97 @@ app.use(express.json());
  * in chronological order by dateTime.
  */
 async function recalcUserBalance(userId) {
-  // 1) Confirm the user exists
-  const user = await prisma.user.findUnique({ where: { id: userId } });
-  if (!user) {
-    throw new Error("User not found, cannot recalc balance.");
-  }
-
-  // 2) Fetch all transactions (if you are using deposit/withdraw)
-  const transactions = await prisma.transaction.findMany({
-    where: { userId },
-    orderBy: { dateTime: 'asc' },
-  });
-
-  // 3) Fetch all trades
-  const trades = await prisma.trade.findMany({
-    where: { userId },
-    orderBy: { dateTime: 'asc' },
-  });
-
-  // 4) Transform each into a unified list with a `dateTime` and a `type` property
-  const transactionEvents = transactions.map(t => ({
-    type: 'transaction',
-    dateTime: t.dateTime,
-    amount: t.amount,
-    transactionType: t.type,  // "deposit" or "withdraw"
-    fees: 0,
-  }));
-
-  const tradeEvents = trades.map(tr => ({
-    type: 'trade',
-    dateTime: tr.dateTime,
-    fees: tr.fees || 0,
-    percentage: tr.percentage || 0,
-    amount: tr.amount || 0
-  }));
-
-  // 5) Merge and sort by dateTime ascending
-  const allEvents = [...transactionEvents, ...tradeEvents];
-  allEvents.sort((a, b) => new Date(a.dateTime) - new Date(b.dateTime));
-
-  // 6) Rebuild the balance from 0 (or from some initial deposit if your logic differs)
-  let newBalance = 0;
-
-  for (const event of allEvents) {
-    if (event.type === 'transaction') {
-      // deposit/withdraw
-      if (event.transactionType === 'deposit') {
-        newBalance += event.amount;
-      } else if (event.transactionType === 'withdraw') {
-        newBalance -= event.amount;
-      }
-    } else if (event.type === 'trade') {
-      // subtract fees
-      newBalance -= event.fees;
-
-      // apply gain/loss
-      if (event.percentage !== 0) {
-        newBalance *= (1 + event.percentage / 100);
+    // 1) Confirm the user
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new Error("User not found, cannot recalc balance.");
+  
+    // 2) Fetch transactions & trades in chronological order
+    const transactions = await prisma.transaction.findMany({
+      where: { userId },
+      orderBy: { dateTime: 'asc' }
+    });
+    const trades = await prisma.trade.findMany({
+      where: { userId },
+      orderBy: { dateTime: 'asc' }
+    });
+  
+    const transactionEvents = transactions.map(t => ({
+      type: 'transaction',
+      id: t.id,
+      dateTime: t.dateTime,
+      amount: t.amount,
+      transactionType: t.type // "deposit" or "withdraw"
+    }));
+  
+    const tradeEvents = trades.map(tr => ({
+      type: 'trade',
+      id: tr.id,
+      dateTime: tr.dateTime,
+      fees: tr.fees || 0,
+      userPercentage: tr.percentage || 0, // user typed
+      userAmount: tr.amount || 0,        // user typed (will be overwritten)
+    }));
+  
+    const allEvents = [...transactionEvents, ...tradeEvents];
+    allEvents.sort((a, b) => new Date(a.dateTime) - new Date(b.dateTime));
+  
+    // 3) Start from 0
+    let newBalance = 0;
+  
+    // 4) Iterate
+    for (const event of allEvents) {
+      const oldBalance = newBalance;
+  
+      if (event.type === 'transaction') {
+        // deposit or withdraw
+        if (event.transactionType === 'deposit') {
+          newBalance += event.amount;
+        } else {
+          newBalance -= event.amount;
+        }
       } else {
-        newBalance += event.amount;
+        // It's a trade
+        const fees = event.fees;
+        newBalance -= fees;
+  
+        if (event.userPercentage !== 0) {
+          // user typed a percentage
+          newBalance = newBalance * (1 + event.userPercentage / 100);
+        } else {
+          // user typed an amount
+          newBalance += event.userAmount;
+        }
+  
+        const difference = newBalance - oldBalance;
+  
+        // If user typed only an amount, let's compute the final percentage
+        let finalPercentage = event.userPercentage;
+        if (finalPercentage === 0 && oldBalance !== 0) {
+          finalPercentage = (difference / oldBalance) * 100;
+        }
+  
+        // 5) Update the trade with the new data
+        await prisma.trade.update({
+          where: { id: event.id },
+          data: {
+            balanceBeforeTrade: oldBalance,
+            balanceAfterTrade: newBalance,
+            amount: difference,       // final difference
+            percentage: finalPercentage,
+          }
+        });
       }
     }
+  
+    // 6) Final user balance
+    await prisma.user.update({
+      where: { id: userId },
+      data: { accountBalance: newBalance }
+    });
   }
-
-  // 7) Update user balance in DB
-  await prisma.user.update({
-    where: { id: userId },
-    data: { accountBalance: newBalance },
-  });
-
-  return newBalance;
-}
+  
+  
+  
 
 /************************************************************
  *  AUTHENTICATION ROUTES
@@ -194,37 +214,76 @@ function detectSession(dateString) {
  * ADD a new trade record (possibly backdated).
  * Body: { instrument, percentage, amount, fees, dateTime, pattern, direction }
  */
+
+
 app.post('/trades', authenticate, async (req, res) => {
-  const { instrument, percentage, amount, fees, dateTime, pattern, direction } = req.body;
+    const {
+      instrument,
+      percentage = 0,
+      amount = 0,
+      fees = 0,
+      dateTime,
+      pattern = "",
+      direction = "Long"
+    } = req.body;
+  
+    // Validate
+    if (!instrument) {
+      return res.status(400).json({ error: "Instrument is required" });
+    }
+  
+    const p = parseFloat(percentage);
+    const a = parseFloat(amount);
+  
+    // If both p and a are 0 => error
+    if (p === 0 && a === 0) {
+      return res.status(400).json({ error: "Must provide either percentage or amount." });
+    }
+  
+    let finalPercentage = 0;
+    let finalAmount = 0;
+  
+    if (p !== 0 && a !== 0) {
+      // If both => choose percentage, ignore amount
+      finalPercentage = p;
+      finalAmount = 0;
+    } else if (p !== 0) {
+      finalPercentage = p;
+      finalAmount = 0;
+    } else {
+      finalPercentage = 0;
+      finalAmount = a;
+    }
+  
+    try {
+      const tradeTime = dateTime ? new Date(dateTime) : new Date();
+      const session = detectSession(tradeTime);
+  
+      await prisma.trade.create({
+        data: {
+          instrument,
+          session,
+          percentage: finalPercentage,
+          amount: finalAmount,
+          fees,
+          dateTime: tradeTime,
+          pattern,
+          direction,
+          userId: req.user.userId,
+          balanceBeforeTrade: 0, // We'll fill this after recalc
+        }
+      });
+  
+      await recalcUserBalance(req.user.userId);
+  
+      res.json({ message: "Trade added" });
+    } catch (error) {
+      console.error("Error adding trade:", error);
+      res.status(500).json({ error: "Failed to add trade" });
+    }
+  });
+  
 
-  try {
-    // 1) Create the trade
-    const tradeTime = dateTime ? new Date(dateTime) : new Date();
-    const session = detectSession(dateTime);
-
-    const trade = await prisma.trade.create({
-      data: {
-        instrument,
-        session,
-        percentage: percentage || 0,
-        amount: amount || 0,
-        fees: fees || 0,
-        dateTime: tradeTime,
-        pattern: pattern || "",
-        direction: direction || "Long",
-        userId: req.user.userId
-      }
-    });
-
-    // 2) Recalc entire balance
-    await recalcUserBalance(req.user.userId);
-
-    res.json({ message: "Trade added successfully", trade });
-  } catch (error) {
-    console.error("Error adding trade:", error);
-    res.status(500).json({ error: "Failed to add trade", details: error.message });
-  }
-});
 
 /**
  * GET all trades, ordered by date descending
@@ -247,33 +306,67 @@ app.get('/trades', authenticate, async (req, res) => {
  * Body: { instrument, percentage, amount, fees, dateTime, pattern, direction }
  */
 app.put('/trades/:id', authenticate, async (req, res) => {
-  const { id } = req.params;
-  const { instrument, percentage, amount, fees, dateTime, pattern, direction } = req.body;
+    const {
+      instrument,
+      percentage = 0,
+      amount = 0,
+      fees = 0,
+      dateTime,
+      pattern = "",
+      direction = "Long"
+    } = req.body;
+  
+    if (!instrument) {
+      return res.status(400).json({ error: "Instrument is required" });
+    }
+  
+    const p = parseFloat(percentage);
+    const a = parseFloat(amount);
+  
+    if (p === 0 && a === 0) {
+      return res.status(400).json({ error: "Must provide either percentage or amount." });
+    }
+  
+    let finalPercentage = 0;
+    let finalAmount = 0;
+    if (p !== 0 && a !== 0) {
+      finalPercentage = p;
+      finalAmount = 0;
+    } else if (p !== 0) {
+      finalPercentage = p;
+    } else {
+      finalAmount = a;
+    }
+  
+    try {
+      const tradeTime = dateTime ? new Date(dateTime) : new Date();
+      const session = detectSession(tradeTime);
+  
+      await prisma.trade.update({
+        where: { id: parseInt(req.params.id) },
+        data: {
+          instrument,
+          session,
+          percentage: finalPercentage,
+          amount: finalAmount,
+          fees,
+          dateTime: tradeTime,
+          pattern,
+          direction
+        }
+      });
+  
+      await recalcUserBalance(req.user.userId);
+  
+      res.json({ message: "Trade updated" });
+    } catch (error) {
+      console.error("Error updating trade:", error);
+      res.status(500).json({ error: "Failed to update trade" });
+    }
+  });
+  
 
-  try {
-    // 1) Update the trade
-    const updatedTrade = await prisma.trade.update({
-      where: { id: parseInt(id) },
-      data: {
-        instrument,
-        percentage: percentage || 0,
-        amount: amount || 0,
-        fees: fees || 0,
-        dateTime: dateTime ? new Date(dateTime) : new Date(),
-        pattern: pattern || "",
-        direction: direction || "Long"
-      }
-    });
 
-    // 2) Recalc entire balance
-    await recalcUserBalance(req.user.userId);
-
-    res.json({ message: "Trade updated successfully", trade: updatedTrade });
-  } catch (error) {
-    console.error("Error updating trade:", error);
-    res.status(500).json({ error: "Failed to update trade" });
-  }
-});
 
 /**
  * DELETE a trade
@@ -689,6 +782,112 @@ app.post('/settings/patterns/delete', authenticate, async (req, res) => {
     res.status(500).json({ error: "Failed to delete pattern" });
   }
 });
+
+
+
+
+/************************************************************
+ *  Advanced filter
+ ************************************************************/
+// GET /trades/advanced-search
+// Query params:
+//   ?startDate=YYYY-MM-DD
+//   &endDate=YYYY-MM-DD
+//   &instrument=...
+//   &pattern=...
+//   &direction=Long|Short
+//   &session=London|US|Other
+//   &page=1
+//   &size=20
+app.get('/trades/advanced-search', authenticate, async (req, res) => {
+    try {
+      const {
+        startDate,
+        endDate,
+        instrument,
+        pattern,
+        direction,
+        session,
+        page = '1',
+        size = '20'
+      } = req.query;
+  
+      const pageNum = parseInt(page.toString(), 10) || 1;
+      const sizeNum = parseInt(size.toString(), 10) || 20;
+  
+      // We'll build up a `where` object for Prisma with AND-based logic.
+      // The user MUST match userId, and dateTime in range if provided,
+      // instrument if provided, etc.
+  
+      const whereClause = {
+        userId: req.user.userId
+      };
+  
+      // Date range filter (AND logic)
+      if (startDate && endDate) {
+        whereClause.dateTime = {
+          gte: new Date(startDate.toString()),
+          lte: new Date(endDate.toString()),
+        };
+      } else if (startDate) {
+        whereClause.dateTime = { gte: new Date(startDate.toString()) };
+      } else if (endDate) {
+        whereClause.dateTime = { lte: new Date(endDate.toString()) };
+      }
+  
+      // Instrument filter (exact match)
+      if (instrument) {
+        whereClause.instrument = instrument.toString();
+      }
+  
+      // Pattern filter (exact match)
+      if (pattern) {
+        whereClause.pattern = pattern.toString();
+      }
+  
+      // Direction filter
+      if (direction && (direction === 'Long' || direction === 'Short')) {
+        whereClause.direction = direction.toString();
+      }
+  
+      // Session filter (if applicable)
+      if (session && ["London", "US", "Other"].includes(session.toString())) {
+        whereClause.session = session.toString();
+      }
+  
+      // Pagination: skip & take
+      const skip = (pageNum - 1) * sizeNum;
+      const take = sizeNum;
+  
+      // Fetch trades
+      const trades = await prisma.trade.findMany({
+        where: whereClause,
+        orderBy: { dateTime: 'asc' },
+        skip,
+        take
+      });
+  
+      // Count total records matching the filters
+      const total = await prisma.trade.count({
+        where: whereClause
+      });
+  
+      // Return trades + pagination info
+      res.json({
+        trades,
+        total,
+        page: pageNum,
+        size: sizeNum,
+        totalPages: Math.ceil(total / sizeNum)
+      });
+    } catch (error) {
+      console.error("Error in advanced search (AND logic):", error);
+      res.status(500).json({ error: "Failed to perform advanced search" });
+    }
+  });
+  
+  
+  
 
 /************************************************************
  *  START THE SERVER

@@ -21,18 +21,22 @@ model User {
 }
 
 model Trade {
-  id         Int      @id @default(autoincrement())
-  instrument String
-  session    String
-  percentage Float?
-  amount     Float?
-  fees       Float    @default(0)  //  Default value added
-  dateTime   DateTime @default(now())
-  pattern    String
-  direction  String   @default("Long")
-  userId     Int
-  user       User     @relation(fields: [userId], references: [id])
+  id                  Int      @id @default(autoincrement())
+  instrument          String
+  session             String
+  percentage          Float?   // user typed or auto-derived
+  amount              Float?   // final difference after recalc
+  fees                Float    @default(0)
+  dateTime            DateTime @default(now())
+  pattern             String
+  direction           String   @default("Long")
+  balanceBeforeTrade  Float?   @default(0)
+  balanceAfterTrade   Float?   @default(0)
+
+  userId Int
+  user   User  @relation(fields: [userId], references: [id])
 }
+
 
 
 model Settings {
