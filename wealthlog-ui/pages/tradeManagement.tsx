@@ -2,17 +2,21 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import { api } from "../utils/api";
 
+
+
 /** Represents a trade from the server */
 interface Trade {
   id: number;
   instrument: string;
   session: "London" | "US" | "Other";
-  percentage?: number;
-  amount?: number;
+  percentage?: number; 
+  amount?: number;           // final difference
   fees: number;
-  dateTime: string;  // stored as ISO string
+  dateTime: string;          // stored as ISO string
   pattern: string;
   direction: "Long" | "Short";
+  balanceBeforeTrade?: number; // NEW
+  balanceAfterTrade?: number;  // NEW
 }
 
 export default function TradeManagement() {
@@ -24,14 +28,14 @@ export default function TradeManagement() {
   const [error, setError] = useState("");
   const [balance, setBalance] = useState<number | null>(null);
 
-  // For drop-downs
+  // For drop-downs (instruments/patterns)
   const [instruments, setInstruments] = useState<string[]>([]);
   const [patterns, setPatterns] = useState<string[]>([]);
 
-  // Page size (pagination in front-end for now)
+  // Page size for basic pagination
   const [pageSize, setPageSize] = useState<number>(10);
 
-  // For editing in a modal
+  // Modal for editing
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingTrade, setEditingTrade] = useState<Trade | null>(null);
 
@@ -57,8 +61,11 @@ export default function TradeManagement() {
 
   const fetchAllData = async (token: string) => {
     try {
-      // load trades, balance, settings
-      await Promise.all([fetchTrades(token), fetchAccountBalance(token), fetchSettings(token)]);
+      await Promise.all([
+        fetchTrades(token),
+        fetchAccountBalance(token),
+        fetchSettings(token),
+      ]);
     } catch (err) {
       console.error(err);
     } finally {
@@ -141,14 +148,12 @@ export default function TradeManagement() {
     setShowEditModal(false);
   };
 
-  /** Called when user clicks "Save Changes" in the edit modal */
   const handleEditTrade = async () => {
     if (!editingTrade) return;
     const token = localStorage.getItem("token");
     if (!token) return;
 
     try {
-      // PUT request
       await api.put(`/trades/${editingTrade.id}`, editingTrade, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -164,11 +169,9 @@ export default function TradeManagement() {
 
   // ===================== DELETE TRADE ======================
   const handleDeleteTrade = async (tradeId: number) => {
-    // optionally confirm
     if (!confirm("Are you sure you want to delete this trade?")) {
       return;
     }
-
     const token = localStorage.getItem("token");
     if (!token) return;
 
@@ -267,7 +270,7 @@ export default function TradeManagement() {
           <input
             type="number"
             className="w-full p-2 border rounded"
-            value={newTrade.amount}
+            value={newTrade.amount || 0}
             onChange={(e) => setNewTrade({ ...newTrade, amount: Number(e.target.value) })}
           />
         </div>
@@ -288,7 +291,6 @@ export default function TradeManagement() {
           <input
             type="datetime-local"
             className="w-full p-2 border rounded"
-            // We slice to remove seconds detail: "YYYY-MM-DDTHH:MM"
             value={new Date(newTrade.dateTime).toISOString().slice(0, 16)}
             onChange={(e) =>
               setNewTrade({ ...newTrade, dateTime: new Date(e.target.value).toISOString() })
@@ -315,8 +317,9 @@ export default function TradeManagement() {
           <label>trades</label>
         </div>
         <button
+          type="button"
           className="ml-auto bg-blue-300 text-black px-4 py-2 rounded"
-          onClick={() => router.push("/trade-advanced-filter")}
+          onClick={() => router.push("/tradeAdvancedFilter")}
         >
           View Advanced Filter
         </button>
@@ -331,6 +334,8 @@ export default function TradeManagement() {
           <thead>
             <tr className="bg-gray-100">
               <th className="border p-2">Date/Time</th>
+              <th className="border p-2">Balance Before</th> {/* NEW */}
+              <th className="border p-2">Balance After</th>  {/* NEW */}
               <th className="border p-2">Instrument</th>
               <th className="border p-2">Direction</th>
               <th className="border p-2">Session</th>
@@ -346,6 +351,19 @@ export default function TradeManagement() {
                 <td className="border p-2">
                   {new Date(trade.dateTime).toLocaleString()}
                 </td>
+
+                {/* Show the new fields */}
+                <td className="border p-2">
+                  {trade.balanceBeforeTrade !== undefined
+                    ? trade.balanceBeforeTrade.toFixed(2)
+                    : "N/A"}
+                </td>
+                <td className="border p-2">
+                  {trade.balanceAfterTrade !== undefined
+                    ? trade.balanceAfterTrade.toFixed(2)
+                    : "N/A"}
+                </td>
+
                 <td className="border p-2">{trade.instrument}</td>
                 <td className="border p-2">{trade.direction}</td>
                 <td className="border p-2">{trade.session}</td>
@@ -380,7 +398,9 @@ export default function TradeManagement() {
       {showEditModal && editingTrade && (
         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
           <div className="bg-white p-6 rounded shadow-md w-full max-w-md relative">
-            <h2 className="text-lg font-semibold mb-4">Edit Trade ID: {editingTrade.id}</h2>
+            <h2 className="text-lg font-semibold mb-4">
+              Edit Trade ID: {editingTrade.id}
+            </h2>
 
             {/* Instrument */}
             <div className="mt-2">
@@ -503,7 +523,6 @@ export default function TradeManagement() {
               />
             </div>
 
-            {/* Buttons */}
             <div className="flex justify-end mt-4 gap-2">
               <button
                 className="bg-green-500 text-white px-4 py-2 rounded"
