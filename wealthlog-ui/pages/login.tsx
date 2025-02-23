@@ -15,7 +15,7 @@ export default function Login() {
     try {
       const response = await api.post("/auth/login", { username, password });
       localStorage.setItem("token", response.data.token);
-      router.push("/tradeManagement");
+      router.push("/landing");
     } catch (err) {
       setError("Invalid username or password.");
     }

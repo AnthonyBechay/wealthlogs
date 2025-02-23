@@ -59,7 +59,7 @@ export default function Landing() {
   };
 
   const handleClickTradeManagement = () => {
-    router.push("/tradeManagement");
+    // router.push("/tradeManagement");
   };
 
   return (
