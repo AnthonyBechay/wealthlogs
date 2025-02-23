@@ -2,156 +2,218 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import { api } from "../utils/api";
 
-/** Represents a money transaction (deposit/withdraw) */
+/** Represents a user's financial account */
+interface Account {
+  id: number;
+  name: string;
+  accountType: string;
+  balance: number;
+  currency: string;
+}
+
+/** Represents a transaction row */
 interface Transaction {
   id: number;
+  type: "DEPOSIT" | "WITHDRAW" | "TRANSFER";
   amount: number;
-  type: "deposit" | "withdraw";
-  dateTime: string;  // ISO string from the server
-  currency: string;  // e.g. "USD"
+  dateTime: string;  // ISO from server
+  currency: string;
+  fromAccountId?: number;
+  toAccountId?: number;
 }
 
 export default function Settings() {
   const router = useRouter();
 
-  /********************************************************
-   * SUB-MENU (TABS) STATE
-   ********************************************************/
-  const [activeSubMenu, setActiveSubMenu] = useState<"money" | "values">("money");
+  // Which tab: "money" or "values"
+  const [activeTab, setActiveTab] = useState<"money" | "values">("money");
 
   /********************************************************
-   * MONEY MANAGEMENT STATES
+   * ACCOUNTS & TRANSACTIONS
    ********************************************************/
-  const [balance, setBalance] = useState<number | null>(null);
+  const [accounts, setAccounts] = useState<Account[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
 
-  // Use a string so the field can start blank and accept partial input
-  const [transactionAmount, setTransactionAmount] = useState<string>("");
-  const [transactionType, setTransactionType] = useState<"deposit" | "withdraw">("deposit");
-  const [transactionDate, setTransactionDate] = useState<string>(
-    () => new Date().toISOString().slice(0, 16) // e.g. "YYYY-MM-DDTHH:mm"
-  );
-  const [transactionCurrency, setTransactionCurrency] = useState("USD");
+  // For new transaction
+  const [transactionType, setTransactionType] = useState<"DEPOSIT"|"WITHDRAW"|"TRANSFER">("DEPOSIT");
+  const [selectedFromAccountId, setSelectedFromAccountId] = useState<number | null>(null);
+  const [selectedToAccountId, setSelectedToAccountId] = useState<number | null>(null);
+  const [transactionAmount, setTransactionAmount] = useState("");
+  const [transactionDate, setTransactionDate] = useState(() => new Date().toISOString().slice(0,16)); // "YYYY-MM-DDTHH:mm"
 
   /********************************************************
-   * LIST OF VALUES: INSTRUMENTS & PATTERNS
+   * INSTRUMENTS & PATTERNS
    ********************************************************/
   const [instruments, setInstruments] = useState<string[]>([]);
   const [newInstrument, setNewInstrument] = useState("");
-  const [editingInstrumentIndex, setEditingInstrumentIndex] = useState<number | null>(null);
+  const [editingInstrumentIndex, setEditingInstrumentIndex] = useState<number|null>(null);
   const [editingInstrumentValue, setEditingInstrumentValue] = useState("");
 
   const [patterns, setPatterns] = useState<string[]>([]);
   const [newPattern, setNewPattern] = useState("");
-  const [editingPatternIndex, setEditingPatternIndex] = useState<number | null>(null);
+  const [editingPatternIndex, setEditingPatternIndex] = useState<number|null>(null);
   const [editingPatternValue, setEditingPatternValue] = useState("");
 
   /********************************************************
-   * BREAK-EVEN RANGE (store as strings to allow negative sign)
+   * BE Range
    ********************************************************/
-  const [beMin, setBeMin] = useState<string>("-0.2");
-  const [beMax, setBeMax] = useState<string>("0.3");
+  const [beMin, setBeMin] = useState("-0.2");
+  const [beMax, setBeMax] = useState("0.3");
 
-  /********************************************************
-   * FETCH DATA ON MOUNT
-   ********************************************************/
   useEffect(() => {
+    // On mount, check token or redirect
     const token = localStorage.getItem("token");
     if (!token) {
       router.push("/login");
       return;
     }
-    // Fetch everything needed
-    fetchAccountBalance(token);
-    fetchTransactionHistory(token);
-    fetchSettings(token);
-  }, []);
+    // fetch all data
+    fetchAllData(token);
+  }, [router]);
 
-  /********************************************************
-   * API CALLS
-   ********************************************************/
-
-  // 1) Fetch account balance
-  const fetchAccountBalance = async (token: string) => {
+  const fetchAllData = async (token: string) => {
     try {
-      const response = await api.get("/account", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setBalance(response.data.accountBalance ?? 0);
+      await Promise.all([
+        fetchAccounts(token),
+        fetchTransactions(token),
+        fetchSettings(token)
+      ]);
     } catch (err) {
-      console.error("Failed to fetch balance:", err);
-      setBalance(0);
+      console.error("Error fetching data:", err);
     }
   };
 
-  // 2) Fetch transaction history
-  const fetchTransactionHistory = async (token: string) => {
+  /********************************************************
+   * Fetch Accounts
+   ********************************************************/
+  const fetchAccounts = async (token: string) => {
     try {
-      const response = await api.get("/account/transactions", {
+      const res = await api.get("/financial-accounts", {
         headers: { Authorization: `Bearer ${token}` },
       });
-      setTransactions(response.data || []);
+      const userAccounts: Account[] = res.data;
+      setAccounts(userAccounts);
+      // Default from/to accounts
+      if (userAccounts.length > 0) {
+        setSelectedFromAccountId(userAccounts[0].id);
+        setSelectedToAccountId(userAccounts[0].id);
+      }
+    } catch (err) {
+      console.error("Failed to fetch accounts:", err);
+    }
+  };
+
+  /********************************************************
+   * Fetch Transactions
+   ********************************************************/
+  const fetchTransactions = async (token: string) => {
+    try {
+      const res = await api.get("/transactions", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setTransactions(res.data || []);
     } catch (err) {
       console.error("Failed to fetch transactions:", err);
     }
   };
 
-  // 3) Fetch settings (instruments, patterns, beMin, beMax)
+  /********************************************************
+   * Fetch Settings (instruments, patterns, beMin, beMax)
+   ********************************************************/
   const fetchSettings = async (token: string) => {
     try {
-      const response = await api.get("/settings", {
+      const res = await api.get("/settings", {
         headers: { Authorization: `Bearer ${token}` },
       });
-
-      // The response should have: { instruments, patterns, beMin, beMax }
-      setInstruments(response.data.instruments || []);
-      setPatterns(response.data.patterns || []);
-
-      // Convert the numeric beMin/beMax from server to strings so user can type freely
-      setBeMin(String(response.data.beMin ?? -0.2));
-      setBeMax(String(response.data.beMax ?? 0.3));
+      setInstruments(res.data.instruments || []);
+      setPatterns(res.data.patterns || []);
+      setBeMin(String(res.data.beMin ?? -0.2));
+      setBeMax(String(res.data.beMax ?? 0.3));
     } catch (err) {
       console.error("Failed to fetch settings:", err);
     }
   };
 
   /********************************************************
-   * MONEY MANAGEMENT HANDLERS
+   * CREATE A TRANSACTION
    ********************************************************/
   const handleTransactionSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const token = localStorage.getItem("token");
-    if (!token) return console.error("No token found.");
+    if (!token) return;
 
-    const amountNum = Number(transactionAmount);
-    // Validate that it's > 0
-    if (isNaN(amountNum) || amountNum <= 0) {
-      alert("Please enter an amount greater than 0.");
+    const amt = parseFloat(transactionAmount);
+    if (isNaN(amt) || amt <= 0) {
+      alert("Amount must be > 0");
       return;
     }
 
-    try {
-      await api.post(
-        "/account/transaction",
-        {
-          amount: amountNum,
-          type: transactionType,
-          dateTime: transactionDate,
-          currency: transactionCurrency
-        },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      // Refresh data
-      fetchAccountBalance(token);
-      fetchTransactionHistory(token);
+    // We store them uppercase in DB: "DEPOSIT","WITHDRAW","TRANSFER"
+    const payload: any = {
+      type: transactionType,
+      amount: amt,
+      dateTime: transactionDate,
+      currency: "USD"
+    };
 
-      // Reset form
+    if (transactionType === "DEPOSIT") {
+      if (!selectedToAccountId) {
+        alert("Select an account to deposit into");
+        return;
+      }
+      payload.toAccountId = selectedToAccountId;
+    } else if (transactionType === "WITHDRAW") {
+      if (!selectedFromAccountId) {
+        alert("Select an account to withdraw from");
+        return;
+      }
+      payload.fromAccountId = selectedFromAccountId;
+    } else {
+      // TRANSFER
+      if (!selectedFromAccountId || !selectedToAccountId) {
+        alert("Need both from and to accounts for a transfer");
+        return;
+      }
+      if (selectedFromAccountId === selectedToAccountId) {
+        alert("Cannot transfer to the same account");
+        return;
+      }
+      payload.fromAccountId = selectedFromAccountId;
+      payload.toAccountId = selectedToAccountId;
+    }
+
+    try {
+      await api.post("/transactions", payload, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      // reset form
       setTransactionAmount("");
-      setTransactionType("deposit");
-      setTransactionDate(new Date().toISOString().slice(0, 16));
-      setTransactionCurrency("USD");
+      setTransactionDate(new Date().toISOString().slice(0,16));
+
+      // refresh transactions
+      fetchTransactions(token);
     } catch (err) {
-      console.error("Failed to process transaction:", err);
+      console.error("Create transaction error:", err);
+    }
+  };
+
+  /********************************************************
+   * Recalc All Balances
+   ********************************************************/
+  const handleRecalc = async () => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+
+    try {
+      const res = await api.post("/transactions/recalc", {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      console.log("Recalc result:", res.data);
+      if (res.data.accounts) {
+        setAccounts(res.data.accounts);
+      }
+    } catch (err) {
+      console.error("Recalc error:", err);
     }
   };
 
@@ -196,27 +258,23 @@ export default function Settings() {
     setEditingInstrumentIndex(index);
     setEditingInstrumentValue(currentValue);
   };
-
   const cancelEditingInstrument = () => {
     setEditingInstrumentIndex(null);
     setEditingInstrumentValue("");
   };
-
   const handleUpdateInstrument = async (oldValue: string) => {
     const token = localStorage.getItem("token");
     if (!token) return;
-
     if (!editingInstrumentValue.trim()) {
       cancelEditingInstrument();
       return;
     }
-
     try {
       const res = await api.post(
         "/settings/instruments/edit",
         {
           oldInstrument: oldValue,
-          newInstrument: editingInstrumentValue,
+          newInstrument: editingInstrumentValue
         },
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -252,7 +310,6 @@ export default function Settings() {
   const handleDeletePattern = async (pattern: string) => {
     const token = localStorage.getItem("token");
     if (!token) return;
-
     try {
       const res = await api.post(
         "/settings/patterns/delete",
@@ -269,28 +326,21 @@ export default function Settings() {
     setEditingPatternIndex(index);
     setEditingPatternValue(currentValue);
   };
-
   const cancelEditingPattern = () => {
     setEditingPatternIndex(null);
     setEditingPatternValue("");
   };
-
   const handleUpdatePattern = async (oldValue: string) => {
     const token = localStorage.getItem("token");
     if (!token) return;
-
     if (!editingPatternValue.trim()) {
       cancelEditingPattern();
       return;
     }
-
     try {
       const res = await api.post(
         "/settings/patterns/edit",
-        {
-          oldPattern: oldValue,
-          newPattern: editingPatternValue,
-        },
+        { oldPattern: oldValue, newPattern: editingPatternValue },
         { headers: { Authorization: `Bearer ${token}` } }
       );
       setPatterns(res.data.patterns);
@@ -302,43 +352,34 @@ export default function Settings() {
   };
 
   /********************************************************
-   * UPDATE BREAK-EVEN RANGE (ONLY beMin / beMax)
+   * BREAK-EVEN RANGE
    ********************************************************/
   const updateBeRange = async () => {
     const token = localStorage.getItem("token");
     if (!token) return;
 
-    // Parse the strings to numbers
-    const minNum = parseFloat(beMin);
-    const maxNum = parseFloat(beMax);
-
-    // Validate both are numbers
-    if (isNaN(minNum) || isNaN(maxNum)) {
-      alert("Invalid numeric input for Break-Even Range.");
+    const minVal = parseFloat(beMin);
+    const maxVal = parseFloat(beMax);
+    if (isNaN(minVal) || isNaN(maxVal)) {
+      alert("Invalid numeric input for break-even range.");
       return;
     }
-
-    // Validate beMin < beMax
-    if (minNum >= maxNum) {
-      alert("Minimum BE must be less than Maximum BE.");
+    if (minVal >= maxVal) {
+      alert("beMin must be less than beMax.");
       return;
     }
 
     try {
-      // Calls the dedicated route to ONLY update beMin / beMax
-      await api.post(
-        "/settings/beRange/update",
-        {
-          beMin: minNum,
-          beMax: maxNum,
-        },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      // Refetch to ensure UI sync
+      await api.post("/settings/beRange/update", {
+        beMin: minVal,
+        beMax: maxVal
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      // refetch
       fetchSettings(token);
-      console.log("BE range updated successfully");
-    } catch (err) {
-      console.error("Failed to update BE range.", err);
+    } catch (error) {
+      console.error("Failed to update BE range:", error);
     }
   };
 
@@ -347,95 +388,154 @@ export default function Settings() {
    ********************************************************/
   return (
     <div className="max-w-4xl mx-auto p-6">
-      <h1 className="text-2xl font-bold mb-4">Settings</h1>
+      <h1 className="text-2xl font-bold mb-6">Settings</h1>
 
-      {/* SUB-MENU TABS */}
       <div className="flex gap-4 mb-6">
         <button
-          className={`px-4 py-2 border rounded ${
-            activeSubMenu === "money" ? "bg-blue-200" : ""
-          }`}
-          onClick={() => setActiveSubMenu("money")}
+          className={`px-4 py-2 border rounded ${activeTab === "money" ? "bg-blue-200" : ""}`}
+          onClick={() => setActiveTab("money")}
         >
           Money Management
         </button>
         <button
-          className={`px-4 py-2 border rounded ${
-            activeSubMenu === "values" ? "bg-blue-200" : ""
-          }`}
-          onClick={() => setActiveSubMenu("values")}
+          className={`px-4 py-2 border rounded ${activeTab === "values" ? "bg-blue-200" : ""}`}
+          onClick={() => setActiveTab("values")}
         >
-          List of Values Data
+          List of Values
         </button>
       </div>
 
       {/* MONEY MANAGEMENT TAB */}
-      {activeSubMenu === "money" && (
+      {activeTab === "money" && (
         <>
-          {/* Current Balance */}
+          {/* Show accounts + recalc button */}
           <div className="p-4 border rounded">
-            <h2 className="text-lg font-semibold">Current Balance</h2>
-            <p className="text-xl mb-4">
-              {balance !== null ? `$${balance.toFixed(2)}` : "Loading..."}
-            </p>
+            <h2 className="text-lg font-semibold">Your Accounts</h2>
+            {accounts.length === 0 ? (
+              <p className="mt-2">No accounts found. Create them on landing or a separate page.</p>
+            ) : (
+              <ul className="list-disc ml-5 mt-2">
+                {accounts.map(ac => (
+                  <li key={ac.id}>
+                    {ac.name} ({ac.accountType}) — <span className="font-semibold">Balance:</span> {ac.balance} {ac.currency}
+                  </li>
+                ))}
+              </ul>
+            )}
+            {/* Recalc balances button */}
+            <button
+              className="mt-4 bg-gray-400 text-white px-3 py-2 rounded"
+              onClick={handleRecalc}
+            >
+              Recalc Balances
+            </button>
+          </div>
 
-            {/* Deposit/Withdraw Form */}
+          {/* Create Transaction form */}
+          <div className="mt-6 p-4 border rounded">
+            <h2 className="text-lg font-semibold mb-2">Create a Transaction</h2>
             <form onSubmit={handleTransactionSubmit} className="space-y-4">
-              {/* Transaction Type */}
               <div>
-                <label className="mr-4">Transaction Type:</label>
+                <label className="mr-2 font-medium">Type:</label>
                 <select
+                  className="border p-2"
                   value={transactionType}
-                  onChange={(e) =>
-                    setTransactionType(e.target.value as "deposit" | "withdraw")
-                  }
-                  className="p-2 border rounded"
+                  onChange={(e) => setTransactionType(e.target.value as any)}
                 >
-                  <option value="deposit">Deposit</option>
-                  <option value="withdraw">Withdraw</option>
+                  <option value="DEPOSIT">DEPOSIT</option>
+                  <option value="WITHDRAW">WITHDRAW</option>
+                  <option value="TRANSFER">TRANSFER</option>
                 </select>
               </div>
 
-              {/* Amount (no initial "0") */}
+              {/* deposit => choose toAccount */}
+              {transactionType === "DEPOSIT" && (
+                <div>
+                  <label className="mr-2 font-medium">To Account:</label>
+                  <select
+                    className="border p-2"
+                    value={selectedToAccountId ?? ""}
+                    onChange={(e) => setSelectedToAccountId(parseInt(e.target.value))}
+                  >
+                    <option value="">--Select--</option>
+                    {accounts.map(ac => (
+                      <option key={ac.id} value={ac.id}>{ac.name} ({ac.balance} {ac.currency})</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {/* withdraw => choose fromAccount */}
+              {transactionType === "WITHDRAW" && (
+                <div>
+                  <label className="mr-2 font-medium">From Account:</label>
+                  <select
+                    className="border p-2"
+                    value={selectedFromAccountId ?? ""}
+                    onChange={(e) => setSelectedFromAccountId(parseInt(e.target.value))}
+                  >
+                    <option value="">--Select--</option>
+                    {accounts.map(ac => (
+                      <option key={ac.id} value={ac.id}>{ac.name} ({ac.balance} {ac.currency})</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {/* transfer => choose both from & to */}
+              {transactionType === "TRANSFER" && (
+                <div className="flex gap-4">
+                  <div>
+                    <label className="mr-2 font-medium">From:</label>
+                    <select
+                      className="border p-2"
+                      value={selectedFromAccountId ?? ""}
+                      onChange={(e) => setSelectedFromAccountId(parseInt(e.target.value))}
+                    >
+                      <option value="">--Select--</option>
+                      {accounts.map(ac => (
+                        <option key={ac.id} value={ac.id}>{ac.name} ({ac.balance} {ac.currency})</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="mr-2 font-medium">To:</label>
+                    <select
+                      className="border p-2"
+                      value={selectedToAccountId ?? ""}
+                      onChange={(e) => setSelectedToAccountId(parseInt(e.target.value))}
+                    >
+                      <option value="">--Select--</option>
+                      {accounts.map(ac => (
+                        <option key={ac.id} value={ac.id}>{ac.name} ({ac.balance} {ac.currency})</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              )}
+
               <div>
-                <label className="block">Amount:</label>
+                <label className="mr-2 font-medium">Amount:</label>
                 <input
                   type="number"
-                  step="0.01"
-                  className="p-2 border rounded w-full"
+                  className="border p-2"
                   value={transactionAmount}
                   onChange={(e) => setTransactionAmount(e.target.value)}
-                  placeholder="e.g. 100.00"
+                  step="0.01"
                 />
               </div>
 
-              {/* Date/Time */}
               <div>
-                <label className="block">Date/Time:</label>
+                <label className="mr-2 font-medium">Date/Time:</label>
                 <input
                   type="datetime-local"
-                  className="p-2 border rounded w-full"
+                  className="border p-2"
                   value={transactionDate}
                   onChange={(e) => setTransactionDate(e.target.value)}
                 />
               </div>
 
-              {/* Currency (disabled) */}
-              <div>
-                <label className="block">Currency:</label>
-                <input
-                  type="text"
-                  className="p-2 border rounded w-full"
-                  value={transactionCurrency}
-                  onChange={(e) => setTransactionCurrency(e.target.value)}
-                  disabled
-                />
-              </div>
-
-              <button
-                type="submit"
-                className="w-full bg-green-500 text-white py-2 rounded"
-              >
+              <button type="submit" className="bg-green-600 text-white px-4 py-2 rounded">
                 Submit
               </button>
             </form>
@@ -454,17 +554,19 @@ export default function Settings() {
                     <th className="p-2 text-left">Type</th>
                     <th className="p-2 text-left">Amount</th>
                     <th className="p-2 text-left">Currency</th>
+                    <th className="p-2 text-left">From Account</th>
+                    <th className="p-2 text-left">To Account</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {transactions.map((tx) => (
+                  {transactions.map(tx => (
                     <tr key={tx.id} className="border-b">
-                      <td className="p-2">
-                        {new Date(tx.dateTime).toLocaleString()}
-                      </td>
+                      <td className="p-2">{new Date(tx.dateTime).toLocaleString()}</td>
                       <td className="p-2">{tx.type}</td>
                       <td className="p-2">{tx.amount}</td>
                       <td className="p-2">{tx.currency}</td>
+                      <td className="p-2">{tx.fromAccountId ?? "-"}</td>
+                      <td className="p-2">{tx.toAccountId ?? "-"}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -475,15 +577,15 @@ export default function Settings() {
       )}
 
       {/* LIST OF VALUES TAB */}
-      {activeSubMenu === "values" && (
+      {activeTab === "values" && (
         <>
-          {/* INSTRUMENTS SECTION */}
+          {/* INSTRUMENTS */}
           <div className="p-4 border rounded mb-6">
             <h2 className="text-lg font-semibold">Manage Instruments</h2>
             <ul className="mt-2">
               {instruments.map((inst, idx) => {
                 if (editingInstrumentIndex === idx) {
-                  // Editing mode
+                  // editing mode
                   return (
                     <li key={idx} className="flex items-center space-x-2 mt-2">
                       <input
@@ -507,17 +609,17 @@ export default function Settings() {
                     </li>
                   );
                 } else {
-                  // View mode
+                  // view mode
                   return (
-                    <li
-                      key={idx}
-                      className="flex items-center justify-between mt-2"
-                    >
+                    <li key={idx} className="flex items-center justify-between mt-2">
                       <span>{inst}</span>
                       <div className="space-x-2">
                         <button
                           className="bg-blue-500 text-white px-2 py-1 rounded"
-                          onClick={() => startEditingInstrument(idx, inst)}
+                          onClick={() => {
+                            setEditingInstrumentIndex(idx);
+                            setEditingInstrumentValue(inst);
+                          }}
                         >
                           Edit
                         </button>
@@ -533,7 +635,6 @@ export default function Settings() {
                 }
               })}
             </ul>
-            {/* Add New Instrument */}
             <div className="flex gap-2 mt-4">
               <input
                 type="text"
@@ -551,13 +652,13 @@ export default function Settings() {
             </div>
           </div>
 
-          {/* PATTERNS SECTION */}
+          {/* PATTERNS */}
           <div className="p-4 border rounded mb-6">
             <h2 className="text-lg font-semibold">Manage Trade Patterns</h2>
             <ul className="mt-2">
               {patterns.map((pat, idx) => {
                 if (editingPatternIndex === idx) {
-                  // Editing mode
+                  // editing
                   return (
                     <li key={idx} className="flex items-center space-x-2 mt-2">
                       <input
@@ -581,17 +682,17 @@ export default function Settings() {
                     </li>
                   );
                 } else {
-                  // View mode
+                  // view
                   return (
-                    <li
-                      key={idx}
-                      className="flex items-center justify-between mt-2"
-                    >
+                    <li key={idx} className="flex items-center justify-between mt-2">
                       <span>{pat}</span>
                       <div className="space-x-2">
                         <button
                           className="bg-blue-500 text-white px-2 py-1 rounded"
-                          onClick={() => startEditingPattern(idx, pat)}
+                          onClick={() => {
+                            setEditingPatternIndex(idx);
+                            setEditingPatternValue(pat);
+                          }}
                         >
                           Edit
                         </button>
@@ -607,7 +708,6 @@ export default function Settings() {
                 }
               })}
             </ul>
-            {/* Add New Pattern */}
             <div className="flex gap-2 mt-4">
               <input
                 type="text"
@@ -625,32 +725,25 @@ export default function Settings() {
             </div>
           </div>
 
-          {/* BREAK-EVEN RANGE SECTION */}
-          <div className="mt-6 p-4 border rounded">
+          {/* BREAK-EVEN RANGE */}
+          <div className="p-4 border rounded">
             <h2 className="text-lg font-semibold">Break-Even Range</h2>
-
-            <label>Min:</label>
-            {/*
-              Use type="number" but store as string in state 
-              so partial negative inputs ("-") are possible.
-            */}
+            <label className="block mt-2">Min (beMin):</label>
             <input
               type="number"
               step="any"
-              className="w-full p-2 border rounded"
+              className="p-2 border rounded w-full"
               value={beMin}
               onChange={(e) => setBeMin(e.target.value)}
             />
-
-            <label>Max:</label>
+            <label className="block mt-2">Max (beMax):</label>
             <input
               type="number"
               step="any"
-              className="w-full p-2 border rounded mt-2"
+              className="p-2 border rounded w-full"
               value={beMax}
               onChange={(e) => setBeMax(e.target.value)}
             />
-
             <button
               className="w-full mt-4 bg-green-500 text-white py-2 rounded"
               onClick={updateBeRange}

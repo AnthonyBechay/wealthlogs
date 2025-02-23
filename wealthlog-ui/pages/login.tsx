@@ -13,7 +13,7 @@ export default function Login() {
     setError("");
 
     try {
-      const response = await api.post("/login", { username, password });
+      const response = await api.post("/auth/login", { username, password });
       localStorage.setItem("token", response.data.token);
       router.push("/tradeManagement");
     } catch (err) {
