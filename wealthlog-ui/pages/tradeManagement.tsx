@@ -37,21 +37,24 @@ interface FinancialAccount {
 export default function TradeManagement() {
   const router = useRouter();
 
-  // List of user's FX accounts
+  // FX accounts state
   const [fxAccounts, setFxAccounts] = useState<FinancialAccount[]>([]);
   const [selectedAccountId, setSelectedAccountId] = useState<number | null>(null);
 
-  // Data for trades, instruments, patterns
+  // New FX account creation state
+  const [newAccountName, setNewAccountName] = useState("");
+  const [showAddAccountForm, setShowAddAccountForm] = useState(false);
+
+  // Trade management states
   const [trades, setTrades] = useState<Trade[]>([]);
   const [instruments, setInstruments] = useState<string[]>([]);
   const [patterns, setPatterns] = useState<string[]>([]);
 
-  // Page controls
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [pageSize, setPageSize] = useState<number>(10);
 
-  // New FX trade form
+  // New FX trade form state
   const [newTrade, setNewTrade] = useState({
     instrument: "",
     percentage: 0,
@@ -60,14 +63,13 @@ export default function TradeManagement() {
     dateTime: new Date().toISOString(),
     pattern: "",
     direction: "Long" as "Long" | "Short",
-    // extra FX fields
     entryPrice: 0,
     exitPrice: 0,
     lots: 1,
     pipsGain: 0,
   });
 
-  // Edit modal
+  // Edit modal state
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingTrade, setEditingTrade] = useState<Trade | null>(null);
 
@@ -81,18 +83,17 @@ export default function TradeManagement() {
     fetchSettings(token);
   }, [router]);
 
-  // 1) Load all user accounts of type "FX" or "FX_COMMODITY"
+  // Load FX accounts of type FX or FX_COMMODITY
   const loadFxAccounts = async (token: string) => {
     try {
       const res = await api.get("/financial-accounts", {
         headers: { Authorization: `Bearer ${token}` },
       });
       const allAccts: FinancialAccount[] = res.data;
-      // Filter only the FX accounts
       const fx = allAccts.filter(a => a.accountType === "FX" || a.accountType === "FX_COMMODITY");
       setFxAccounts(fx);
 
-      // If exactly one, auto-select
+      // If exactly one, auto-select it
       if (fx.length === 1) {
         setSelectedAccountId(fx[0].id);
         await loadTradesForAccount(token, fx[0].id);
@@ -104,7 +105,30 @@ export default function TradeManagement() {
     }
   };
 
-  // 2) Load trades for selected account
+  // Create a new FX account
+  const handleCreateAccount = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const token = localStorage.getItem("token");
+    if (!token) return;
+
+    try {
+      await api.post(
+        "/financial-accounts",
+        {
+          name: newAccountName,
+          accountType: "FX_COMMODITY",
+        },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setNewAccountName("");
+      setShowAddAccountForm(false);
+      await loadFxAccounts(token);
+    } catch (err) {
+      setError("Failed to create FX account.");
+    }
+  };
+
+  // Load trades for selected account
   const loadTradesForAccount = async (token: string, accountId: number) => {
     try {
       const res = await api.get(`/trades?accountId=${accountId}`, {
@@ -116,7 +140,7 @@ export default function TradeManagement() {
     }
   };
 
-  // 3) Load user settings for instruments & patterns
+  // Load user settings
   const fetchSettings = async (token: string) => {
     try {
       const res = await api.get("/settings", {
@@ -129,7 +153,7 @@ export default function TradeManagement() {
     }
   };
 
-  // When user picks an account from the dropdown or button list
+  // Handle account selection
   const handleSelectAccount = async (acctId: number) => {
     setSelectedAccountId(acctId);
     const token = localStorage.getItem("token");
@@ -139,7 +163,7 @@ export default function TradeManagement() {
     setLoading(false);
   };
 
-  // ============ ADD TRADE ============
+  // Add new FX trade
   const handleAddTrade = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedAccountId) {
@@ -150,18 +174,15 @@ export default function TradeManagement() {
     if (!token) return;
 
     try {
-      // Compose the body with both basic fields & FX fields
       const body = {
         instrument: newTrade.instrument,
         amount: Number(newTrade.amount),
         fees: Number(newTrade.fees),
         dateTime: newTrade.dateTime,
         pattern: newTrade.pattern,
-        direction: newTrade.direction, // "Long"|"Short"
+        direction: newTrade.direction,
         accountId: selectedAccountId,
         percentage: newTrade.percentage,
-
-        // FX details
         entryPrice: Number(newTrade.entryPrice),
         exitPrice: Number(newTrade.exitPrice),
         lots: Number(newTrade.lots),
@@ -171,10 +192,7 @@ export default function TradeManagement() {
       await api.post("/trades", body, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      // refresh
       await loadTradesForAccount(token, selectedAccountId);
-
-      // reset form
       setNewTrade({
         instrument: "",
         percentage: 0,
@@ -193,7 +211,7 @@ export default function TradeManagement() {
     }
   };
 
-  // ============ EDIT TRADE ============
+  // Edit trade modal functions
   const openEditModal = (trade: Trade) => {
     setEditingTrade(trade);
     setShowEditModal(true);
@@ -208,7 +226,6 @@ export default function TradeManagement() {
     if (!token) return;
 
     try {
-      // We'll gather the updated fields for the server
       const body = {
         instrument: editingTrade.instrument,
         amount: editingTrade.amount ?? 0,
@@ -217,8 +234,6 @@ export default function TradeManagement() {
         pattern: editingTrade.pattern ?? "",
         direction: editingTrade.tradeDirection === "LONG" ? "Long" : "Short",
         percentage: editingTrade.percentage ?? 0,
-
-        // fxTrade fields
         entryPrice: editingTrade.fxTrade?.entryPrice ?? 0,
         exitPrice: editingTrade.fxTrade?.exitPrice ?? 0,
         lots: editingTrade.fxTrade?.lots ?? 1,
@@ -235,14 +250,12 @@ export default function TradeManagement() {
     }
   };
 
-  // ============ DELETE TRADE ============
+  // Delete trade
   const handleDeleteTrade = async (tradeId: number) => {
     if (!confirm("Are you sure you want to delete this trade?")) return;
     if (!selectedAccountId) return;
-
     const token = localStorage.getItem("token");
     if (!token) return;
-
     try {
       await api.delete(`/trades/${tradeId}`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -253,84 +266,103 @@ export default function TradeManagement() {
     }
   };
 
-  // ============ PAGINATION ============
+  // Pagination handler
   const handlePageSizeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setPageSize(Number(e.target.value));
   };
   const paginatedTrades = trades.slice(0, pageSize);
 
-  // ============ RENDER ============
   if (loading) {
     return <p className="p-4">Loading accounts...</p>;
   }
 
-  // If user has no FX accounts
+  // If no FX accounts exist, show creation UI
   if (fxAccounts.length === 0) {
     return (
-      <div className="p-4">
-        <h1 className="text-xl font-bold">FX Trade Management</h1>
-        <p>No FX accounts found. Please create one from your landing page or account creation page.</p>
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-100 p-8">
+        <h1 className="text-3xl font-bold mb-4">FX Trade Management</h1>
+        <div className="bg-white shadow-lg rounded-lg p-8">
+          <p className="text-xl mb-6">No FX accounts found. Create your first FX account to start trading.</p>
+          <form onSubmit={handleCreateAccount}>
+            <input
+              type="text"
+              className="w-full p-3 border rounded mb-4"
+              value={newAccountName}
+              onChange={(e) => setNewAccountName(e.target.value)}
+              placeholder="Enter account name"
+              required
+            />
+            <button type="submit" className="w-full bg-blue-600 text-white py-3 rounded">
+              Create FX Account
+            </button>
+          </form>
+        </div>
       </div>
     );
   }
 
-  // If multiple accounts, but none selected yet
-  if (fxAccounts.length > 1 && !selectedAccountId) {
-    return (
-      <div className="p-4">
-        <h1 className="text-xl font-bold">Select an FX Account</h1>
-        {fxAccounts.map(acc => (
-          <button
-            key={acc.id}
-            className="block w-full text-left py-2 px-4 bg-gray-200 my-2 rounded"
-            onClick={() => handleSelectAccount(acc.id)}
-          >
-            {acc.name} | Bal: {acc.balance} {acc.currency}
-          </button>
-        ))}
-      </div>
-    );
-  }
-
-  // Otherwise show the normal trade UI for selected account
+  // Main trade management view
   const currentAcct = fxAccounts.find(a => a.id === selectedAccountId);
 
   return (
-    <div className="max-w-4xl mx-auto p-6">
-      <h1 className="text-2xl font-bold">FX Trade Management</h1>
+    <div className="max-w-6xl mx-auto p-6 bg-gray-50 min-h-screen">
+      <h1 className="text-3xl font-bold mb-6">FX Trade Management</h1>
 
-      {fxAccounts.length > 1 && currentAcct && (
-        <div className="my-4">
-          <label className="font-semibold mr-2">Current Account:</label>
-          <select
-            value={selectedAccountId ?? ""}
-            onChange={(e) => handleSelectAccount(Number(e.target.value))}
-            className="p-2 border rounded"
-          >
-            <option value="">--Select--</option>
-            {fxAccounts.map(acc => (
-              <option key={acc.id} value={acc.id}>
-                {acc.name} ({acc.balance} {acc.currency})
-              </option>
-            ))}
-          </select>
+      <div className="mb-4 flex items-center justify-between">
+        {fxAccounts.length > 1 ? (
+          <div className="flex items-center gap-4">
+            <label className="font-semibold">Current Account:</label>
+            <select
+              value={selectedAccountId ?? ""}
+              onChange={(e) => handleSelectAccount(Number(e.target.value))}
+              className="p-2 border rounded"
+            >
+              <option value="">--Select--</option>
+              {fxAccounts.map(acc => (
+                <option key={acc.id} value={acc.id}>
+                  {acc.name} (Balance: {acc.balance} {acc.currency})
+                </option>
+              ))}
+            </select>
+          </div>
+        ) : (
+          <div>
+            <span className="font-semibold">Account: </span>
+            {fxAccounts[0].name} (Balance: {fxAccounts[0].balance} {fxAccounts[0].currency})
+          </div>
+        )}
+        <button onClick={() => setShowAddAccountForm(!showAddAccountForm)} className="bg-green-500 text-white px-4 py-2 rounded">
+          {showAddAccountForm ? "Cancel" : "Add FX Account"}
+        </button>
+      </div>
+
+      {showAddAccountForm && (
+        <div className="mb-6 p-4 border rounded bg-white shadow">
+          <form onSubmit={handleCreateAccount}>
+            <div className="mb-4">
+              <label className="block font-semibold mb-1">New FX Account Name:</label>
+              <input
+                type="text"
+                className="w-full p-2 border rounded"
+                value={newAccountName}
+                onChange={(e) => setNewAccountName(e.target.value)}
+                placeholder="e.g. MyFXAccount"
+                required
+              />
+            </div>
+            <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded">
+              Create Account
+            </button>
+          </form>
         </div>
       )}
 
-      {currentAcct && (
-        <p className="mb-2">
-          <span className="font-semibold">Selected Account:</span>{" "}
-          {currentAcct.name} | Balance: {currentAcct.balance} {currentAcct.currency}
-        </p>
-      )}
-
-      {error && <p className="text-red-500">{error}</p>}
+      {error && <p className="text-red-500 mb-4">{error}</p>}
 
       {/* Add new FX trade form */}
-      <form onSubmit={handleAddTrade} className="mt-4 p-4 border rounded">
-        <h2 className="text-lg font-semibold">Add New FX Trade</h2>
+      <form onSubmit={handleAddTrade} className="mt-4 p-6 border rounded bg-white shadow">
+        <h2 className="text-xl font-semibold mb-4">Add New FX Trade</h2>
 
-        {/* Instrument (from instruments array) */}
         <div className="mt-2">
           <label className="block">Instrument:</label>
           <select
@@ -346,7 +378,6 @@ export default function TradeManagement() {
           </select>
         </div>
 
-        {/* Pattern (from patterns array) */}
         <div className="mt-2">
           <label className="block">Pattern:</label>
           <select
@@ -361,20 +392,18 @@ export default function TradeManagement() {
           </select>
         </div>
 
-        {/* Direction */}
         <div className="mt-2">
           <label className="block">Direction:</label>
           <select
             className="w-full p-2 border rounded"
             value={newTrade.direction}
-            onChange={(e) => setNewTrade({ ...newTrade, direction: e.target.value as "Long"|"Short" })}
+            onChange={(e) => setNewTrade({ ...newTrade, direction: e.target.value as "Long" | "Short" })}
           >
             <option value="Long">Long</option>
             <option value="Short">Short</option>
           </select>
         </div>
 
-        {/* Percentage */}
         <div className="mt-2">
           <label className="block">Percentage (%):</label>
           <input
@@ -385,7 +414,6 @@ export default function TradeManagement() {
           />
         </div>
 
-        {/* Amount */}
         <div className="mt-2">
           <label className="block">Amount ($):</label>
           <input
@@ -396,7 +424,6 @@ export default function TradeManagement() {
           />
         </div>
 
-        {/* FX fields */}
         <div className="mt-2 flex gap-2">
           <div className="flex-1">
             <label className="block">Entry Price:</label>
@@ -442,7 +469,6 @@ export default function TradeManagement() {
           </div>
         </div>
 
-        {/* Fees */}
         <div className="mt-2">
           <label className="block">Fees ($):</label>
           <input
@@ -454,7 +480,6 @@ export default function TradeManagement() {
           />
         </div>
 
-        {/* DateTime */}
         <div className="mt-2">
           <label className="block">Trade Date/Time:</label>
           <input
@@ -470,7 +495,6 @@ export default function TradeManagement() {
         </button>
       </form>
 
-      {/* Pagination + Advanced Filter */}
       <div className="mt-6 flex items-center gap-4">
         <div className="flex items-center gap-2">
           <label>Show</label>
@@ -494,8 +518,7 @@ export default function TradeManagement() {
         </button>
       </div>
 
-      {/* Trade History */}
-      <h2 className="text-lg font-semibold mt-4">
+      <h2 className="text-xl font-semibold mt-4">
         Trade History (showing {pageSize})
       </h2>
       {trades.length === 0 ? (
@@ -567,7 +590,7 @@ export default function TradeManagement() {
 }
 
 /**
- * A subcomponent for editing an existing FX trade (including basic + fx fields).
+ * A subcomponent for editing an existing FX trade.
  */
 function EditTradeModal({
   trade,
@@ -612,7 +635,6 @@ function EditTradeModal({
           </select>
         </div>
 
-        {/* FX fields */}
         <div className="mt-2 flex gap-2">
           <div className="flex-1">
             <label className="block">Entry Price:</label>
@@ -690,7 +712,6 @@ function EditTradeModal({
           </div>
         </div>
 
-        {/* Fees, dateTime, pattern, percentage, amount */}
         <div className="mt-2">
           <label className="block">Fees ($):</label>
           <input
