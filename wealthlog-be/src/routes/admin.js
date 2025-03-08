@@ -3,7 +3,6 @@ const express = require('express');
 const router = express.Router();
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
-
 /**
  * GET /admin/roles
  * Returns the entire list of roles from DB so the front-end can display them in a dropdown.

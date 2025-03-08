@@ -5,7 +5,7 @@ const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
 const { authenticate } = require("../middleware/authenticate");
 
-// GET user settings
+// GET /settings
 router.get("/", authenticate, async (req, res) => {
   try {
     let settings = await prisma.settings.findUnique({
@@ -22,7 +22,7 @@ router.get("/", authenticate, async (req, res) => {
         },
       });
     }
-    res.json({
+    return res.json({
       instruments: settings.instruments || [],
       patterns: settings.patterns || [],
       beMin: settings.beMin,
@@ -30,294 +30,212 @@ router.get("/", authenticate, async (req, res) => {
     });
   } catch (error) {
     console.error("Error fetching settings:", error);
-    res.status(500).json({ error: "Failed to fetch settings" });
+    return res.status(500).json({ error: "Failed to fetch settings" });
   }
 });
 
-/** ================ INSTRUMENTS ================ */
-
-/**
- * POST /settings/instruments/add
- * Body: { instrument }
- */
+// ============== Instruments ==============
+// POST /settings/instruments/add
 router.post("/instruments/add", authenticate, async (req, res) => {
   try {
     const { instrument } = req.body;
-    if (!instrument || typeof instrument !== "string") {
-      return res.status(400).json({ error: "Invalid or missing 'instrument' field." });
+    if (!instrument) {
+      return res.status(400).json({ error: "Missing instrument" });
     }
-
-    // Find or create the settings row
     let userSettings = await prisma.settings.findUnique({
       where: { userId: req.user.userId },
     });
     if (!userSettings) {
       userSettings = await prisma.settings.create({
-        data: {
-          userId: req.user.userId,
-          instruments: [],
-          patterns: [],
-        },
+        data: { userId: req.user.userId, instruments: [] }
       });
     }
-
-    // Convert if not array
-    const updatedInstruments = Array.isArray(userSettings.instruments)
+    const updated = Array.isArray(userSettings.instruments)
       ? [...userSettings.instruments]
       : [];
-
-    // Add if not duplicate
-    if (!updatedInstruments.includes(instrument)) {
-      updatedInstruments.push(instrument);
-    }
-
-    // Update
-    const updatedSettings = await prisma.settings.update({
+    if (!updated.includes(instrument)) updated.push(instrument);
+    const newSettings = await prisma.settings.update({
       where: { userId: req.user.userId },
-      data: { instruments: updatedInstruments },
+      data: { instruments: updated },
     });
-
-    res.json({
-      message: "Instrument added successfully",
-      instruments: updatedSettings.instruments,
+    return res.json({
+      message: "Instrument added",
+      instruments: newSettings.instruments,
     });
   } catch (error) {
     console.error("Error adding instrument:", error);
-    res.status(500).json({ error: "Failed to add instrument" });
+    return res.status(500).json({ error: "Failed to add instrument" });
   }
 });
 
-/**
- * POST /settings/instruments/edit
- * Body: { oldInstrument, newInstrument }
- */
+// POST /settings/instruments/edit
 router.post("/instruments/edit", authenticate, async (req, res) => {
   try {
     const { oldInstrument, newInstrument } = req.body;
     if (!oldInstrument || !newInstrument) {
-      return res.status(400).json({ error: "Missing oldInstrument or newInstrument." });
+      return res.status(400).json({ error: "Missing oldInstrument or newInstrument" });
     }
-
-    const userSettings = await prisma.settings.findUnique({
-      where: { userId: req.user.userId },
+    const settings = await prisma.settings.findUnique({
+      where: { userId: req.user.userId }
     });
-    if (!userSettings) {
-      return res.status(404).json({ error: "Settings not found." });
+    if (!settings) {
+      return res.status(404).json({ error: "Settings not found" });
     }
-
-    const currentInstruments = Array.isArray(userSettings.instruments)
-      ? [...userSettings.instruments]
-      : [];
-
-    // find index of oldInstrument
-    const index = currentInstruments.indexOf(oldInstrument);
-    if (index === -1) {
-      return res.status(404).json({ error: "Instrument to edit not found." });
+    const current = Array.isArray(settings.instruments) ? [...settings.instruments] : [];
+    const idx = current.indexOf(oldInstrument);
+    if (idx === -1) {
+      return res.status(404).json({ error: "Instrument not found" });
     }
-
-    currentInstruments[index] = newInstrument;
-
-    const updatedSettings = await prisma.settings.update({
+    current[idx] = newInstrument;
+    const updated = await prisma.settings.update({
       where: { userId: req.user.userId },
-      data: { instruments: currentInstruments },
+      data: { instruments: current },
     });
-
-    res.json({
-      message: "Instrument updated successfully",
-      instruments: updatedSettings.instruments,
+    return res.json({
+      message: "Instrument updated",
+      instruments: updated.instruments,
     });
   } catch (error) {
     console.error("Error editing instrument:", error);
-    res.status(500).json({ error: "Failed to edit instrument" });
+    return res.status(500).json({ error: "Failed to edit instrument" });
   }
 });
 
-/**
- * POST /settings/instruments/delete
- * Body: { instrument }
- */
+// POST /settings/instruments/delete
 router.post("/instruments/delete", authenticate, async (req, res) => {
   try {
     const { instrument } = req.body;
     if (!instrument) {
-      return res.status(400).json({ error: "Missing 'instrument' field." });
+      return res.status(400).json({ error: "Missing instrument" });
     }
-
-    const userSettings = await prisma.settings.findUnique({
-      where: { userId: req.user.userId },
+    const settings = await prisma.settings.findUnique({
+      where: { userId: req.user.userId }
     });
-    if (!userSettings) {
-      return res.status(404).json({ error: "Settings not found." });
+    if (!settings) {
+      return res.status(404).json({ error: "Settings not found" });
     }
-
-    const currentInstruments = Array.isArray(userSettings.instruments)
-      ? [...userSettings.instruments]
-      : [];
-
-    const updatedInstruments = currentInstruments.filter((inst) => inst !== instrument);
-
-    const updatedSettings = await prisma.settings.update({
+    const current = Array.isArray(settings.instruments) ? [...settings.instruments] : [];
+    const updated = current.filter((i) => i !== instrument);
+    const newSettings = await prisma.settings.update({
       where: { userId: req.user.userId },
-      data: { instruments: updatedInstruments },
+      data: { instruments: updated },
     });
-
-    res.json({
-      message: "Instrument deleted successfully",
-      instruments: updatedSettings.instruments,
+    return res.json({
+      message: "Instrument deleted",
+      instruments: newSettings.instruments,
     });
   } catch (error) {
     console.error("Error deleting instrument:", error);
-    res.status(500).json({ error: "Failed to delete instrument" });
+    return res.status(500).json({ error: "Failed to delete instrument" });
   }
 });
 
-/** ================ PATTERNS ================ */
-
-/**
- * POST /settings/patterns/add
- * Body: { pattern }
- */
+// ============== Patterns ==============
+// POST /settings/patterns/add
 router.post("/patterns/add", authenticate, async (req, res) => {
   try {
     const { pattern } = req.body;
-    if (!pattern || typeof pattern !== "string") {
-      return res.status(400).json({ error: "Invalid or missing 'pattern' field." });
+    if (!pattern) {
+      return res.status(400).json({ error: "Missing pattern" });
     }
-
     let userSettings = await prisma.settings.findUnique({
-      where: { userId: req.user.userId },
+      where: { userId: req.user.userId }
     });
     if (!userSettings) {
       userSettings = await prisma.settings.create({
-        data: {
-          userId: req.user.userId,
-          instruments: [],
-          patterns: [],
-        },
+        data: { userId: req.user.userId, instruments: [], patterns: [] }
       });
     }
-
-    const updatedPatterns = Array.isArray(userSettings.patterns)
+    const updated = Array.isArray(userSettings.patterns)
       ? [...userSettings.patterns]
       : [];
-
-    if (!updatedPatterns.includes(pattern)) {
-      updatedPatterns.push(pattern);
-    }
-
-    const updatedSettings = await prisma.settings.update({
+    if (!updated.includes(pattern)) updated.push(pattern);
+    const newSettings = await prisma.settings.update({
       where: { userId: req.user.userId },
-      data: { patterns: updatedPatterns },
+      data: { patterns: updated },
     });
-
-    res.json({
-      message: "Pattern added successfully",
-      patterns: updatedSettings.patterns,
+    return res.json({
+      message: "Pattern added",
+      patterns: newSettings.patterns,
     });
   } catch (error) {
     console.error("Error adding pattern:", error);
-    res.status(500).json({ error: "Failed to add pattern" });
+    return res.status(500).json({ error: "Failed to add pattern" });
   }
 });
 
-/**
- * POST /settings/patterns/edit
- * Body: { oldPattern, newPattern }
- */
+// POST /settings/patterns/edit
 router.post("/patterns/edit", authenticate, async (req, res) => {
   try {
     const { oldPattern, newPattern } = req.body;
     if (!oldPattern || !newPattern) {
-      return res.status(400).json({ error: "Missing oldPattern or newPattern." });
+      return res.status(400).json({ error: "Missing oldPattern or newPattern" });
     }
-
     const userSettings = await prisma.settings.findUnique({
-      where: { userId: req.user.userId },
+      where: { userId: req.user.userId }
     });
     if (!userSettings) {
-      return res.status(404).json({ error: "Settings not found." });
+      return res.status(404).json({ error: "Settings not found" });
     }
-
-    const currentPatterns = Array.isArray(userSettings.patterns)
-      ? [...userSettings.patterns]
-      : [];
-
-    const index = currentPatterns.indexOf(oldPattern);
-    if (index === -1) {
-      return res.status(404).json({ error: "Pattern to edit not found." });
+    const current = Array.isArray(userSettings.patterns) ? [...userSettings.patterns] : [];
+    const idx = current.indexOf(oldPattern);
+    if (idx === -1) {
+      return res.status(404).json({ error: "Pattern not found" });
     }
-
-    currentPatterns[index] = newPattern;
-
-    const updatedSettings = await prisma.settings.update({
+    current[idx] = newPattern;
+    const updated = await prisma.settings.update({
       where: { userId: req.user.userId },
-      data: { patterns: currentPatterns },
+      data: { patterns: current },
     });
-
-    res.json({
-      message: "Pattern updated successfully",
-      patterns: updatedSettings.patterns,
+    return res.json({
+      message: "Pattern updated",
+      patterns: updated.patterns,
     });
   } catch (error) {
     console.error("Error editing pattern:", error);
-    res.status(500).json({ error: "Failed to edit pattern" });
+    return res.status(500).json({ error: "Failed to edit pattern" });
   }
 });
 
-/**
- * POST /settings/patterns/delete
- * Body: { pattern }
- */
+// POST /settings/patterns/delete
 router.post("/patterns/delete", authenticate, async (req, res) => {
   try {
     const { pattern } = req.body;
     if (!pattern) {
-      return res.status(400).json({ error: "Missing 'pattern' field." });
+      return res.status(400).json({ error: "Missing pattern" });
     }
-
     const userSettings = await prisma.settings.findUnique({
-      where: { userId: req.user.userId },
+      where: { userId: req.user.userId }
     });
     if (!userSettings) {
-      return res.status(404).json({ error: "Settings not found." });
+      return res.status(404).json({ error: "Settings not found" });
     }
-
-    const currentPatterns = Array.isArray(userSettings.patterns)
-      ? [...userSettings.patterns]
-      : [];
-
-    const updatedPatterns = currentPatterns.filter((pat) => pat !== pattern);
-
-    const updatedSettings = await prisma.settings.update({
+    const current = Array.isArray(userSettings.patterns) ? [...userSettings.patterns] : [];
+    const updated = current.filter(p => p !== pattern);
+    const newSettings = await prisma.settings.update({
       where: { userId: req.user.userId },
-      data: { patterns: updatedPatterns },
+      data: { patterns: updated },
     });
-
-    res.json({
-      message: "Pattern deleted successfully",
-      patterns: updatedSettings.patterns,
+    return res.json({
+      message: "Pattern deleted",
+      patterns: newSettings.patterns,
     });
   } catch (error) {
     console.error("Error deleting pattern:", error);
-    res.status(500).json({ error: "Failed to delete pattern" });
+    return res.status(500).json({ error: "Failed to delete pattern" });
   }
 });
 
-/** ================ BREAK-EVEN RANGE ================ */
-
-/**
- * POST /settings/beRange/update
- * Body: { beMin, beMax }
- */
+// ============== BE Range ==============
+// POST /settings/beRange/update
 router.post("/beRange/update", authenticate, async (req, res) => {
   try {
     const { beMin, beMax } = req.body;
     if (beMin >= beMax) {
       return res.status(400).json({ error: "beMin must be less than beMax" });
     }
-
     let userSettings = await prisma.settings.findUnique({
-      where: { userId: req.user.userId },
+      where: { userId: req.user.userId }
     });
     if (!userSettings) {
       userSettings = await prisma.settings.create({
@@ -335,7 +253,6 @@ router.post("/beRange/update", authenticate, async (req, res) => {
         data: { beMin, beMax },
       });
     }
-
     res.json(userSettings);
   } catch (error) {
     console.error("Error updating BE range:", error);

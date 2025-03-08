@@ -3,22 +3,24 @@ const express = require('express');
 const router = express.Router();
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
+
+// Cookie-based auth
 const { authenticate } = require('../middleware/authenticate');
 
 /**
  * GET /transactions
- * Returns all transactions for the user's accounts in descending date.
+ * Returns all transactions for the user’s accounts in descending date.
  */
 router.get('/', authenticate, async (req, res) => {
   try {
-    // find user accounts
+    // 1) find user accounts
     const userAccounts = await prisma.financialAccount.findMany({
       where: { userId: req.user.userId },
       select: { id: true }
     });
     const accountIds = userAccounts.map(a => a.id);
 
-    // gather transactions
+    // 2) gather transactions in descending date
     const transactions = await prisma.transaction.findMany({
       where: {
         OR: [
@@ -58,7 +60,6 @@ router.post('/', authenticate, async (req, res) => {
       toAccountId
     } = req.body;
 
-    // Validate
     if (!type) {
       return res.status(400).json({ error: "Transaction type is required" });
     }
@@ -72,7 +73,7 @@ router.post('/', authenticate, async (req, res) => {
       return res.status(400).json({ error: "Invalid dateTime format" });
     }
 
-    // Check user ownership of accounts if provided
+    // Check ownership for fromAccount and toAccount
     if (fromAccountId) {
       const fromAcct = await prisma.financialAccount.findFirst({
         where: { id: fromAccountId, userId: req.user.userId }
@@ -90,7 +91,7 @@ router.post('/', authenticate, async (req, res) => {
       }
     }
 
-    // create
+    // create the transaction
     const newTx = await prisma.transaction.create({
       data: {
         type,
@@ -114,8 +115,8 @@ router.post('/', authenticate, async (req, res) => {
 
 /**
  * POST /transactions/recalc
- * Re-walks all transactions (only for the current user's accounts)
- * in chronological order, computing final balances for each account.
+ * Recomputes final balances for each of the current user’s accounts 
+ * based on all their transactions, in chronological order.
  */
 router.post('/recalc', authenticate, async (req, res) => {
   try {
@@ -125,7 +126,7 @@ router.post('/recalc', authenticate, async (req, res) => {
     });
     const accountIds = userAccounts.map(a => a.id);
 
-    // 2) set all user accounts to 0
+    // 2) reset each account to 0
     for (const acct of userAccounts) {
       await prisma.financialAccount.update({
         where: { id: acct.id },
@@ -144,47 +145,39 @@ router.post('/recalc', authenticate, async (req, res) => {
       orderBy: { dateTime: 'asc' }
     });
 
-    // 4) walk them in chronological order, updating account balances
+    // 4) walk them in chronological order, updating balances
     for (const tx of allTx) {
       if (tx.type === "DEPOSIT") {
         if (tx.toAccountId) {
           await prisma.financialAccount.update({
             where: { id: tx.toAccountId },
-            data: {
-              balance: { increment: tx.amount }
-            }
+            data: { balance: { increment: tx.amount } }
           });
         }
       } else if (tx.type === "WITHDRAW") {
         if (tx.fromAccountId) {
           await prisma.financialAccount.update({
             where: { id: tx.fromAccountId },
-            data: {
-              balance: { decrement: tx.amount }
-            }
+            data: { balance: { decrement: tx.amount } }
           });
         }
       } else if (tx.type === "TRANSFER") {
         if (tx.fromAccountId) {
           await prisma.financialAccount.update({
             where: { id: tx.fromAccountId },
-            data: {
-              balance: { decrement: tx.amount }
-            }
+            data: { balance: { decrement: tx.amount } }
           });
         }
         if (tx.toAccountId) {
           await prisma.financialAccount.update({
             where: { id: tx.toAccountId },
-            data: {
-              balance: { increment: tx.amount }
-            }
+            data: { balance: { increment: tx.amount } }
           });
         }
       }
     }
 
-    // 5) done. fetch the updated accounts to return them
+    // 5) fetch updated accounts to return them
     userAccounts = await prisma.financialAccount.findMany({
       where: { userId: req.user.userId }
     });

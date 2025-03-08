@@ -4,25 +4,24 @@ const router = express.Router();
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
+// Cookie-based auth middleware
 const { authenticate } = require('../middleware/authenticate');
+
+// Helpers
 const { getOrCreateCashAccountForUser, recalcAccountBalance } = require('../helpers/recalc');
 
-
-
-
-// src/routes/account.js
+// GET current balance of user’s default CASH account
 router.get('/', authenticate, async (req, res) => {
-    try {
-      const cashAcct = await getOrCreateCashAccountForUser(req.user.userId);
-      return res.json({ accountBalance: cashAcct.balance }); // so front end sees "accountBalance"
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch account balance" });
-    }
-  });
-  
+  try {
+    const cashAcct = await getOrCreateCashAccountForUser(req.user.userId);
+    return res.json({ accountBalance: cashAcct.balance });
+  } catch (error) {
+    console.error("Failed to fetch account balance:", error);
+    res.status(500).json({ error: "Failed to fetch account balance" });
+  }
+});
 
-
-// GET transactions for default CASH
+// GET transactions for default CASH account
 router.get('/transactions', authenticate, async (req, res) => {
   try {
     const cashAcct = await getOrCreateCashAccountForUser(req.user.userId);
@@ -35,10 +34,8 @@ router.get('/transactions', authenticate, async (req, res) => {
       },
       orderBy: { dateTime: 'desc' }
     });
-    // Return as 'type' = deposit/withdraw for the front end
-    // If fromAccountId == cashAcct.id => "withdraw"
-    // If toAccountId   == cashAcct.id => "deposit"
 
+    // Map to deposit/withdraw
     const mapped = transactions.map((t) => {
       let txType = "withdraw";
       if (t.toAccountId === cashAcct.id) txType = "deposit";
@@ -65,14 +62,15 @@ router.post('/transaction', authenticate, async (req, res) => {
 
     const data = {
       amount: parseFloat(amount) || 0,
-      type, // 'DEPOSIT' or 'WITHDRAW'
       dateTime: dateTime ? new Date(dateTime) : new Date(),
       currency: currency || "USD"
     };
+
     if (type === "deposit") {
-      // or "DEPOSIT" if your enum is uppercase
+      data.type = "DEPOSIT";
       data.toAccountId = cashAcct.id;
     } else if (type === "withdraw") {
+      data.type = "WITHDRAW";
       data.fromAccountId = cashAcct.id;
     } else {
       return res.status(400).json({ error: "Transaction type must be deposit or withdraw" });

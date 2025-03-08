@@ -4,7 +4,10 @@ const router = express.Router();
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
+// Import the cookie-based authenticate
 const { authenticate } = require('../middleware/authenticate');
+
+// Helpers (assuming you still want them for fallback or recalc)
 const { getOrCreateCashAccountForUser, recalcAccountBalance } = require('../helpers/recalc');
 
 /** Helper: detectSession */
@@ -19,19 +22,6 @@ function detectSession(dateString) {
 
 /**
  * ADD a new FX trade.
- * We'll require these in body:
- *   instrument: string
- *   amount?: number
- *   fees?: number
- *   dateTime?: string
- *   pattern?: string
- *   direction?: "Long"|"Short"
- *   accountId?: number
- *   // plus optional FX details:
- *   entryPrice?: number
- *   exitPrice?: number
- *   lots?: number
- *   pipsGain?: number
  */
 router.post('/', authenticate, async (req, res) => {
   const {
@@ -55,15 +45,13 @@ router.post('/', authenticate, async (req, res) => {
   }
 
   try {
-    // 1) Confirm the account or fallback to a user "cash" account
+    // req.user.userId is set by authenticate() from the cookie JWT
     let acctId = accountId;
     if (!acctId) {
-      // If you want to force them to pick an actual account, remove this fallback
       const cashAcct = await getOrCreateCashAccountForUser(req.user.userId);
       acctId = cashAcct.id;
     }
 
-    // 2) Convert dateTime
     const tradeTime = dateTime ? new Date(dateTime) : new Date();
     if (isNaN(tradeTime.getTime())) {
       return res.status(400).json({ error: "Invalid dateTime" });
@@ -71,12 +59,11 @@ router.post('/', authenticate, async (req, res) => {
 
     const session = detectSession(tradeTime);
 
-    // 3) Create the main Trade, setting tradeType = "FX"
     const newTrade = await prisma.trade.create({
       data: {
         instrument,
         accountId: acctId,
-        tradeType: "FX",               // <---- always "FX"
+        tradeType: "FX",
         fees,
         entryDate: tradeTime,
         pattern,
@@ -86,7 +73,6 @@ router.post('/', authenticate, async (req, res) => {
       }
     });
 
-    // 4) Create the corresponding FxTrade record
     await prisma.fxTrade.create({
       data: {
         tradeId: newTrade.id,
@@ -97,7 +83,7 @@ router.post('/', authenticate, async (req, res) => {
       }
     });
 
-    // 5) Recalc account if you want
+    // Recalc if desired
     await recalcAccountBalance(acctId);
 
     res.json({ message: "FX trade added successfully" });
@@ -109,22 +95,22 @@ router.post('/', authenticate, async (req, res) => {
 
 /**
  * GET trades
- * If ?accountId=, we return trades for that account only.
- * Otherwise, we gather all the user's accounts, then all trades.
  */
 router.get('/', authenticate, async (req, res) => {
   try {
     const accountId = parseInt(req.query.accountId);
     if (accountId) {
       // Validate ownership
-      const account = await prisma.financialAccount.findUnique({ where: { id: accountId } });
+      const account = await prisma.financialAccount.findUnique({
+        where: { id: accountId }
+      });
       if (!account || account.userId !== req.user.userId) {
         return res.status(403).json({ error: "Not authorized for that account" });
       }
       const trades = await prisma.trade.findMany({
         where: { accountId },
         orderBy: { entryDate: 'desc' },
-        include: { fxTrade: true } // include FX details
+        include: { fxTrade: true } 
       });
       return res.json(trades);
     }
@@ -150,15 +136,13 @@ router.get('/', authenticate, async (req, res) => {
 
 /**
  * EDIT an FX trade
- * Body can have all the fields: instrument, amount, fees, dateTime,
- * pattern, direction, plus optional fxTrade details (entryPrice, exitPrice, etc.).
  */
 router.put('/:id', authenticate, async (req, res) => {
   try {
     const tradeId = parseInt(req.params.id);
     const existingTrade = await prisma.trade.findUnique({
       where: { id: tradeId },
-      include: { fxTrade: true } // so we can update it
+      include: { fxTrade: true }
     });
     if (!existingTrade) {
       return res.status(404).json({ error: "Trade not found" });
@@ -191,14 +175,12 @@ router.put('/:id', authenticate, async (req, res) => {
       return res.status(400).json({ error: "Instrument is required" });
     }
 
-    // Convert dateTime
     const tradeTime = dateTime ? new Date(dateTime) : new Date();
     if (isNaN(tradeTime.getTime())) {
       return res.status(400).json({ error: "Invalid dateTime" });
     }
     const session = detectSession(tradeTime);
 
-    // 1) Update the main trade
     const updatedTrade = await prisma.trade.update({
       where: { id: tradeId },
       data: {
@@ -212,9 +194,7 @@ router.put('/:id', authenticate, async (req, res) => {
       }
     });
 
-    // 2) If it's an FX trade (existingTrade.tradeType === 'FX'), update fxTrade
     if (existingTrade.tradeType === 'FX') {
-      // if there's an existing fxTrade row
       if (existingTrade.fxTrade) {
         await prisma.fxTrade.update({
           where: { tradeId: tradeId },
@@ -226,7 +206,6 @@ router.put('/:id', authenticate, async (req, res) => {
           }
         });
       } else {
-        // if for some reason it didn't exist, create it
         await prisma.fxTrade.create({
           data: {
             tradeId: tradeId,
@@ -239,9 +218,8 @@ router.put('/:id', authenticate, async (req, res) => {
       }
     }
 
-    // 3) Recalc
+    // Recalc
     await recalcAccountBalance(account.id);
-
     res.json({ message: "FX trade updated" });
   } catch (error) {
     console.error("Error updating trade:", error);
@@ -266,17 +244,13 @@ router.delete('/:id', authenticate, async (req, res) => {
       return res.status(403).json({ error: "Not authorized to delete this trade" });
     }
 
-    // 1) Optional: if it's an FX trade, remove the fxTrade row first
     if (trade.tradeType === 'FX') {
       await prisma.fxTrade.deleteMany({
         where: { tradeId: tradeId }
       });
     }
 
-    // 2) Delete the trade
     await prisma.trade.delete({ where: { id: tradeId } });
-
-    // 3) Recalc
     await recalcAccountBalance(account.id);
 
     res.json({ message: "Trade deleted successfully" });

@@ -4,9 +4,10 @@ const router = express.Router();
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
+// Cookie-based auth middleware
 const { authenticate } = require('../middleware/authenticate');
 
-// GET all accounts
+// GET all accounts for this user
 router.get('/', authenticate, async (req, res) => {
   try {
     const accounts = await prisma.financialAccount.findMany({
@@ -20,10 +21,7 @@ router.get('/', authenticate, async (req, res) => {
   }
 });
 
-
-
-
-// CREATE account
+// CREATE a new account
 router.post('/', authenticate, async (req, res) => {
   const { name, accountType } = req.body;
   try {
