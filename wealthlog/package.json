@@ -1,0 +1,17 @@
+{
+  "name": "wealthlog-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "packageManager": "npm@8.19.2",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build"
+  },
+  "devDependencies": {
+    "turbo": "^2.4.4"
+  }
+}

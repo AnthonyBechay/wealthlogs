@@ -1,0 +1,38 @@
+my-monorepo/
+├── apps/
+│   ├── backend/                  // Your Express backend
+│   │   ├── .env                  // Environment variables for backend
+│   │   ├── package.json          // Backend-specific dependencies and scripts
+│   │   ├── prisma/               // Prisma schema and migrations
+│   │   │   ├── schema.prisma
+│   │   │   └── migrations/
+│   │   └── src/
+│   │       ├── index.js          // Entry point for Express server
+│   │       ├── helpers/          // Backend helper functions (e.g., recalc.js)
+│   │       ├── middleware/       // Express middleware (e.g., authenticate.js)
+│   │       └── routes/           // Express routes (auth.js, trade.js, etc.)
+│   │           ├── auth.js
+│   │           ├── account.js
+│   │           ├── admin.js
+│   │           ├── coaching.js
+│   │           ├── community.js
+│   │           ├── financialAccount.js
+│   │           ├── settings.js
+│   │           ├── trade.js
+│   │           └── transactions.js
+│   ├── web/                      // Your Next.js web app
+│   │   ├── package.json          // Web-specific dependencies and scripts
+│   │   ├── next.config.ts        // Next.js configuration (with rewrites & transpilePackages)
+│   │   ├── tsconfig.json         // TypeScript configuration (with path mapping)
+│   │   ├── pages/                // Next.js pages (e.g., _app.tsx, landing.tsx, login.tsx, register.tsx)
+│   │   ├── components/           // Reusable React components
+│   │   ├── public/               // Public assets (images, fonts, etc.)
+│   │   └── styles/               // Global and component styles
+│   └── mobile/                   // Your future React Native mobile app
+│       └── package.json          // Mobile-specific dependencies and scripts (to be built)
+└── packages/
+    └── common/                   // Shared code for both web and mobile
+        ├── package.json          // Shared package configuration
+        └── src/
+            ├── api.ts            // Shared Axios API client
+            └── types.ts          // Shared TypeScript type definitions
