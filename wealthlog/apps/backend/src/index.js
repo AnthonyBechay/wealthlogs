@@ -13,6 +13,14 @@ const prisma = new PrismaClient();
 const PORT = process.env.PORT || 5000;
 const allowedOrigin = process.env.ALLOWED_ORIGIN || 'http://localhost:3000';
 
+
+// Parse allowed origins from the environment variable
+const allowedOrigins = process.env.ALLOWED_ORIGINS
+  ? process.env.ALLOWED_ORIGINS.split(',').map(origin => origin.trim())
+  : ['http://localhost:3000'];
+
+
+
 // Security middleware
 app.use(helmet());
 
@@ -23,11 +31,18 @@ const limiter = rateLimit({
 });
 app.use(limiter);
 
-// Configure CORS: Only allow requests from allowedOrigin (no credentials since we use Bearer tokens)
 app.use(cors({
-  origin: allowedOrigin,
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, origin);
+    }
+    callback(new Error('Not allowed by CORS'));
+  },
   credentials: false,
 }));
+
 
 // Parse incoming JSON bodies
 app.use(express.json());
