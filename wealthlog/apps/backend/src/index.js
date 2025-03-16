@@ -56,10 +56,6 @@ app.use(express.json());
 // Routers (REST endpoints)
 const authRouter = require('./routes/auth');
 const tradeRouter = require('./routes/trade');
-//const transactionsRouter = require('./routes/transactions');
-//const accountRouter = require('./routes/account');
-const financialAccountRouter = require('./routes/financialAccount');
-//const settingsRouter = require('./routes/settings');
 const adminRouter = require('./routes/admin');
 const communityRouter = require('./routes/community');
 const coachingRouter = require('./routes/coaching');
@@ -72,17 +68,9 @@ const settingsRouter = require('./routes/settings/settings.routes.js');
 // Attach routers
 app.use('/auth', authRouter);
 app.use('/admin', adminRouter);
-//app.use('/transactions', transactionsRouter);
 app.use('/trades', tradeRouter);
-//app.use('/account', accountRouter);
-app.use('/financial-accounts', financialAccountRouter);
-//app.use('/settings', settingsRouter);
 app.use('/community', communityRouter);
 app.use('/coaching', coachingRouter);
-
-
-
-
 app.use('/account', accountRoutes);
 app.use('/transactions', transactionsRoutes);
 app.use('/settings', settingsRouter);
