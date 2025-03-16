@@ -1,6 +1,7 @@
+// pages/tradeManagement.tsx
 import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
-import { api, setAccessToken } from "@wealthlog/common";
+import { api } from "@wealthlog/common";
 
 // ---------- INTERFACES ----------
 interface FxTrade {
@@ -78,7 +79,6 @@ export default function TradeManagement() {
 
   async function checkLoginAndLoad() {
     try {
-      // The api instance automatically attaches the Bearer token.
       await api.get("/auth/me");
       await loadFxAccounts();
       await fetchSettings();
@@ -260,22 +260,18 @@ export default function TradeManagement() {
   // If no FX accounts exist, show creation form
   if (fxAccounts.length === 0) {
     return (
-      <div
-        className="min-h-screen flex flex-col items-center justify-center p-8"
-        style={{ backgroundColor: "#FAFAFA" }}
-      >
-        <h1 className="text-3xl font-bold mb-4" style={{ color: "#37474F" }}>
+      <div className="min-h-screen flex flex-col items-center justify-center p-8">
+        <h1 className="text-3xl font-bold mb-4 text-[#202124]">
           FX Trade Management
         </h1>
-        <div className="rounded-lg p-8" style={{ backgroundColor: "#FFF", boxShadow: "0 2px 8px rgba(0,0,0,0.1)" }}>
-          <p className="text-xl mb-6" style={{ color: "#00796B" }}>
+        <div className="bg-white rounded-lg p-8 shadow-lg">
+          <p className="text-xl mb-6 text-[#34A853]">
             No FX accounts found. Create your first FX account to start trading.
           </p>
           <form onSubmit={handleCreateAccount}>
             <input
               type="text"
-              className="w-full p-3 border rounded mb-4"
-              style={{ borderColor: "#37474F" }}
+              className="w-full p-3 border border-gray-300 rounded mb-4"
               value={newAccountName}
               onChange={(e) => setNewAccountName(e.target.value)}
               placeholder="Enter account name"
@@ -283,8 +279,7 @@ export default function TradeManagement() {
             />
             <button
               type="submit"
-              className="w-full py-3 rounded text-white"
-              style={{ backgroundColor: "#00C853" }}
+              className="w-full py-3 bg-[#34A853] text-white rounded hover:bg-green-600 transition duration-300"
             >
               Create FX Account
             </button>
@@ -296,11 +291,9 @@ export default function TradeManagement() {
 
   // Main trade management UI
   return (
-    <div className="min-h-screen" style={{ backgroundColor: "#FAFAFA", color: "#37474F" }}>
+    <div className="min-h-screen bg-[#F5F5F5] text-[#202124]">
       <div className="max-w-6xl mx-auto p-6">
-        <h1 className="text-3xl font-bold mb-6" style={{ color: "#37474F" }}>
-          FX Trade Management
-        </h1>
+        <h1 className="text-3xl font-bold mb-6">FX Trade Management</h1>
 
         {/* Account selector */}
         <div className="mb-4 flex items-center justify-between">
@@ -310,8 +303,7 @@ export default function TradeManagement() {
               <select
                 value={selectedAccountId ?? ""}
                 onChange={(e) => handleSelectAccount(Number(e.target.value))}
-                className="p-2 border rounded"
-                style={{ borderColor: "#37474F" }}
+                className="p-2 border border-gray-300 rounded"
               >
                 <option value="">--Select--</option>
                 {fxAccounts.map((acc) => (
@@ -329,8 +321,7 @@ export default function TradeManagement() {
           )}
           <button
             onClick={() => setShowAddAccountForm(!showAddAccountForm)}
-            className="px-4 py-2 rounded text-white"
-            style={{ backgroundColor: "#00796B" }}
+            className="px-4 py-2 bg-[#1A73E8] text-white rounded hover:bg-blue-700 transition duration-300"
           >
             {showAddAccountForm ? "Cancel" : "Add FX Account"}
           </button>
@@ -338,21 +329,25 @@ export default function TradeManagement() {
 
         {/* Add account form */}
         {showAddAccountForm && (
-          <div className="mb-6 p-4 rounded shadow" style={{ backgroundColor: "#FFF", borderColor: "#37474F", borderWidth: "1px" }}>
+          <div className="mb-6 p-4 bg-white rounded shadow border border-gray-300">
             <form onSubmit={handleCreateAccount}>
               <div className="mb-4">
-                <label className="block font-semibold mb-1">New FX Account Name:</label>
+                <label className="block font-semibold mb-1">
+                  New FX Account Name:
+                </label>
                 <input
                   type="text"
-                  className="w-full p-2 border rounded"
-                  style={{ borderColor: "#37474F" }}
+                  className="w-full p-2 border border-gray-300 rounded"
                   value={newAccountName}
                   onChange={(e) => setNewAccountName(e.target.value)}
                   placeholder="e.g. MyFXAccount"
                   required
                 />
               </div>
-              <button type="submit" className="px-4 py-2 rounded text-white" style={{ backgroundColor: "#00C853" }}>
+              <button
+                type="submit"
+                className="px-4 py-2 bg-[#34A853] text-white rounded hover:bg-green-600 transition duration-300"
+              >
                 Create Account
               </button>
             </form>
@@ -363,18 +358,22 @@ export default function TradeManagement() {
         {error && <p className="text-red-600 mb-4">{error}</p>}
 
         {/* Add new FX Trade form */}
-        <form onSubmit={handleAddTrade} className="mt-4 p-6 rounded shadow" style={{ backgroundColor: "#FFF" }}>
-          <h2 className="text-xl font-semibold mb-4" style={{ color: "#00796B" }}>
+        <form
+          onSubmit={handleAddTrade}
+          className="mt-4 p-6 bg-white rounded shadow"
+        >
+          <h2 className="text-xl font-semibold mb-4 text-[#1A73E8]">
             Add New FX Trade
           </h2>
 
           <div className="mt-2">
             <label className="block">Instrument:</label>
             <select
-              className="w-full p-2 border rounded"
-              style={{ borderColor: "#37474F" }}
+              className="w-full p-2 border border-gray-300 rounded"
               value={newTrade.instrument}
-              onChange={(e) => setNewTrade({ ...newTrade, instrument: e.target.value })}
+              onChange={(e) =>
+                setNewTrade({ ...newTrade, instrument: e.target.value })
+              }
               required
             >
               <option value="">--Select Instrument--</option>
@@ -389,10 +388,11 @@ export default function TradeManagement() {
           <div className="mt-2">
             <label className="block">Pattern:</label>
             <select
-              className="w-full p-2 border rounded"
-              style={{ borderColor: "#37474F" }}
+              className="w-full p-2 border border-gray-300 rounded"
               value={newTrade.pattern}
-              onChange={(e) => setNewTrade({ ...newTrade, pattern: e.target.value })}
+              onChange={(e) =>
+                setNewTrade({ ...newTrade, pattern: e.target.value })
+              }
             >
               <option value="">(Optional)</option>
               {patterns.map((pat) => (
@@ -406,10 +406,14 @@ export default function TradeManagement() {
           <div className="mt-2">
             <label className="block">Direction:</label>
             <select
-              className="w-full p-2 border rounded"
-              style={{ borderColor: "#37474F" }}
+              className="w-full p-2 border border-gray-300 rounded"
               value={newTrade.direction}
-              onChange={(e) => setNewTrade({ ...newTrade, direction: e.target.value as "Long" | "Short" })}
+              onChange={(e) =>
+                setNewTrade({
+                  ...newTrade,
+                  direction: e.target.value as "Long" | "Short",
+                })
+              }
             >
               <option value="Long">Long</option>
               <option value="Short">Short</option>
@@ -421,20 +425,25 @@ export default function TradeManagement() {
               <label className="block">Percentage (%):</label>
               <input
                 type="number"
-                className="w-full p-2 border rounded"
-                style={{ borderColor: "#37474F" }}
+                className="w-full p-2 border border-gray-300 rounded"
                 value={newTrade.percentage}
-                onChange={(e) => setNewTrade({ ...newTrade, percentage: Number(e.target.value) })}
+                onChange={(e) =>
+                  setNewTrade({
+                    ...newTrade,
+                    percentage: Number(e.target.value),
+                  })
+                }
               />
             </div>
             <div className="flex-1">
               <label className="block">Amount ($):</label>
               <input
                 type="number"
-                className="w-full p-2 border rounded"
-                style={{ borderColor: "#37474F" }}
+                className="w-full p-2 border border-gray-300 rounded"
                 value={newTrade.amount}
-                onChange={(e) => setNewTrade({ ...newTrade, amount: Number(e.target.value) })}
+                onChange={(e) =>
+                  setNewTrade({ ...newTrade, amount: Number(e.target.value) })
+                }
               />
             </div>
           </div>
@@ -445,10 +454,14 @@ export default function TradeManagement() {
               <input
                 type="number"
                 step="any"
-                className="w-full p-2 border rounded"
-                style={{ borderColor: "#37474F" }}
+                className="w-full p-2 border border-gray-300 rounded"
                 value={newTrade.entryPrice}
-                onChange={(e) => setNewTrade({ ...newTrade, entryPrice: Number(e.target.value) })}
+                onChange={(e) =>
+                  setNewTrade({
+                    ...newTrade,
+                    entryPrice: Number(e.target.value),
+                  })
+                }
               />
             </div>
             <div className="flex-1">
@@ -456,10 +469,14 @@ export default function TradeManagement() {
               <input
                 type="number"
                 step="any"
-                className="w-full p-2 border rounded"
-                style={{ borderColor: "#37474F" }}
+                className="w-full p-2 border border-gray-300 rounded"
                 value={newTrade.exitPrice}
-                onChange={(e) => setNewTrade({ ...newTrade, exitPrice: Number(e.target.value) })}
+                onChange={(e) =>
+                  setNewTrade({
+                    ...newTrade,
+                    exitPrice: Number(e.target.value),
+                  })
+                }
               />
             </div>
           </div>
@@ -470,10 +487,11 @@ export default function TradeManagement() {
               <input
                 type="number"
                 step="any"
-                className="w-full p-2 border rounded"
-                style={{ borderColor: "#37474F" }}
+                className="w-full p-2 border border-gray-300 rounded"
                 value={newTrade.lots}
-                onChange={(e) => setNewTrade({ ...newTrade, lots: Number(e.target.value) })}
+                onChange={(e) =>
+                  setNewTrade({ ...newTrade, lots: Number(e.target.value) })
+                }
               />
             </div>
             <div className="flex-1">
@@ -481,10 +499,11 @@ export default function TradeManagement() {
               <input
                 type="number"
                 step="any"
-                className="w-full p-2 border rounded"
-                style={{ borderColor: "#37474F" }}
+                className="w-full p-2 border border-gray-300 rounded"
                 value={newTrade.pipsGain}
-                onChange={(e) => setNewTrade({ ...newTrade, pipsGain: Number(e.target.value) })}
+                onChange={(e) =>
+                  setNewTrade({ ...newTrade, pipsGain: Number(e.target.value) })
+                }
               />
             </div>
           </div>
@@ -493,10 +512,11 @@ export default function TradeManagement() {
             <label className="block">Fees ($):</label>
             <input
               type="number"
-              className="w-full p-2 border rounded"
-              style={{ borderColor: "#37474F" }}
+              className="w-full p-2 border border-gray-300 rounded"
               value={newTrade.fees}
-              onChange={(e) => setNewTrade({ ...newTrade, fees: Number(e.target.value) })}
+              onChange={(e) =>
+                setNewTrade({ ...newTrade, fees: Number(e.target.value) })
+              }
               required
             />
           </div>
@@ -505,8 +525,7 @@ export default function TradeManagement() {
             <label className="block">Trade Date/Time:</label>
             <input
               type="datetime-local"
-              className="w-full p-2 border rounded"
-              style={{ borderColor: "#37474F" }}
+              className="w-full p-2 border border-gray-300 rounded"
               value={new Date(newTrade.dateTime).toISOString().slice(0, 16)}
               onChange={(e) =>
                 setNewTrade({
@@ -517,7 +536,7 @@ export default function TradeManagement() {
             />
           </div>
 
-          <button className="w-full mt-4 py-2 rounded text-white font-semibold" style={{ backgroundColor: "#00C853" }}>
+          <button className="w-full mt-4 py-2 bg-[#34A853] text-white rounded font-semibold hover:bg-green-600 transition duration-300">
             Add Trade
           </button>
         </form>
@@ -526,7 +545,11 @@ export default function TradeManagement() {
         <div className="mt-6 flex items-center gap-4">
           <div className="flex items-center gap-2">
             <label>Show</label>
-            <select value={pageSize} onChange={handlePageSizeChange} className="p-2 border rounded" style={{ borderColor: "#37474F" }}>
+            <select
+              value={pageSize}
+              onChange={handlePageSizeChange}
+              className="p-2 border border-gray-300 rounded"
+            >
               <option value={10}>10</option>
               <option value={20}>20</option>
               <option value={50}>50</option>
@@ -535,15 +558,14 @@ export default function TradeManagement() {
           </div>
           <button
             type="button"
-            className="ml-auto px-4 py-2 rounded text-black"
-            style={{ backgroundColor: "#FFD700" }}
+            className="ml-auto px-4 py-2 bg-[#FBBC05] text-[#202124] rounded hover:bg-orange-400 transition duration-300"
             onClick={() => router.push("/tradeAdvancedFilter")}
           >
             View Advanced Filter
           </button>
         </div>
 
-        <h2 className="text-xl font-semibold mt-4" style={{ color: "#00796B" }}>
+        <h2 className="text-xl font-semibold mt-4 text-[#1A73E8]">
           Trade History (showing {pageSize})
         </h2>
         {trades.length === 0 ? (
@@ -551,50 +573,62 @@ export default function TradeManagement() {
         ) : (
           <table className="w-full mt-4 border-collapse">
             <thead>
-              <tr style={{ backgroundColor: "#FAFAFA", borderColor: "#37474F" }}>
-                <th className="border p-2" style={{ borderColor: "#37474F" }}>Date/Time</th>
-                <th className="border p-2" style={{ borderColor: "#37474F" }}>Instrument</th>
-                <th className="border p-2" style={{ borderColor: "#37474F" }}>Dir</th>
-                <th className="border p-2" style={{ borderColor: "#37474F" }}>EntryPx</th>
-                <th className="border p-2" style={{ borderColor: "#37474F" }}>ExitPx</th>
-                <th className="border p-2" style={{ borderColor: "#37474F" }}>Lots</th>
-                <th className="border p-2" style={{ borderColor: "#37474F" }}>Pips</th>
-                <th className="border p-2" style={{ borderColor: "#37474F" }}>Fees</th>
-                <th className="border p-2" style={{ borderColor: "#37474F" }}>%</th>
-                <th className="border p-2" style={{ borderColor: "#37474F" }}>Amount</th>
-                <th className="border p-2" style={{ borderColor: "#37474F" }}>Pattern</th>
-                <th className="border p-2" style={{ borderColor: "#37474F" }}>Actions</th>
+              <tr className="bg-gray-100">
+                <th className="border border-gray-300 p-2">Date/Time</th>
+                <th className="border border-gray-300 p-2">Instrument</th>
+                <th className="border border-gray-300 p-2">Dir</th>
+                <th className="border border-gray-300 p-2">EntryPx</th>
+                <th className="border border-gray-300 p-2">ExitPx</th>
+                <th className="border border-gray-300 p-2">Lots</th>
+                <th className="border border-gray-300 p-2">Pips</th>
+                <th className="border border-gray-300 p-2">Fees</th>
+                <th className="border border-gray-300 p-2">%</th>
+                <th className="border border-gray-300 p-2">Amount</th>
+                <th className="border border-gray-300 p-2">Pattern</th>
+                <th className="border border-gray-300 p-2">Actions</th>
               </tr>
             </thead>
             <tbody>
               {paginatedTrades.map((t) => (
-                <tr key={t.id} style={{ backgroundColor: "#FFF" }}>
-                  <td className="border p-2" style={{ borderColor: "#37474F" }}>{new Date(t.entryDate).toLocaleString()}</td>
-                  <td className="border p-2" style={{ borderColor: "#37474F" }}>{t.instrument}</td>
-                  <td className="border p-2" style={{ borderColor: "#37474F" }}>{t.tradeDirection}</td>
-                  <td className="border p-2" style={{ borderColor: "#37474F" }}>{t.fxTrade?.entryPrice ?? 0}</td>
-                  <td className="border p-2" style={{ borderColor: "#37474F" }}>{t.fxTrade?.exitPrice ?? 0}</td>
-                  <td className="border p-2" style={{ borderColor: "#37474F" }}>{t.fxTrade?.lots ?? 0}</td>
-                  <td className="border p-2" style={{ borderColor: "#37474F" }}>{t.fxTrade?.pipsGain ?? 0}</td>
-                  <td className="border p-2" style={{ borderColor: "#37474F" }}>${t.fees.toFixed(2)}</td>
-                  <td className="border p-2" style={{ borderColor: "#37474F" }}>
-                    {t.percentage ? t.percentage.toFixed(2) + "%" : "0%"}
+                <tr key={t.id} className="bg-white">
+                  <td className="border border-gray-300 p-2">
+                    {new Date(t.entryDate).toLocaleString()}
                   </td>
-                  <td className="border p-2" style={{ borderColor: "#37474F" }}>
+                  <td className="border border-gray-300 p-2">{t.instrument}</td>
+                  <td className="border border-gray-300 p-2">
+                    {t.tradeDirection}
+                  </td>
+                  <td className="border border-gray-300 p-2">
+                    {t.fxTrade?.entryPrice ?? 0}
+                  </td>
+                  <td className="border border-gray-300 p-2">
+                    {t.fxTrade?.exitPrice ?? 0}
+                  </td>
+                  <td className="border border-gray-300 p-2">
+                    {t.fxTrade?.lots ?? 0}
+                  </td>
+                  <td className="border border-gray-300 p-2">
+                    {t.fxTrade?.pipsGain ?? 0}
+                  </td>
+                  <td className="border border-gray-300 p-2">
+                    ${t.fees.toFixed(2)}
+                  </td>
+                  <td className="border border-gray-300 p-2">
+                    {t.percentage ? `${t.percentage.toFixed(2)}%` : "0%"}
+                  </td>
+                  <td className="border border-gray-300 p-2">
                     {t.amount ? `$${t.amount.toFixed(2)}` : "$0.00"}
                   </td>
-                  <td className="border p-2" style={{ borderColor: "#37474F" }}>{t.pattern}</td>
-                  <td className="border p-2" style={{ borderColor: "#37474F" }}>
+                  <td className="border border-gray-300 p-2">{t.pattern}</td>
+                  <td className="border border-gray-300 p-2">
                     <button
-                      className="mr-2 px-3 py-1 rounded"
-                      style={{ backgroundColor: "#FFD700", color: "#37474F" }}
+                      className="mr-2 px-3 py-1 bg-[#FBBC05] text-[#202124] rounded hover:bg-orange-400 transition duration-300"
                       onClick={() => openEditModal(t)}
                     >
                       Edit
                     </button>
                     <button
-                      className="px-3 py-1 rounded text-white"
-                      style={{ backgroundColor: "#00796B" }}
+                      className="px-3 py-1 bg-[#1A73E8] text-white rounded hover:bg-blue-700 transition duration-300"
                       onClick={() => handleDeleteTrade(t.id)}
                     >
                       Delete
@@ -607,7 +641,12 @@ export default function TradeManagement() {
         )}
 
         {showEditModal && editingTrade && (
-          <EditTradeModal trade={editingTrade} onClose={closeEditModal} onSave={handleEditTrade} setTrade={setEditingTrade} />
+          <EditTradeModal
+            trade={editingTrade}
+            onClose={closeEditModal}
+            onSave={handleEditTrade}
+            setTrade={setEditingTrade}
+          />
         )}
       </div>
     </div>
@@ -627,9 +666,9 @@ function EditTradeModal({
   setTrade: React.Dispatch<React.SetStateAction<Trade | null>>;
 }) {
   return (
-    <div className="fixed inset-0 flex items-center justify-center" style={{ backgroundColor: "rgba(0, 0, 0, 0.5)" }}>
-      <div className="p-6 rounded shadow-md w-full max-w-md relative" style={{ backgroundColor: "#FAFAFA" }}>
-        <h2 className="text-lg font-semibold mb-4" style={{ color: "#37474F" }}>
+    <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
+      <div className="bg-white p-6 rounded shadow-md w-full max-w-md relative">
+        <h2 className="text-lg font-semibold mb-4 text-[#202124]">
           Edit FX Trade ID: {trade.id}
         </h2>
 
@@ -637,10 +676,11 @@ function EditTradeModal({
           <label className="block">Instrument:</label>
           <input
             type="text"
-            className="w-full p-2 border rounded"
-            style={{ borderColor: "#37474F" }}
+            className="w-full p-2 border border-gray-300 rounded"
             value={trade.instrument}
-            onChange={(e) => setTrade((t) => t && { ...t, instrument: e.target.value })}
+            onChange={(e) =>
+              setTrade((t) => t && { ...t, instrument: e.target.value })
+            }
             required
           />
         </div>
@@ -648,10 +688,17 @@ function EditTradeModal({
         <div className="mt-2">
           <label className="block">Direction:</label>
           <select
-            className="w-full p-2 border rounded"
-            style={{ borderColor: "#37474F" }}
+            className="w-full p-2 border border-gray-300 rounded"
             value={trade.tradeDirection}
-            onChange={(e) => setTrade((t) => t && { ...t, tradeDirection: e.target.value as "LONG" | "SHORT" })}
+            onChange={(e) =>
+              setTrade(
+                (t) =>
+                  t && {
+                    ...t,
+                    tradeDirection: e.target.value as "LONG" | "SHORT",
+                  }
+              )
+            }
           >
             <option value="LONG">Long</option>
             <option value="SHORT">Short</option>
@@ -664,10 +711,20 @@ function EditTradeModal({
             <input
               type="number"
               step="any"
-              className="w-full p-2 border rounded"
-              style={{ borderColor: "#37474F" }}
+              className="w-full p-2 border border-gray-300 rounded"
               value={trade.fxTrade?.entryPrice ?? 0}
-              onChange={(e) => setTrade((t) => t && { ...t, fxTrade: { ...(t.fxTrade || {}), entryPrice: Number(e.target.value) } })}
+              onChange={(e) =>
+                setTrade(
+                  (t) =>
+                    t && {
+                      ...t,
+                      fxTrade: {
+                        ...(t.fxTrade || {}),
+                        entryPrice: Number(e.target.value),
+                      },
+                    }
+                )
+              }
             />
           </div>
           <div className="flex-1">
@@ -675,10 +732,20 @@ function EditTradeModal({
             <input
               type="number"
               step="any"
-              className="w-full p-2 border rounded"
-              style={{ borderColor: "#37474F" }}
+              className="w-full p-2 border border-gray-300 rounded"
               value={trade.fxTrade?.exitPrice ?? 0}
-              onChange={(e) => setTrade((t) => t && { ...t, fxTrade: { ...(t.fxTrade || {}), exitPrice: Number(e.target.value) } })}
+              onChange={(e) =>
+                setTrade(
+                  (t) =>
+                    t && {
+                      ...t,
+                      fxTrade: {
+                        ...(t.fxTrade || {}),
+                        exitPrice: Number(e.target.value),
+                      },
+                    }
+                )
+              }
             />
           </div>
         </div>
@@ -689,10 +756,20 @@ function EditTradeModal({
             <input
               type="number"
               step="any"
-              className="w-full p-2 border rounded"
-              style={{ borderColor: "#37474F" }}
+              className="w-full p-2 border border-gray-300 rounded"
               value={trade.fxTrade?.lots ?? 1}
-              onChange={(e) => setTrade((t) => t && { ...t, fxTrade: { ...(t.fxTrade || {}), lots: Number(e.target.value) } })}
+              onChange={(e) =>
+                setTrade(
+                  (t) =>
+                    t && {
+                      ...t,
+                      fxTrade: {
+                        ...(t.fxTrade || {}),
+                        lots: Number(e.target.value),
+                      },
+                    }
+                )
+              }
             />
           </div>
           <div className="flex-1">
@@ -700,10 +777,20 @@ function EditTradeModal({
             <input
               type="number"
               step="any"
-              className="w-full p-2 border rounded"
-              style={{ borderColor: "#37474F" }}
+              className="w-full p-2 border border-gray-300 rounded"
               value={trade.fxTrade?.pipsGain ?? 0}
-              onChange={(e) => setTrade((t) => t && { ...t, fxTrade: { ...(t.fxTrade || {}), pipsGain: Number(e.target.value) } })}
+              onChange={(e) =>
+                setTrade(
+                  (t) =>
+                    t && {
+                      ...t,
+                      fxTrade: {
+                        ...(t.fxTrade || {}),
+                        pipsGain: Number(e.target.value),
+                      },
+                    }
+                )
+              }
             />
           </div>
         </div>
@@ -712,10 +799,11 @@ function EditTradeModal({
           <label className="block">Fees ($):</label>
           <input
             type="number"
-            className="w-full p-2 border rounded"
-            style={{ borderColor: "#37474F" }}
+            className="w-full p-2 border border-gray-300 rounded"
             value={trade.fees}
-            onChange={(e) => setTrade((t) => t && { ...t, fees: Number(e.target.value) })}
+            onChange={(e) =>
+              setTrade((t) => t && { ...t, fees: Number(e.target.value) })
+            }
           />
         </div>
 
@@ -723,10 +811,17 @@ function EditTradeModal({
           <label className="block">Trade Date/Time:</label>
           <input
             type="datetime-local"
-            className="w-full p-2 border rounded"
-            style={{ borderColor: "#37474F" }}
+            className="w-full p-2 border border-gray-300 rounded"
             value={new Date(trade.entryDate).toISOString().slice(0, 16)}
-            onChange={(e) => setTrade((t) => t && { ...t, entryDate: new Date(e.target.value).toISOString() })}
+            onChange={(e) =>
+              setTrade(
+                (t) =>
+                  t && {
+                    ...t,
+                    entryDate: new Date(e.target.value).toISOString(),
+                  }
+              )
+            }
           />
         </div>
 
@@ -734,10 +829,11 @@ function EditTradeModal({
           <label className="block">Percentage (%):</label>
           <input
             type="number"
-            className="w-full p-2 border rounded"
-            style={{ borderColor: "#37474F" }}
+            className="w-full p-2 border border-gray-300 rounded"
             value={trade.percentage ?? 0}
-            onChange={(e) => setTrade((t) => t && { ...t, percentage: Number(e.target.value) })}
+            onChange={(e) =>
+              setTrade((t) => t && { ...t, percentage: Number(e.target.value) })
+            }
           />
         </div>
 
@@ -745,10 +841,11 @@ function EditTradeModal({
           <label className="block">Amount ($):</label>
           <input
             type="number"
-            className="w-full p-2 border rounded"
-            style={{ borderColor: "#37474F" }}
+            className="w-full p-2 border border-gray-300 rounded"
             value={trade.amount ?? 0}
-            onChange={(e) => setTrade((t) => t && { ...t, amount: Number(e.target.value) })}
+            onChange={(e) =>
+              setTrade((t) => t && { ...t, amount: Number(e.target.value) })
+            }
           />
         </div>
 
@@ -756,18 +853,25 @@ function EditTradeModal({
           <label className="block">Pattern:</label>
           <input
             type="text"
-            className="w-full p-2 border rounded"
-            style={{ borderColor: "#37474F" }}
+            className="w-full p-2 border border-gray-300 rounded"
             value={trade.pattern ?? ""}
-            onChange={(e) => setTrade((t) => t && { ...t, pattern: e.target.value })}
+            onChange={(e) =>
+              setTrade((t) => t && { ...t, pattern: e.target.value })
+            }
           />
         </div>
 
         <div className="flex justify-end mt-4 gap-2">
-          <button className="px-4 py-2 rounded text-white" style={{ backgroundColor: "#00C853" }} onClick={onSave}>
+          <button
+            className="px-4 py-2 bg-[#34A853] text-white rounded hover:bg-green-600 transition duration-300"
+            onClick={onSave}
+          >
             Save
           </button>
-          <button className="px-4 py-2 rounded text-white" style={{ backgroundColor: "#37474F" }} onClick={onClose}>
+          <button
+            className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 transition duration-300"
+            onClick={onClose}
+          >
             Cancel
           </button>
         </div>

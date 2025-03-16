@@ -35,7 +35,13 @@ app.use(cors({
   origin: function (origin, callback) {
     // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
-    if (allowedOrigins.includes(origin)) {
+
+    //ENABLE LATER FOR SECURITY
+    // if (allowedOrigins.includes(origin)) {
+    //   return callback(null, origin);
+    // }
+    //THEN REMOVE THIS ONE
+    if (allowedOrigins.includes(origin) || 1==1) {
       return callback(null, origin);
     }
     callback(new Error('Not allowed by CORS'));
@@ -50,24 +56,36 @@ app.use(express.json());
 // Routers (REST endpoints)
 const authRouter = require('./routes/auth');
 const tradeRouter = require('./routes/trade');
-const transactionsRouter = require('./routes/transactions');
-const accountRouter = require('./routes/account');
+//const transactionsRouter = require('./routes/transactions');
+//const accountRouter = require('./routes/account');
 const financialAccountRouter = require('./routes/financialAccount');
-const settingsRouter = require('./routes/settings');
+//const settingsRouter = require('./routes/settings');
 const adminRouter = require('./routes/admin');
 const communityRouter = require('./routes/community');
 const coachingRouter = require('./routes/coaching');
 
+const accountRoutes = require('./routes/account/account.routes.js');
+const transactionsRoutes = require('./routes/account/transactions.routes.js');
+const settingsRouter = require('./routes/settings/settings.routes.js');
+
+
 // Attach routers
 app.use('/auth', authRouter);
 app.use('/admin', adminRouter);
-app.use('/transactions', transactionsRouter);
+//app.use('/transactions', transactionsRouter);
 app.use('/trades', tradeRouter);
-app.use('/account', accountRouter);
+//app.use('/account', accountRouter);
 app.use('/financial-accounts', financialAccountRouter);
-app.use('/settings', settingsRouter);
+//app.use('/settings', settingsRouter);
 app.use('/community', communityRouter);
 app.use('/coaching', coachingRouter);
+
+
+
+
+app.use('/account', accountRoutes);
+app.use('/transactions', transactionsRoutes);
+app.use('/settings', settingsRouter);
 
 /*
  Optional: GraphQL Integration

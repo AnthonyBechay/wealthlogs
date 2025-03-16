@@ -4,7 +4,6 @@ import { api, setAccessToken } from "@wealthlog/common";
 
 export default function Login() {
   const router = useRouter();
-
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -14,12 +13,8 @@ export default function Login() {
     setError("");
 
     try {
-      // POST credentials; expect { token, user } in the response
       const response = await api.post("/auth/login", { username, password });
-      // Store the token in localStorage or in memory
       setAccessToken(response.data.token);
-
-      // Then redirect
       router.push("/landing");
     } catch (err) {
       setError("Invalid username or password.");
@@ -27,72 +22,58 @@ export default function Login() {
   };
 
   return (
-    <div
-      className="flex items-center justify-center min-h-screen"
-      style={{ backgroundColor: "#FAFAFA" }}
-    >
-      <div
-        className="w-full max-w-md p-6 rounded shadow-md"
-        style={{
-          backgroundColor: "#FFF",
-          borderColor: "#37474F",
-          borderWidth: "1px",
-        }}
-      >
-        <h2
-          className="text-2xl font-bold text-center"
-          style={{ color: "#37474F" }}
-        >
-          Login
+    <div className="min-h-screen flex items-center justify-center bg-gray-100">
+      <div className="w-full max-w-md bg-white rounded-lg shadow p-6">
+        <h2 className="text-3xl font-extrabold text-center text-gray-800">
+          Welcome Back
         </h2>
+        <p className="text-center text-gray-500 mt-1">
+          Please log in to continue.
+        </p>
 
         {error && (
-          <p className="text-center mt-2" style={{ color: "#d32f2f" }}>
+          <div className="text-red-600 bg-red-50 p-2 rounded mt-4 text-center">
             {error}
-          </p>
+          </div>
         )}
 
-        <form onSubmit={handleLogin} className="mt-4">
-          <div className="mt-2">
-            <label className="block font-semibold" style={{ color: "#37474F" }}>
-              Username
-            </label>
+        <form onSubmit={handleLogin} className="mt-6 space-y-4">
+          {/* Username */}
+          <div>
+            <label className="block font-semibold text-gray-700">Username</label>
             <input
               type="text"
-              className="w-full p-2 border rounded"
-              style={{ borderColor: "#37474F" }}
+              className="w-full mt-1 p-2 border rounded focus:outline-none focus:ring focus:ring-blue-300"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               required
             />
           </div>
 
-          <div className="mt-3">
-            <label className="block font-semibold" style={{ color: "#37474F" }}>
-              Password
-            </label>
+          {/* Password */}
+          <div>
+            <label className="block font-semibold text-gray-700">Password</label>
             <input
               type="password"
-              className="w-full p-2 border rounded"
-              style={{ borderColor: "#37474F" }}
+              className="w-full mt-1 p-2 border rounded focus:outline-none focus:ring focus:ring-blue-300"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
             />
           </div>
 
+          {/* Login Button */}
           <button
             type="submit"
-            className="w-full mt-4 py-2 rounded font-semibold"
-            style={{ backgroundColor: "#00C853", color: "#FFF" }}
+            className="w-full py-2 mt-3 text-white font-bold rounded bg-blue-600 hover:bg-blue-700 transition"
           >
             Login
           </button>
         </form>
 
-        <p className="mt-3 text-center" style={{ color: "#37474F" }}>
-          No account?{" "}
-          <a href="/register" style={{ color: "#00796B" }}>
+        <p className="mt-4 text-center text-gray-600">
+          Don&apos;t have an account?{" "}
+          <a href="/register" className="text-blue-600 hover:text-blue-700 font-semibold">
             Register
           </a>
         </p>

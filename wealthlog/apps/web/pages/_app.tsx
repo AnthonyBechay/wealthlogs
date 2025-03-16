@@ -6,6 +6,13 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import { api, setAccessToken } from "@wealthlog/common";
 
+// Example color palette from your document
+// #1A73E8 (Primary Deep Blue)
+// #34A853 (Green for success/growth)
+// #FBBC05 (Orange for accent/CTA)
+// #F5F5F5 (Light Gray background)
+// #202124 (Dark Gray text)
+
 export default function App({ Component, pageProps }: AppProps) {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [checkingAuth, setCheckingAuth] = useState(true);
@@ -15,7 +22,6 @@ export default function App({ Component, pageProps }: AppProps) {
     checkLoginStatus();
   }, []);
 
-  // Re-check login status on route changes
   useEffect(() => {
     checkLoginStatus();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -23,10 +29,9 @@ export default function App({ Component, pageProps }: AppProps) {
 
   async function checkLoginStatus() {
     try {
-      // The api instance will attach the Bearer token (if any) automatically.
       await api.get("/auth/me");
       setIsLoggedIn(true);
-    } catch (error) {
+    } catch {
       setIsLoggedIn(false);
     } finally {
       setCheckingAuth(false);
@@ -35,12 +40,10 @@ export default function App({ Component, pageProps }: AppProps) {
 
   async function handleLogout() {
     try {
-      // Optionally, call backend /auth/logout (for logging purposes, token blacklisting, etc.)
       await api.post("/auth/logout");
     } catch (err) {
       console.error("Logout error:", err);
     } finally {
-      // Remove token from storage so no further API calls have Authorization header
       setAccessToken(null);
       setIsLoggedIn(false);
       router.push("/login");
@@ -49,61 +52,142 @@ export default function App({ Component, pageProps }: AppProps) {
 
   if (checkingAuth) {
     return (
-      <div
-        className="flex items-center justify-center h-screen"
-        style={{ backgroundColor: "#FAFAFA", color: "#37474F" }}
-      >
+      <div className="flex items-center justify-center h-screen bg-white">
         <p>Checking authentication...</p>
       </div>
     );
   }
 
+  // If not logged in, simply show the normal page (login, register, etc.)
+  // so that non-auth pages (like /login, /register) are visible.
+  // We'll only load the sidebar for authenticated pages.
+  if (!isLoggedIn) {
+    return <Component {...pageProps} />;
+  }
+
   return (
-    <div style={{ backgroundColor: "#FAFAFA", minHeight: "100vh", color: "#37474F" }}>
-      <nav
-        className="flex items-center justify-between px-6 py-4"
-        style={{ backgroundColor: "#00796B", color: "#FAFAFA" }}
-      >
-        {/* Left: Logo */}
-        <div className="flex items-center space-x-6">
-          <Link href={isLoggedIn ? "/landing" : "/login"}>
-            <div className="flex items-center cursor-pointer">
-              <img src="/logo.png" alt="Logo" style={{ height: 40, marginRight: 8 }} />
-              <span className="text-xl font-bold" style={{ color: "#FFD700" }}>
-                MyWealthApp
-              </span>
+    <div className="min-h-screen flex bg-[#F5F5F5] text-[#202124]">
+      {/*
+        Sidebar
+        For demonstration, we show the key nav items from your UX doc:
+        - Dashboard
+        - Accounts & Balances
+        - Trading & Investments
+        - Real Estate
+        - Expenses & Budgeting
+        - Loans
+        - Forecasting
+        - Collaboration (umbrella)
+        - Settings (umbrella)
+      */}
+      <aside className="w-64 bg-[#1A73E8] text-white flex flex-col">
+        <div className="p-4 font-bold text-xl flex items-center gap-2">
+          <img src="/logo.png" alt="WealthLog Logo" className="h-8" />
+          <span>WealthLog</span>
+        </div>
+
+        <nav className="flex-1 px-2 space-y-1 mt-4">
+          <Link href="/landing" legacyBehavior>
+            <a className="block px-3 py-2 rounded hover:bg-blue-600">
+              Dashboard
+            </a>
+          </Link>
+
+          <Link href="/accounts" legacyBehavior>
+            <a className="block px-3 py-2 rounded hover:bg-blue-600">
+              Accounts &amp; Balances
+            </a>
+          </Link>
+
+          <Link href="/tradeManagement" legacyBehavior>
+            <a className="block px-3 py-2 rounded hover:bg-blue-600">
+              Trading &amp; Investments
+            </a>
+          </Link>
+
+          <Link href="/realEstate" legacyBehavior>
+            <a className="block px-3 py-2 rounded hover:bg-blue-600">
+              Real Estate
+            </a>
+          </Link>
+
+          <Link href="/expenses" legacyBehavior>
+            <a className="block px-3 py-2 rounded hover:bg-blue-600">
+              Expenses &amp; Budgeting
+            </a>
+          </Link>
+
+          <Link href="/loans" legacyBehavior>
+            <a className="block px-3 py-2 rounded hover:bg-blue-600">
+              Loans
+            </a>
+          </Link>
+
+          <Link href="/forecasting" legacyBehavior>
+            <a className="block px-3 py-2 rounded hover:bg-blue-600">
+              Forecasting
+            </a>
+          </Link>
+
+          {/* Collaboration umbrella with sub-links */}
+          <div className="px-3 py-2 rounded hover:bg-blue-600 group">
+            <p className="font-semibold">Collaboration</p>
+            <div className="ml-2 mt-1 space-y-1 hidden group-hover:block">
+              <Link href="/collaboration/delegated" legacyBehavior>
+                <a className="block px-2 py-1 text-sm hover:bg-blue-500 rounded">
+                  Delegated Access
+                </a>
+              </Link>
+              <Link href="/collaboration/coaching" legacyBehavior>
+                <a className="block px-2 py-1 text-sm hover:bg-blue-500 rounded">
+                  Coaching
+                </a>
+              </Link>
+              <Link href="/collaboration/communities" legacyBehavior>
+                <a className="block px-2 py-1 text-sm hover:bg-blue-500 rounded">
+                  Communities
+                </a>
+              </Link>
             </div>
-          </Link>
+          </div>
 
-          {/* Example link */}
-          <Link href="/settings" className="font-semibold hover:opacity-80" style={{ color: "#FAFAFA" }}>
-            Settings
-          </Link>
+          {/* Settings umbrella with sub-links */}
+          <div className="px-3 py-2 rounded hover:bg-blue-600 group">
+            <p className="font-semibold">Settings</p>
+            <div className="ml-2 mt-1 space-y-1 hidden group-hover:block">
+              <Link href="/settings" legacyBehavior>
+                <a className="block px-2 py-1 text-sm hover:bg-blue-500 rounded">
+                  Preferences
+                </a>
+              </Link>
+              <Link href="/settings/security" legacyBehavior>
+                <a className="block px-2 py-1 text-sm hover:bg-blue-500 rounded">
+                  Security
+                </a>
+              </Link>
+              <Link href="/settings/customMeasures" legacyBehavior>
+                <a className="block px-2 py-1 text-sm hover:bg-blue-500 rounded">
+                  Custom Measures
+                </a>
+              </Link>
+            </div>
+          </div>
+        </nav>
+
+        <div className="p-4">
+          <button
+            onClick={handleLogout}
+            className="bg-[#FBBC05] text-[#202124] w-full py-2 rounded font-semibold hover:bg-orange-400"
+          >
+            Logout
+          </button>
         </div>
+      </aside>
 
-        {/* Right: Login or Logout */}
-        <div className="flex items-center space-x-4">
-          {isLoggedIn ? (
-            <button
-              onClick={handleLogout}
-              className="px-4 py-2 rounded font-semibold"
-              style={{ backgroundColor: "#FFD700", color: "#37474F" }}
-            >
-              Logout
-            </button>
-          ) : (
-            <Link
-              href="/login"
-              className="px-4 py-2 rounded font-semibold"
-              style={{ backgroundColor: "#00C853", color: "#FAFAFA" }}
-            >
-              Login
-            </Link>
-          )}
-        </div>
-      </nav>
-
-      <Component {...pageProps} />
+      {/* Main content area */}
+      <main className="flex-1">
+        <Component {...pageProps} />
+      </main>
     </div>
   );
 }
