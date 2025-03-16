@@ -20,6 +20,9 @@ const allowedOrigins = process.env.ALLOWED_ORIGINS
   : ['http://localhost:3000'];
 
 
+  app.use(cors({ origin: '*' }));
+
+
 
 // Security middleware
 app.use(helmet());
@@ -27,27 +30,36 @@ app.use(helmet());
 // Rate limiting: limit each IP to 100 requests per 15 minutes
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100,
+  max: 1000,
 });
 app.use(limiter);
 
-app.use(cors({
-  origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) return callback(null, true);
 
-    //ENABLE LATER FOR SECURITY
-    // if (allowedOrigins.includes(origin)) {
-    //   return callback(null, origin);
-    // }
-    //THEN REMOVE THIS ONE
-    if (allowedOrigins.includes(origin) || 1==1) {
-      return callback(null, origin);
-    }
-    callback(new Error('Not allowed by CORS'));
-  },
-  credentials: false,
-}));
+// Our dynamic CORS logic:
+// app.use(cors({
+//   origin: function (origin, callback) {
+//     // If no origin (e.g. server-to-server or curl), allow
+//     if (!origin) {
+//       return callback(null, true);
+//     }
+
+//     // If it's some local dev address: e.g. http://localhost:3000 or 3001, etc.
+//     // We check if it starts with "http://localhost:3"
+//     if (origin.startsWith("http://localhost:3")) {
+//       return callback(null, true); 
+//     }
+
+//     // Otherwise, we block or check a list:
+//     // In production you might want a stricter check or use env var ALLOWED_ORIGINS
+//     callback(new Error("Not allowed by CORS: " + origin));
+//   },
+//   credentials: false,
+// }));
+
+// app.use(cors({
+//   origin: '*',
+//   methods: ['GET','HEAD','PUT','PATCH','POST','DELETE'],
+// }));
 
 
 // Parse incoming JSON bodies
@@ -55,20 +67,19 @@ app.use(express.json());
 
 // Routers (REST endpoints)
 const authRouter = require('./routes/auth');
-const tradeRouter = require('./routes/trade');
 const adminRouter = require('./routes/admin');
 const communityRouter = require('./routes/community');
 const coachingRouter = require('./routes/coaching');
-
 const accountRoutes = require('./routes/account/account.routes.js');
 const transactionsRoutes = require('./routes/account/transactions.routes.js');
 const settingsRouter = require('./routes/settings/settings.routes.js');
+const tradeRouter = require("./routes/trade/trade.routes.js");
 
 
 // Attach routers
 app.use('/auth', authRouter);
 app.use('/admin', adminRouter);
-app.use('/trades', tradeRouter);
+app.use("/trade", tradeRouter);
 app.use('/community', communityRouter);
 app.use('/coaching', coachingRouter);
 app.use('/account', accountRoutes);
@@ -108,6 +119,24 @@ app.use('/settings', settingsRouter);
 */
 
 // Start the server
+
+
+
 app.listen(PORT, () => {
   console.log(`WealthLog API running on port ${PORT}`);
+});
+
+// If none of the above routes matched, return 404 JSON
+
+
+// AFTER all the routes:
+app.use((req, res, next) => {
+  // This means no route matched
+  res.status(404).json({ error: 'Not found' });
+});
+
+// Optionally, a generic error handler if needed
+app.use((err, req, res, next) => {
+  console.error('Internal server error:', err);
+  res.status(500).json({ error: 'Internal server error' });
 });

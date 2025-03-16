@@ -8,7 +8,7 @@ const prisma = new PrismaClient();
 const { authenticate } = require('../middleware/authenticate');
 
 // Helpers for account creation and balance recalculation
-const { getOrCreateCashAccountForUser, recalcAccountBalance } = require('../helpers/recalc');
+const { getOrCreateCashAccountForUser, recalcAccountBalance } = require('../routes/account/recalc.helper.js');
 
 /** Helper: detectSession
  * Determines a trading session label based on the given date/time.

@@ -277,7 +277,8 @@ model FxTrade {
   exitPrice  Float?
   lots       Float?
   pipsGain   Float?
-
+  amountGain Float?
+  percentageGain  Float?
   createdAt  DateTime @default(now())
   updatedAt  DateTime @default(now())
 }
@@ -290,7 +291,6 @@ model StocksTrade {
   exitPrice        Float?
   quantity         Float
   dividendPayments DividendPayment[]
-
   createdAt        DateTime @default(now())
   updatedAt        DateTime @default(now())
 }

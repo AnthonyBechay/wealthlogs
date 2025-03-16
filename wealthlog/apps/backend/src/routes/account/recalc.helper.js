@@ -1,119 +1,113 @@
-// src/helpers/recalc.js
-const { PrismaClient } = require('@prisma/client');
+// src/routes/account/recalc.helper.js
+const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
 
 /**
- * Get or create a "CASH" account for the given user.
- * Adjust "name" or "accountType" to your liking.
- */
-async function getOrCreateCashAccountForUser(userId) {
-  let account = await prisma.financialAccount.findFirst({
-    where: {
-      userId,
-      accountType: 'CASH',
-      name: 'Main Cash'
-    }
-  });
-  if (!account) {
-    account = await prisma.financialAccount.create({
-      data: {
-        userId,
-        name: 'Main Cash',
-        accountType: 'CASH',
-        balance: 0,
-        currency: 'USD',
-      }
-    });
-  }
-  return account;
-}
-
-/**
- * Recalculate the balance for a single FinancialAccount
- * by iterating over all relevant transactions & trades in chronological order,
- * then persist the final balance to account.balance.
+ * Recalculate the entire account balance for the given accountId.
+ * - Sort all transactions and trades by date ascending
+ * - For trades: If tradeType="FX" and fxTrade is present, apply amountGain or percentageGain
+ * - Optionally handle BOND or STOCK sub-trades
  */
 async function recalcAccountBalance(accountId) {
   const account = await prisma.financialAccount.findUnique({
-    where: { id: accountId }
+    where: { id: accountId },
   });
-  if (!account) throw new Error('Account not found, cannot recalc balance.');
+  if (!account) throw new Error(`Account ${accountId} not found`);
 
-  // Gather transactions
-  const txIn = await prisma.transaction.findMany({
-    where: { toAccountId: accountId },
-    orderBy: { dateTime: 'asc' }
-  });
-  const txOut = await prisma.transaction.findMany({
-    where: { fromAccountId: accountId },
-    orderBy: { dateTime: 'asc' }
+  // 1) Reset the balance to 0 first
+  await prisma.financialAccount.update({
+    where: { id: accountId },
+    data: { balance: 0 },
   });
 
-  const transactionEvents = [
-    ...txIn.map(t => ({
-      type: 'transaction_in',
-      id: t.id,
-      dateTime: t.dateTime,
-      amount: t.amount
-    })),
-    ...txOut.map(t => ({
-      type: 'transaction_out',
-      id: t.id,
-      dateTime: t.dateTime,
-      amount: t.amount
-    }))
-  ];
+  // 2) Gather transactions (asc by date)
+  const transactions = await prisma.transaction.findMany({
+    where: {
+      OR: [
+        { fromAccountId: accountId },
+        { toAccountId: accountId },
+      ]
+    },
+    orderBy: { dateTime: "asc" },
+  });
 
-  // Gather trades
+  // 3) Gather trades (asc by entryDate)
   const trades = await prisma.trade.findMany({
     where: { accountId },
-    orderBy: { entryDate: 'asc' }
+    orderBy: { entryDate: "asc" },
+    include: {
+      fxTrade: true,
+      bondTrade: true,
+      stocksTrade: true,
+    },
   });
 
-  const tradeEvents = trades.map(tr => ({
-    type: 'trade',
-    id: tr.id,
-    dateTime: tr.entryDate || new Date(),
-    fees: tr.fees || 0,
-    userPercentage: 0,
-    userAmount: tr.amount || 0
-  }));
+  // Combine into a single event array
+  const events = [];
 
-  // Merge & sort
-  const allEvents = [...transactionEvents, ...tradeEvents];
-  allEvents.sort((a, b) => new Date(a.dateTime) - new Date(b.dateTime));
+  for (const tx of transactions) {
+    events.push({
+      type: "transaction",
+      date: tx.dateTime,
+      transaction: tx,
+    });
+  }
+  for (const tr of trades) {
+    events.push({
+      type: "trade",
+      date: tr.entryDate || new Date(),
+      trade: tr,
+    });
+  }
 
-  let newBalance = 0;
-  for (const event of allEvents) {
-    const oldBalance = newBalance;
-    if (event.type === 'transaction_in') {
-      newBalance += event.amount;
-    } else if (event.type === 'transaction_out') {
-      newBalance -= event.amount;
-    } else {
-      // It's a trade
-      newBalance -= event.fees;
-      newBalance += event.userAmount;
-      const difference = newBalance - oldBalance;
+  events.sort((a, b) => new Date(a.date) - new Date(b.date));
 
-      // optional: store details in trade notes
-      await prisma.trade.update({
-        where: { id: event.id },
-        data: {
-          notes: `Balance before: ${oldBalance} | after: ${newBalance} | delta: ${difference}`
+  let runningBalance = 0;
+  for (const event of events) {
+    if (event.type === "transaction") {
+      const tx = event.transaction;
+      if (tx.type === "DEPOSIT" && tx.toAccountId === accountId) {
+        runningBalance += tx.amount;
+      } else if (tx.type === "WITHDRAW" && tx.fromAccountId === accountId) {
+        runningBalance -= tx.amount;
+      } else if (tx.type === "TRANSFER") {
+        if (tx.fromAccountId === accountId) {
+          runningBalance -= tx.amount;
+        } else if (tx.toAccountId === accountId) {
+          runningBalance += tx.amount;
         }
-      });
+      }
+    } else {
+      // event.type === "trade"
+      const tr = event.trade;
+      // Subtract fees
+      runningBalance -= tr.fees;
+
+      // If FX
+      if (tr.tradeType === "FX" && tr.fxTrade) {
+        const fx = tr.fxTrade;
+        // If both exist, prefer percentageGain
+        if (fx.percentageGain != null) {
+          const gain = runningBalance * fx.percentageGain;
+          runningBalance += gain;
+        } else if (fx.amountGain != null) {
+          runningBalance += fx.amountGain;
+        }
+      } else if (tr.tradeType === "BOND" && tr.bondTrade) {
+        // placeholder: do your BOND logic, e.g. coupon or exit price
+      } else if (tr.tradeType === "STOCK" && tr.stocksTrade) {
+        // placeholder: handle dividends or exit price etc.
+      }
     }
   }
 
-  // finalize
+  // Finally update the account's balance
   await prisma.financialAccount.update({
     where: { id: accountId },
-    data: { balance: newBalance }
+    data: { balance: runningBalance },
   });
 }
 
 module.exports = {
-  getOrCreateCashAccountForUser,
-  recalcAccountBalance
+  recalcAccountBalance,
 };
