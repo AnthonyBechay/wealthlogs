@@ -125,7 +125,7 @@ export default function App({ Component, pageProps }: AppProps) {
           {/* Collaboration */}
           <div className="px-3 py-2 rounded hover:bg-blue-600 group">
             <p className="font-semibold">Collaboration</p>
-            <div className="ml-2 mt-1 space-y-1 hidden group-hover:block">
+            <div className="ml-2 mt-1 space-y-1">
               <Link href="/collaboration/delegated" legacyBehavior>
                 <a className="block px-2 py-1 text-sm hover:bg-blue-500 rounded">
                   Delegated Access
@@ -147,20 +147,20 @@ export default function App({ Component, pageProps }: AppProps) {
           {/* Settings */}
           <div className="px-3 py-2 rounded hover:bg-blue-600 group">
             <p className="font-semibold">Settings</p>
-            <div className="ml-2 mt-1 space-y-1 hidden group-hover:block">
+            <div className="ml-2 mt-1 space-y-1">
+              <Link href="/settingsGeneral" legacyBehavior>
+                <a className="block px-2 py-1 text-sm hover:bg-blue-500 rounded">
+                  General
+                </a>
+              </Link>
+              <Link href="/settingsTrading" legacyBehavior>
+                <a className="block px-2 py-1 text-sm hover:bg-blue-500 rounded">
+                  Trading
+                </a>
+              </Link>
               <Link href="/settings" legacyBehavior>
                 <a className="block px-2 py-1 text-sm hover:bg-blue-500 rounded">
-                  Preferences
-                </a>
-              </Link>
-              <Link href="/settings/security" legacyBehavior>
-                <a className="block px-2 py-1 text-sm hover:bg-blue-500 rounded">
-                  Security
-                </a>
-              </Link>
-              <Link href="/settings/customMeasures" legacyBehavior>
-                <a className="block px-2 py-1 text-sm hover:bg-blue-500 rounded">
-                  Custom Measures
+                  Custom
                 </a>
               </Link>
             </div>

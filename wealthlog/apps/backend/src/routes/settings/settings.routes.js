@@ -409,4 +409,77 @@ async function getOrCreateUserSettings(userId) {
   return userSettings;
 }
 
+// In src/routes/settings/settings.routes.js
+
+/**
+ * POST /settings/mediaTags/add
+ * body: { mediaTag: string }
+ */
+router.post("/mediaTags/add", authenticate, async (req, res) => {
+  try {
+    const { mediaTag } = req.body;
+    if (!mediaTag) {
+      return res.status(400).json({ error: "Missing mediaTag" });
+    }
+    // get or create userSettings
+    const userSettings = await getOrCreateUserSettings(req.user.userId);
+    const current = Array.isArray(userSettings.mediaTags)
+      ? [...userSettings.mediaTags]
+      : [];
+
+    if (!current.includes(mediaTag)) {
+      current.push(mediaTag);
+    }
+
+    const updated = await prisma.settings.update({
+      where: { userId: req.user.userId },
+      data: { mediaTags: current },
+    });
+
+    res.json({
+      message: "Media tag added",
+      mediaTags: updated.mediaTags || [],
+    });
+  } catch (error) {
+    console.error("Error adding media tag:", error);
+    res.status(500).json({ error: "Failed to add media tag" });
+  }
+});
+
+/**
+ * POST /settings/mediaTags/delete
+ * body: { mediaTag: string }
+ */
+router.post("/mediaTags/delete", authenticate, async (req, res) => {
+  try {
+    const { mediaTag } = req.body;
+    if (!mediaTag) {
+      return res.status(400).json({ error: "Missing mediaTag" });
+    }
+    const userSettings = await getOrCreateUserSettings(req.user.userId);
+    const current = Array.isArray(userSettings.mediaTags)
+      ? [...userSettings.mediaTags]
+      : [];
+
+    const updatedList = current.filter((t) => t !== mediaTag);
+
+    const updated = await prisma.settings.update({
+      where: { userId: req.user.userId },
+      data: { mediaTags: updatedList },
+    });
+
+    res.json({
+      message: "Media tag removed",
+      mediaTags: updated.mediaTags || [],
+    });
+  } catch (error) {
+    console.error("Error removing media tag:", error);
+    res.status(500).json({ error: "Failed to remove media tag" });
+  }
+});
+
+
+
+
+
 module.exports = router;

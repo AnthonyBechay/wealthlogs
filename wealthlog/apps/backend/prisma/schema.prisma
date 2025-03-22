@@ -83,9 +83,9 @@ enum RecurringEntryType {
 ///                          Models
 /// =====================================================================
 model User {
-  id               Int      @id @default(autoincrement())
-  username         String   @unique
-  email            String?  @unique
+  id               Int       @id @default(autoincrement())
+  username         String    @unique
+  email            String?   @unique
   password         String
   firstName        String
   lastName         String
@@ -93,27 +93,27 @@ model User {
   dateOfBirth      DateTime?
   securityQuestion String?
   securityAnswer   String?
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 
   // Roles & Permissions
-  roles            Role[]   @relation("UserRoles")
-  settings         Settings?
-  subscriptions    Subscription[]
+  roles         Role[]         @relation("UserRoles")
+  settings      Settings?
+  subscriptions Subscription[]
 
   // Financial
-  accounts         FinancialAccount[]
-  loans            Loan[]
-  expenses         Expense[]
-  recurringEntries RecurringEntry[]
-  projectedEntries ProjectedEntry[]
+  accounts          FinancialAccount[]
+  loans             Loan[]
+  expenses          Expense[]
+  recurringEntries  RecurringEntry[]
+  projectedEntries  ProjectedEntry[]
   expenseCategories ExpenseCategory[]
-  counterparties   Counterparty[]
+  counterparties    Counterparty[]
 
   // Social & Communities
-  posts            Post[]   @relation("UserPosts")
-  comments         Comment[]
-  communities      CommunityMembership[]
+  posts       Post[]                @relation("UserPosts")
+  comments    Comment[]
+  communities CommunityMembership[]
 
   // Coaching
   coachingAsCoach   Coaching[] @relation("CoachStudents")
@@ -128,9 +128,9 @@ model User {
   collectibles       Collectible[]
 
   // Opposite relations for Tag.user, Label.user, CommunityNews.postedBy
-  tags              Tag[]      // If you want to see all tags owned by user
-  labels            Label[]    // If you want to see all labels owned by user
-  postedNews        CommunityNews[] // If you want to see all news posted by user
+  tags       Tag[]
+  labels     Label[]
+  postedNews CommunityNews[]
 }
 
 model Role {
@@ -140,7 +140,6 @@ model Role {
   users       User[]  @relation("UserRoles")
 }
 
-/// Brokerage / Institutions
 model BrokerInstitution {
   id        Int      @id @default(autoincrement())
   name      String
@@ -148,26 +147,24 @@ model BrokerInstitution {
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now())
 
-  accounts  FinancialAccount[]
+  accounts FinancialAccount[]
 }
 
-/// Tag (for labeling FinancialAccounts)
 model Tag {
-  id       Int    @id @default(autoincrement())
+  id       Int                @id @default(autoincrement())
   name     String
   color    String?
   userId   Int
-  user     User   @relation(fields: [userId], references: [id])
+  user     User               @relation(fields: [userId], references: [id])
   accounts FinancialAccount[] @relation("AccountTags")
 }
 
-/// Label (for labeling Trades, Expenses, etc.)
 model Label {
-  id       Int     @id @default(autoincrement())
-  name     String
-  color    String?
-  userId   Int?
-  user     User?   @relation(fields: [userId], references: [id])
+  id        Int      @id @default(autoincrement())
+  name      String
+  color     String?
+  userId    Int?
+  user      User?    @relation(fields: [userId], references: [id])
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now())
 
@@ -175,14 +172,14 @@ model Label {
   tradeLabels                TradeLabel[]
   expenseLabels              ExpenseLabel[]
   realEstateInvestmentLabels RealEstateInvestmentLabel[]
+  TradeMedia                 TradeMedia[]
 }
 
-/// ExpenseCategory
 model ExpenseCategory {
-  id            Int                @id @default(autoincrement())
+  id            Int                  @id @default(autoincrement())
   name          String
   userId        Int?
-  user          User?              @relation(fields: [userId], references: [id])
+  user          User?                @relation(fields: [userId], references: [id])
   subcategories ExpenseSubcategory[]
   expenses      Expense[]
 }
@@ -195,53 +192,50 @@ model ExpenseSubcategory {
   expenses   Expense[]
 }
 
-/// A third party in a loan
 model Counterparty {
-  id          Int       @id @default(autoincrement())
+  id          Int     @id @default(autoincrement())
   name        String
   description String?
   userId      Int
-  user        User      @relation(fields: [userId], references: [id])
+  user        User    @relation(fields: [userId], references: [id])
   loans       Loan[]
 }
 
-/// A user-owned financial account
 model FinancialAccount {
-  id           Int      @id @default(autoincrement())
-  userId       Int
-  user         User     @relation(fields: [userId], references: [id])
-  name         String
-  accountType  FinancialAccountType
-  balance      Float    @default(0)
-  currency     String   @default("USD")
-  isLiquid     Boolean  @default(false)
-  identifier   String?
-  active       Boolean  @default(true)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @default(now())
+  id          Int                  @id @default(autoincrement())
+  userId      Int
+  user        User                 @relation(fields: [userId], references: [id])
+  name        String
+  accountType FinancialAccountType
+  balance     Float                @default(0)
+  currency    String               @default("USD")
+  isLiquid    Boolean              @default(false)
+  identifier  String?
+  active      Boolean              @default(true)
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @default(now())
 
   brokerInstitutionId Int?
   brokerInstitution   BrokerInstitution? @relation(fields: [brokerInstitutionId], references: [id])
 
-  // Two sets of transactions for "from" / "to" relationships
+  // Transaction relations
   transactionsFrom Transaction[] @relation("TransactionFrom")
   transactionsTo   Transaction[] @relation("TransactionTo")
 
   // Link to trades
-  trades       Trade[]             // Opposite side of Trade.account
+  trades             Trade[]
   // For coaching
-  coachings    Coaching[]          // Opposite side of Coaching.account
+  coachings          Coaching[]
   // For delegated access
-  delegatedAccesses DelegatedAccess[] // Opposite side of DelegatedAccess.account
+  delegatedAccesses  DelegatedAccess[]
   // For expense withdrawals
-  expensesWithdrawal Expense[] @relation("ExpenseWithdrawal")
+  expensesWithdrawal Expense[]         @relation("ExpenseWithdrawal")
 
   realEstateInvestments RealEstateInvestment[]
-  tags                  Tag[] @relation("AccountTags")
+  tags                  Tag[]                  @relation("AccountTags")
   balanceHistory        BalanceHistory[]
 }
 
-/// A generic trade (stock, fx, etc.)
 model Trade {
   id             Int              @id @default(autoincrement())
   accountId      Int
@@ -259,132 +253,131 @@ model Trade {
   createdAt      DateTime         @default(now())
   updatedAt      DateTime         @default(now())
 
-  fxTrade        FxTrade?
-  stocksTrade    StocksTrade?
-  bondTrade      BondTrade?
-  tradeLabels    TradeLabel[]
+  fxTrade     FxTrade?
+  stocksTrade StocksTrade?
+  bondTrade   BondTrade?
+  tradeLabels TradeLabel[]
+
+  // NEW: Add relation to TradeMedia
+  media TradeMedia[]
 
   @@index([entryDate])
 }
 
 /// Specialized trades
 model FxTrade {
-  id         Int   @id @default(autoincrement())
-  tradeId    Int   @unique
-  trade      Trade @relation(fields: [tradeId], references: [id])
+  id      Int   @id @default(autoincrement())
+  tradeId Int   @unique
+  trade   Trade @relation(fields: [tradeId], references: [id])
 
-  entryPrice Float?
-  exitPrice  Float?
-  lots       Float?
-  pipsGain   Float?
-  amountGain Float?
-  percentageGain  Float?
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @default(now())
+  entryPrice     Float?
+  exitPrice      Float?
+  lots           Float?
+  pipsGain       Float?
+  amountGain     Float?
+  percentageGain Float?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @default(now())
 }
 
 model StocksTrade {
-  id               Int          @id @default(autoincrement())
-  tradeId          Int          @unique
-  trade            Trade        @relation(fields: [tradeId], references: [id])
+  id               Int               @id @default(autoincrement())
+  tradeId          Int               @unique
+  trade            Trade             @relation(fields: [tradeId], references: [id])
   entryPrice       Float
   exitPrice        Float?
   quantity         Float
   dividendPayments DividendPayment[]
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @default(now())
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @default(now())
 }
 
 model DividendPayment {
-  id             Int         @id @default(autoincrement())
-  stocksTradeId  Int
-  stocksTrade    StocksTrade @relation(fields: [stocksTradeId], references: [id])
-  amount         Float
-  paymentDate    DateTime    @default(now())
-  createdAt      DateTime    @default(now())
+  id            Int         @id @default(autoincrement())
+  stocksTradeId Int
+  stocksTrade   StocksTrade @relation(fields: [stocksTradeId], references: [id])
+  amount        Float
+  paymentDate   DateTime    @default(now())
+  createdAt     DateTime    @default(now())
 
   @@index([paymentDate])
 }
 
 model BondTrade {
-  id           Int      @id @default(autoincrement())
-  tradeId      Int      @unique
-  trade        Trade    @relation(fields: [tradeId], references: [id])
+  id           Int       @id @default(autoincrement())
+  tradeId      Int       @unique
+  trade        Trade     @relation(fields: [tradeId], references: [id])
   entryPrice   Float
   exitPrice    Float?
   quantity     Float
   couponRate   Float?
   maturityDate DateTime?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @default(now())
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @default(now())
 }
 
-/// Transactions: can reference fromAccount / toAccount
 model Transaction {
-  id            Int               @id @default(autoincrement())
+  id Int @id @default(autoincrement())
 
   fromAccountId Int?
   fromAccount   FinancialAccount? @relation("TransactionFrom", fields: [fromAccountId], references: [id])
 
-  toAccountId   Int?
-  toAccount     FinancialAccount? @relation("TransactionTo", fields: [toAccountId], references: [id])
+  toAccountId Int?
+  toAccount   FinancialAccount? @relation("TransactionTo", fields: [toAccountId], references: [id])
 
-  type          TransactionType
-  amount        Float
-  dateTime      DateTime @default(now())
-  currency      String   @default("USD")
-  description   String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @default(now())
+  type        TransactionType
+  amount      Float
+  dateTime    DateTime        @default(now())
+  currency    String          @default("USD")
+  description String?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @default(now())
 
   @@index([fromAccountId])
   @@index([toAccountId])
   @@index([dateTime])
 }
 
-/// Balance snapshot
 model BalanceHistory {
-  id         Int              @id @default(autoincrement())
-  accountId  Int
-  account    FinancialAccount @relation(fields: [accountId], references: [id])
-  date       DateTime         @default(now())
-  balance    Float
-  createdAt  DateTime         @default(now())
-  updatedAt  DateTime         @default(now())
+  id        Int              @id @default(autoincrement())
+  accountId Int
+  account   FinancialAccount @relation(fields: [accountId], references: [id])
+  date      DateTime         @default(now())
+  balance   Float
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @default(now())
 
   @@index([accountId, date], name: "idx_balanceHistory_account_date")
 }
 
-/// Real estate
 model RealEstateInvestment {
-  id               Int                @id @default(autoincrement())
+  id               Int              @id @default(autoincrement())
   accountId        Int
-  account          FinancialAccount   @relation(fields: [accountId], references: [id])
+  account          FinancialAccount @relation(fields: [accountId], references: [id])
   propertyAddress  String
   propertyType     String
   usage            String
   category         String
   purchaseDate     DateTime
   purchasePrice    Float
-  currentValuation Float              @default(0)
-  createdAt        DateTime           @default(now())
-  updatedAt        DateTime           @default(now())
+  currentValuation Float            @default(0)
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @default(now())
 
   valuations       RealEstateValuation[]
   mortgage         Mortgage?
   realEstateLabels RealEstateInvestmentLabel[]
 
-  // Opposite side of Expense, ProjectedEntry, Loan referencing realEstateInvestment
   expenses         Expense[]
   projectedEntries ProjectedEntry[]
   loans            Loan[]
 }
 
 model RealEstateValuation {
-  id                     Int                     @id @default(autoincrement())
+  id                     Int                  @id @default(autoincrement())
   realEstateInvestmentId Int
-  realEstateInvestment   RealEstateInvestment    @relation(fields: [realEstateInvestmentId], references: [id])
-  valuationDate          DateTime                @default(now())
+  realEstateInvestment   RealEstateInvestment @relation(fields: [realEstateInvestmentId], references: [id])
+  valuationDate          DateTime             @default(now())
   valuationAmount        Float
 }
 
@@ -393,24 +386,21 @@ model Mortgage {
   realEstateInvestmentId Int                  @unique
   realEstateInvestment   RealEstateInvestment @relation(fields: [realEstateInvestmentId], references: [id])
 
-  mortgageAmount         Float
-  interestRate           Float
-  termInYears            Int
-  startDate              DateTime
-  monthlyPayment         Float
-  createdAt              DateTime @default(now())
-  updatedAt              DateTime @default(now())
+  mortgageAmount Float
+  interestRate   Float
+  termInYears    Int
+  startDate      DateTime
+  monthlyPayment Float
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @default(now())
 
-  // If RecurringEntry references Mortgage,
-  // we add an array for those references
-  recurringEntries       RecurringEntry[]
+  recurringEntries RecurringEntry[]
 }
 
-/// Recurring income/expense
 model RecurringEntry {
-  id          Int      @id @default(autoincrement())
+  id          Int                @id @default(autoincrement())
   userId      Int
-  user        User     @relation(fields: [userId], references: [id])
+  user        User               @relation(fields: [userId], references: [id])
   type        RecurringEntryType
   amount      Float
   category    String?
@@ -419,15 +409,14 @@ model RecurringEntry {
   startDate   DateTime
   endDate     DateTime?
 
-  mortgageId  Int?
-  mortgage    Mortgage? @relation(fields: [mortgageId], references: [id])
+  mortgageId Int?
+  mortgage   Mortgage? @relation(fields: [mortgageId], references: [id])
 
-  expenses    Expense[]
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @default(now())
+  expenses  Expense[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @default(now())
 }
 
-/// User settings
 model Settings {
   id       Int     @id @default(autoincrement())
   userId   Int     @unique
@@ -442,47 +431,48 @@ model Settings {
   displayMode String?
   notificationPreferences Json?
   defaultExpenseWithdrawalAccountId Int?
+
+  // NEW:
+  mediaTags   Json? // e.g. store as an array of strings
 }
 
-/// Subscription
+
 model Subscription {
-  id        Int      @id @default(autoincrement())
+  id        Int       @id @default(autoincrement())
   userId    Int
-  user      User     @relation(fields: [userId], references: [id])
+  user      User      @relation(fields: [userId], references: [id])
   planName  String
   features  Json?
-  startDate DateTime @default(now())
+  startDate DateTime  @default(now())
   endDate   DateTime?
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @default(now())
+  active    Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @default(now())
 }
 
-/// Communities
 model Community {
-  id          Int                  @id @default(autoincrement())
-  name        String               @unique
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
   description String?
   type        String
-  createdAt   DateTime             @default(now())
-  updatedAt   DateTime             @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @default(now())
 
-  memberships CommunityMembership[]
-  posts       Post[]
-  news        CommunityNews[]
-  // For delegatedAccess if you want to see them from the community side:
-  delegatedAccesses DelegatedAccess[] 
+  memberships       CommunityMembership[]
+  posts             Post[]
+  news              CommunityNews[]
+  delegatedAccesses DelegatedAccess[]
 }
 
 model CommunityMembership {
-  id           Int           @id @default(autoincrement())
-  communityId  Int
-  community    Community     @relation(fields: [communityId], references: [id])
-  userId       Int
-  user         User          @relation(fields: [userId], references: [id])
-  role         CommunityRole @default(MEMBER)
-  rank         String?
-  joinedAt     DateTime      @default(now())
+  id          Int           @id @default(autoincrement())
+  communityId Int
+  community   Community     @relation(fields: [communityId], references: [id])
+  userId      Int
+  user        User          @relation(fields: [userId], references: [id])
+  role        CommunityRole @default(MEMBER)
+  rank        String?
+  joinedAt    DateTime      @default(now())
 
   @@unique([communityId, userId])
 }
@@ -496,113 +486,102 @@ model CommunityNews {
   postedByUserId Int?
   postedBy       User?     @relation(fields: [postedByUserId], references: [id])
 
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @default(now())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now())
 }
 
-/// Posts, Comments
 model Post {
-  id           Int       @id @default(autoincrement())
-  communityId  Int
-  community    Community @relation(fields: [communityId], references: [id])
-  authorId     Int
-  author       User      @relation("UserPosts", fields: [authorId], references: [id])
-  title        String
-  content      String
-  media        Json?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @default(now())
+  id          Int       @id @default(autoincrement())
+  communityId Int
+  community   Community @relation(fields: [communityId], references: [id])
+  authorId    Int
+  author      User      @relation("UserPosts", fields: [authorId], references: [id])
+  title       String
+  content     String
+  media       Json?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @default(now())
 
-  comments     Comment[]
+  comments Comment[]
 }
 
 model Comment {
-  id         Int      @id @default(autoincrement())
-  postId     Int
-  post       Post     @relation(fields: [postId], references: [id])
-  authorId   Int
-  author     User     @relation(fields: [authorId], references: [id])
-  content    String
-  createdAt  DateTime @default(now())
+  id        Int      @id @default(autoincrement())
+  postId    Int
+  post      Post     @relation(fields: [postId], references: [id])
+  authorId  Int
+  author    User     @relation(fields: [authorId], references: [id])
+  content   String
+  createdAt DateTime @default(now())
 }
 
-/// Coaching
 model Coaching {
-  id         Int                  @id @default(autoincrement())
-  coachId    Int
-  coach      User                 @relation("CoachStudents", fields: [coachId], references: [id])
-  studentId  Int
-  student    User                 @relation("StudentCoach", fields: [studentId], references: [id])
-
-  accountId  Int?
-  account    FinancialAccount?    @relation(fields: [accountId], references: [id])
-
-  module     FinancialAccountType?
-  createdAt  DateTime             @default(now())
+  id        Int                   @id @default(autoincrement())
+  coachId   Int
+  coach     User                  @relation("CoachStudents", fields: [coachId], references: [id])
+  studentId Int
+  student   User                  @relation("StudentCoach", fields: [studentId], references: [id])
+  accountId Int?
+  account   FinancialAccount?     @relation(fields: [accountId], references: [id])
+  module    FinancialAccountType?
+  createdAt DateTime              @default(now())
 
   @@unique([coachId, studentId, accountId, module])
 }
 
-/// Delegated Access
 model DelegatedAccess {
-  id               Int   @id @default(autoincrement())
-  clientId         Int
-  client           User  @relation("ClientDelegated", fields: [clientId], references: [id])
+  id       Int  @id @default(autoincrement())
+  clientId Int
+  client   User @relation("ClientDelegated", fields: [clientId], references: [id])
 
-  delegatedUserId  Int?
-  delegatedUser    User? @relation("DelegatedUserAccess", fields: [delegatedUserId], references: [id])
+  delegatedUserId Int?
+  delegatedUser   User? @relation("DelegatedUserAccess", fields: [delegatedUserId], references: [id])
 
-  communityId      Int?
-  community        Community? @relation(fields: [communityId], references: [id])
+  communityId Int?
+  community   Community? @relation(fields: [communityId], references: [id])
 
-  accountId        Int?
-  account          FinancialAccount? @relation(fields: [accountId], references: [id])
+  accountId Int?
+  account   FinancialAccount? @relation(fields: [accountId], references: [id])
 
-  module           FinancialAccountType?
-  accessLevel      AccessLevel @default(READ)
-  createdAt        DateTime    @default(now())
-  expiration       DateTime?
+  module      FinancialAccountType?
+  accessLevel AccessLevel           @default(READ)
+  createdAt   DateTime              @default(now())
+  expiration  DateTime?
 
   @@unique([clientId, delegatedUserId, communityId, accountId, module])
 }
 
-/// Expenses
 model Expense {
-  id                     Int @id @default(autoincrement())
+  id                     Int                   @id @default(autoincrement())
   userId                 Int
-  user                   User  @relation(fields: [userId], references: [id])
+  user                   User                  @relation(fields: [userId], references: [id])
   amount                 Float
   expenseCategoryId      Int
-  expenseCategory        ExpenseCategory     @relation(fields: [expenseCategoryId], references: [id])
+  expenseCategory        ExpenseCategory       @relation(fields: [expenseCategoryId], references: [id])
   expenseSubcategoryId   Int?
-  expenseSubcategory     ExpenseSubcategory? @relation(fields: [expenseSubcategoryId], references: [id])
+  expenseSubcategory     ExpenseSubcategory?   @relation(fields: [expenseSubcategoryId], references: [id])
   description            String?
-  date                   DateTime            @default(now())
-
+  date                   DateTime              @default(now())
   recurringEntryId       Int?
-  recurringEntry         RecurringEntry?     @relation(fields: [recurringEntryId], references: [id])
-
+  recurringEntry         RecurringEntry?       @relation(fields: [recurringEntryId], references: [id])
   withdrawalAccountId    Int?
-  withdrawalAccount      FinancialAccount?   @relation("ExpenseWithdrawal", fields: [withdrawalAccountId], references: [id])
-
+  withdrawalAccount      FinancialAccount?     @relation("ExpenseWithdrawal", fields: [withdrawalAccountId], references: [id])
   realEstateInvestmentId Int?
   realEstateInvestment   RealEstateInvestment? @relation(fields: [realEstateInvestmentId], references: [id])
-
   expenseLabels          ExpenseLabel[]
 
   @@index([date])
 }
 
-/// Projected entries
 model ProjectedEntry {
-  id                     Int @id @default(autoincrement())
-  userId                 Int
-  user                   User @relation(fields: [userId], references: [id])
-  type                   ProjectionType
-  description            String
-  amount                 Float
-  projectedDate          DateTime
-  createdAt              DateTime @default(now())
+  id            Int            @id @default(autoincrement())
+  userId        Int
+  user          User           @relation(fields: [userId], references: [id])
+  type          ProjectionType
+  description   String
+  amount        Float
+  projectedDate DateTime
+  createdAt     DateTime       @default(now())
 
   realEstateInvestmentId Int?
   realEstateInvestment   RealEstateInvestment? @relation(fields: [realEstateInvestmentId], references: [id])
@@ -610,29 +589,28 @@ model ProjectedEntry {
   @@index([projectedDate])
 }
 
-/// Loans
 model Loan {
-  id                     Int   @id @default(autoincrement())
-  userId                 Int
-  user                   User  @relation(fields: [userId], references: [id])
-  loanType               LoanType
-  amount                 Float
-  interestRate           Float?
-  startDate              DateTime @default(now())
-  dueDate                DateTime?
-  isPaymentActive        Boolean  @default(true)
+  id              Int       @id @default(autoincrement())
+  userId          Int
+  user            User      @relation(fields: [userId], references: [id])
+  loanType        LoanType
+  amount          Float
+  interestRate    Float?
+  startDate       DateTime  @default(now())
+  dueDate         DateTime?
+  isPaymentActive Boolean   @default(true)
 
-  counterpartyId         Int
-  counterparty           Counterparty @relation(fields: [counterpartyId], references: [id])
-  description            String?
+  counterpartyId Int
+  counterparty   Counterparty @relation(fields: [counterpartyId], references: [id])
+  description    String?
 
   realEstateInvestmentId Int?
   realEstateInvestment   RealEstateInvestment? @relation(fields: [realEstateInvestmentId], references: [id])
 
-  createdAt              DateTime @default(now())
-  updatedAt              DateTime @default(now())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now())
 
-  repayments             LoanRepayment[]
+  repayments LoanRepayment[]
 }
 
 model LoanRepayment {
@@ -644,16 +622,16 @@ model LoanRepayment {
   interestPaid  Float
   totalPaid     Float?
 
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @default(now())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now())
 }
 
-/// Many-to-Many join tables
 model TradeLabel {
   tradeId Int
   labelId Int
   trade   Trade @relation(fields: [tradeId], references: [id])
   label   Label @relation(fields: [labelId], references: [id])
+
   @@id([tradeId, labelId])
 }
 
@@ -662,6 +640,7 @@ model ExpenseLabel {
   labelId   Int
   expense   Expense @relation(fields: [expenseId], references: [id])
   label     Label   @relation(fields: [labelId], references: [id])
+
   @@id([expenseId, labelId])
 }
 
@@ -670,10 +649,10 @@ model RealEstateInvestmentLabel {
   labelId                Int
   realEstateInvestment   RealEstateInvestment @relation(fields: [realEstateInvestmentId], references: [id])
   label                  Label                @relation(fields: [labelId], references: [id])
+
   @@id([realEstateInvestmentId, labelId])
 }
 
-/// Exchange rates (optional)
 model ExchangeRate {
   id            Int      @id @default(autoincrement())
   baseCurrency  String
@@ -686,41 +665,40 @@ model ExchangeRate {
   @@index([baseCurrency, quoteCurrency, date], name: "idx_exchangeRate_base_quote_date")
 }
 
-/// Business Ownership & Collectibles
 model BusinessOwnership {
-  id               Int  @id @default(autoincrement())
+  id               Int      @id @default(autoincrement())
   userId           Int
-  user             User @relation(fields: [userId], references: [id])
+  user             User     @relation(fields: [userId], references: [id])
   businessName     String
-  sharePercentage  Float @default(0)
-  currentValuation Float @default(0)
+  sharePercentage  Float    @default(0)
+  currentValuation Float    @default(0)
   createdAt        DateTime @default(now())
   updatedAt        DateTime @default(now())
 
-  valuations       BusinessValuation[]
+  valuations BusinessValuation[]
 }
 
 model BusinessValuation {
-  id                 Int               @id @default(autoincrement())
+  id                  Int               @id @default(autoincrement())
   businessOwnershipId Int
-  businessOwnership  BusinessOwnership @relation(fields: [businessOwnershipId], references: [id])
-  valuationDate      DateTime @default(now())
-  valuationAmount    Float
+  businessOwnership   BusinessOwnership @relation(fields: [businessOwnershipId], references: [id])
+  valuationDate       DateTime          @default(now())
+  valuationAmount     Float
 }
 
 model Collectible {
-  id            Int  @id @default(autoincrement())
+  id            Int       @id @default(autoincrement())
   userId        Int
-  user          User @relation(fields: [userId], references: [id])
+  user          User      @relation(fields: [userId], references: [id])
   name          String
   category      String?
   purchaseDate  DateTime?
   purchasePrice Float?
-  currentValue  Float?   @default(0)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @default(now())
+  currentValue  Float?    @default(0)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @default(now())
 
-  valuations    CollectibleValuation[]
+  valuations CollectibleValuation[]
 }
 
 model CollectibleValuation {
@@ -729,4 +707,16 @@ model CollectibleValuation {
   collectible     Collectible @relation(fields: [collectibleId], references: [id])
   valuationDate   DateTime    @default(now())
   valuationAmount Float
+}
+
+model TradeMedia {
+  id          Int       @id @default(autoincrement())
+  tradeId     Int
+  trade       Trade     @relation(fields: [tradeId], references: [id])
+  labelId     Int?
+  label       Label?    @relation(fields: [labelId], references: [id])
+  imageUrl    String
+  description String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @default(now())
 }
