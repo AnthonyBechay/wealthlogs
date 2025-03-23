@@ -1,4 +1,4 @@
-// src/routes/settings/settings.routes.js
+// apps/backend/src/routes/settings/settings.routes.js
 const express = require("express");
 const router = express.Router();
 const { PrismaClient } = require("@prisma/client");
@@ -28,13 +28,13 @@ router.get("/", authenticate, async (req, res) => {
           preferredCurrency: "USD",
           language: "en",
           timezone: "UTC",
-          displayMode: "light", // or "dark"
+          displayMode: "light", // default
           notificationPreferences: {},
         },
       });
     }
 
-    // Return everything. The front-end can pick what it needs
+    // Return everything to the front-end
     return res.json({
       instruments: userSettings.instruments || [],
       patterns: userSettings.patterns || [],
@@ -44,7 +44,8 @@ router.get("/", authenticate, async (req, res) => {
       language: userSettings.language,
       timezone: userSettings.timezone,
       displayMode: userSettings.displayMode,
-      // or whatever else from the model
+      // Also returning any new fields like mediaTags, etc:
+      mediaTags: userSettings.mediaTags || [],
     });
   } catch (error) {
     console.error("GET /settings error:", error);
@@ -60,15 +61,15 @@ router.get("/", authenticate, async (req, res) => {
 
 /**
  * POST /settings/displayMode
- * body: { displayMode: "light" | "dark" }
+ * body: { displayMode: "light" | "dark" | "system" }
  */
 router.post("/displayMode", authenticate, async (req, res) => {
   try {
     const { displayMode } = req.body;
-    if (!["light", "dark"].includes(displayMode)) {
+    if (!["light", "dark", "system"].includes(displayMode)) {
       return res
         .status(400)
-        .json({ error: "displayMode must be 'light' or 'dark'" });
+        .json({ error: "displayMode must be 'light', 'dark', or 'system'" });
     }
 
     const updated = await prisma.settings.update({
@@ -84,13 +85,13 @@ router.post("/displayMode", authenticate, async (req, res) => {
 
 /**
  * POST /settings/language
- * body: { language: string }
+ * body: { language: "en" | "ar" | "fr" }
  */
 router.post("/language", authenticate, async (req, res) => {
   try {
     const { language } = req.body;
-    if (!language) {
-      return res.status(400).json({ error: "Missing language" });
+    if (!language || !["en", "ar", "fr"].includes(language)) {
+      return res.status(400).json({ error: "language must be 'en', 'ar', or 'fr'" });
     }
     const updated = await prisma.settings.update({
       where: { userId: req.user.userId },
@@ -113,6 +114,7 @@ router.post("/timezone", authenticate, async (req, res) => {
     if (!timezone) {
       return res.status(400).json({ error: "Missing timezone" });
     }
+    // Optional: You could validate timezone against a known list
     const updated = await prisma.settings.update({
       where: { userId: req.user.userId },
       data: { timezone },
@@ -144,6 +146,7 @@ router.post("/currency", authenticate, async (req, res) => {
     res.status(500).json({ error: "Failed to update preferred currency" });
   }
 });
+
 
 /* 
   =======================

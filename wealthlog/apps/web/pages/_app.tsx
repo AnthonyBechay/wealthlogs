@@ -1,14 +1,19 @@
-// pages/_app.tsx
-import "../styles/globals.css";
-import type { AppProps } from "next/app";
-import Link from "next/link";
-import { useEffect, useState } from "react";
-import { useRouter } from "next/router";
-import { api, setAccessToken } from "@wealthlog/common";
+// apps/web/pages/_app.tsx
+
+import '../styles/globals.css';
+import type { AppProps } from 'next/app';
+import Link from 'next/link';
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/router';
+import { api, setAccessToken } from '@wealthlog/common';
+
+// 1) Import i18n helpers:
+import { appWithTranslation } from 'next-i18next';
+import nextI18NextConfig from '../next-i18next.config';
 
 const publicPaths = [
-  "/login",
-  "/register",
+  '/login',
+  '/register',
   // add other routes that do NOT require auth
 ];
 
@@ -17,9 +22,11 @@ function isPublicRoute(pathname: string) {
   return publicPaths.some((pub) => pathname.startsWith(pub));
 }
 
-export default function App({ Component, pageProps }: AppProps) {
+function MyApp({ Component, pageProps }: AppProps) {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [checkingAuth, setCheckingAuth] = useState(true);
+  const [themeMode, setThemeMode] = useState<'light' | 'dark'>('light');
+
   const router = useRouter();
 
   useEffect(() => {
@@ -27,42 +34,75 @@ export default function App({ Component, pageProps }: AppProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router.asPath]);
 
+  useEffect(() => {
+    loadDisplayMode();
+  }, []);
+
   async function handleAuthCheck() {
     const routeIsPublic = isPublicRoute(router.pathname);
     if (routeIsPublic) {
-      // Public route, no need to check /auth/me
       setIsLoggedIn(false);
       setCheckingAuth(false);
       return;
     }
 
-    // It's a protected route, let's see if user is logged in
     try {
-      await api.get("/auth/me");
+      await api.get('/auth/me');
       setIsLoggedIn(true);
     } catch {
       setIsLoggedIn(false);
-      router.push("/login");
+      router.push('/login');
     } finally {
       setCheckingAuth(false);
     }
   }
 
+  async function loadDisplayMode() {
+    try {
+      const res = await api.get('/settings');
+      const { displayMode } = res.data;
+
+      if (displayMode === 'dark') {
+        setThemeMode('dark');
+      } else if (displayMode === 'system') {
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)');
+        setThemeMode(prefersDark.matches ? 'dark' : 'light');
+
+        const listener = (e: MediaQueryListEvent) => {
+          setThemeMode(e.matches ? 'dark' : 'light');
+        };
+        prefersDark.addEventListener('change', listener);
+
+        return () => {
+          prefersDark.removeEventListener('change', listener);
+        };
+      } else {
+        setThemeMode('light');
+      }
+    } catch (err) {
+      setThemeMode('light');
+    }
+  }
+
   async function handleLogout() {
     try {
-      await api.post("/auth/logout");
+      await api.post('/auth/logout');
     } catch (err) {
-      console.error("Logout error:", err);
+      console.error('Logout error:', err);
     } finally {
       setAccessToken(null);
       setIsLoggedIn(false);
-      router.push("/login");
+      router.push('/login');
     }
   }
 
   if (checkingAuth) {
     return (
-      <div className="flex items-center justify-center h-screen bg-white">
+      <div
+        className={`flex items-center justify-center h-screen ${
+          themeMode === 'dark' ? 'bg-[#1e1e1e] text-white' : 'bg-white text-black'
+        }`}
+      >
         <p>Checking authentication...</p>
       </div>
     );
@@ -70,21 +110,27 @@ export default function App({ Component, pageProps }: AppProps) {
 
   // If route is public, or user is logged in, we can render
   if (!isLoggedIn && !isPublicRoute(router.pathname)) {
-    // If it's not public and not logged in, we’ll probably never get here
-    // because we did router.push("/login") above. But just in case:
     return null;
   }
 
-  // If route is public, just show the component (like login or register)
   if (isPublicRoute(router.pathname)) {
     return <Component {...pageProps} />;
   }
 
-  // Otherwise, the user is logged in, so show the main app structure
+  // Determine root-level classes for light/dark backgrounds and text
+  const rootClasses =
+    themeMode === 'dark'
+      ? 'min-h-screen flex bg-[#202124] text-[#e2e2e2]'
+      : 'min-h-screen flex bg-[#F5F5F5] text-[#202124]';
+
   return (
-    <div className="min-h-screen flex bg-[#F5F5F5] text-[#202124]">
+    <div className={rootClasses}>
       {/* Sidebar / Navigation */}
-      <aside className="w-64 bg-[#1A73E8] text-white flex flex-col">
+      <aside
+        className={`w-64 ${
+          themeMode === 'dark' ? 'bg-[#1A1A1A] text-gray-200' : 'bg-[#1A73E8] text-white'
+        } flex flex-col`}
+      >
         <div className="p-4 font-bold text-xl flex items-center gap-2">
           <img src="/logo.png" alt="WealthLog Logo" className="h-8" />
           <span>WealthLog</span>
@@ -182,3 +228,6 @@ export default function App({ Component, pageProps }: AppProps) {
     </div>
   );
 }
+
+// 2) Wrap the export with appWithTranslation
+export default appWithTranslation(MyApp, nextI18NextConfig);
