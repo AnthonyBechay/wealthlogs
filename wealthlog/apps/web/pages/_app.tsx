@@ -8,6 +8,7 @@ import { useRouter } from 'next/router';
 import { api, setAccessToken } from '@wealthlog/common';
 
 // 1) Import i18n helpers:
+import { useTranslation } from 'next-i18next';
 import { appWithTranslation } from 'next-i18next';
 import nextI18NextConfig from '../next-i18next.config';
 
@@ -23,6 +24,9 @@ function isPublicRoute(pathname: string) {
 }
 
 function MyApp({ Component, pageProps }: AppProps) {
+  // 2) Use translation in your layout:
+  const { t } = useTranslation('common');
+
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [themeMode, setThemeMode] = useState<'light' | 'dark'>('light');
@@ -137,54 +141,58 @@ function MyApp({ Component, pageProps }: AppProps) {
         </div>
         <nav className="flex-1 px-2 space-y-1 mt-4">
           <Link href="/landing" legacyBehavior>
-            <a className="block px-3 py-2 rounded hover:bg-blue-600">Dashboard</a>
+            <a className="block px-3 py-2 rounded hover:bg-blue-600">
+              {t('Dashboard')}
+            </a>
           </Link>
           <Link href="/accounts" legacyBehavior>
             <a className="block px-3 py-2 rounded hover:bg-blue-600">
-              Accounts &amp; Balances
+              {t('AccountAndBalances')}
             </a>
           </Link>
           <Link href="/trading" legacyBehavior>
             <a className="block px-3 py-2 rounded hover:bg-blue-600">
-              Trading &amp; Investments
+              {t('TradingInvestments')}
             </a>
           </Link>
           <Link href="/realEstate" legacyBehavior>
             <a className="block px-3 py-2 rounded hover:bg-blue-600">
-              Real Estate
+              {t('RealEstate')}
             </a>
           </Link>
           <Link href="/expenses" legacyBehavior>
             <a className="block px-3 py-2 rounded hover:bg-blue-600">
-              Expenses &amp; Budgeting
+              {t('ExpensesBudgeting')}
             </a>
           </Link>
           <Link href="/loans" legacyBehavior>
             <a className="block px-3 py-2 rounded hover:bg-blue-600">
-              Loans
+              {t('Loans')}
             </a>
           </Link>
           <Link href="/forecasting" legacyBehavior>
-            <a className="block px-3 py-2 rounded hover:bg-blue-600">Forecasting</a>
+            <a className="block px-3 py-2 rounded hover:bg-blue-600">
+              {t('Forecasting')}
+            </a>
           </Link>
 
           {/* Collaboration */}
           <div className="px-3 py-2 rounded hover:bg-blue-600 group">
-            <p className="font-semibold">Collaboration</p>
+            <p className="font-semibold">{t('Collaboration')}</p>
             <div className="ml-2 mt-1 space-y-1">
               <Link href="/collaboration/delegated" legacyBehavior>
                 <a className="block px-2 py-1 text-sm hover:bg-blue-500 rounded">
-                  Delegated Access
+                  {t('DelegatedAccess')}
                 </a>
               </Link>
               <Link href="/collaboration/coaching" legacyBehavior>
                 <a className="block px-2 py-1 text-sm hover:bg-blue-500 rounded">
-                  Coaching
+                  {t('Coaching')}
                 </a>
               </Link>
               <Link href="/collaboration/communities" legacyBehavior>
                 <a className="block px-2 py-1 text-sm hover:bg-blue-500 rounded">
-                  Communities
+                  {t('Communities')}
                 </a>
               </Link>
             </div>
@@ -192,21 +200,21 @@ function MyApp({ Component, pageProps }: AppProps) {
 
           {/* Settings */}
           <div className="px-3 py-2 rounded hover:bg-blue-600 group">
-            <p className="font-semibold">Settings</p>
+            <p className="font-semibold">{t('Settings')}</p>
             <div className="ml-2 mt-1 space-y-1">
               <Link href="/settingsGeneral" legacyBehavior>
                 <a className="block px-2 py-1 text-sm hover:bg-blue-500 rounded">
-                  General
+                  {t('General')}
                 </a>
               </Link>
               <Link href="/settingsTrading" legacyBehavior>
                 <a className="block px-2 py-1 text-sm hover:bg-blue-500 rounded">
-                  Trading
+                  {t('Trading')}
                 </a>
               </Link>
               <Link href="/settings" legacyBehavior>
                 <a className="block px-2 py-1 text-sm hover:bg-blue-500 rounded">
-                  Custom
+                  {t('Custom')}
                 </a>
               </Link>
             </div>
@@ -217,7 +225,7 @@ function MyApp({ Component, pageProps }: AppProps) {
             onClick={handleLogout}
             className="bg-[#FBBC05] text-[#202124] w-full py-2 rounded font-semibold hover:bg-orange-400"
           >
-            Logout
+            {t('Logout')}
           </button>
         </div>
       </aside>
@@ -229,5 +237,7 @@ function MyApp({ Component, pageProps }: AppProps) {
   );
 }
 
-// 2) Wrap the export with appWithTranslation
+// *Remove* any getServerSideProps here. Not allowed in _app.tsx.
+// We'll load 'common' in each page that uses this layout.
+
 export default appWithTranslation(MyApp, nextI18NextConfig);

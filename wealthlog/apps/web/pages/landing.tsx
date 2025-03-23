@@ -1,18 +1,18 @@
 // apps/web/pages/landing.tsx
-
 import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
 import { api } from '@wealthlog/common';
 
-// i18n imports:
+// i18n translation imports:
 import { useTranslation } from 'next-i18next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 
-export default function Landing() {
-  const router = useRouter();
-  // e.g. load from the "common" namespace in your JSON
-  const { t } = useTranslation('common');
 
+
+export default function Landing() {
+  
+  const router = useRouter();
+  const { t } = useTranslation('common');
   const [netWorth, setNetWorth] = useState<number | null>(null);
   const [recentActivity, setRecentActivity] = useState<any[]>([]);
 
@@ -109,3 +109,5 @@ export async function getStaticProps({ locale }: { locale: string }) {
     },
   };
 }
+
+
