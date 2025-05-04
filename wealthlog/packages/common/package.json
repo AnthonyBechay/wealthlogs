@@ -1,6 +1,7 @@
 {
   "name": "@wealthlog/common",
   "version": "1.0.0",
-  "main": "src/api.ts",
-  "license": "MIT"
+  "main": "src/index.js",
+  "license": "MIT",
+  "private": true
 }
