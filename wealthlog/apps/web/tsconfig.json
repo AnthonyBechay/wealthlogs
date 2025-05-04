@@ -19,7 +19,8 @@
       "@pages/*": ["pages/*"],
       "@utils/*": ["utils/*"],
       "@types/*": ["types/*"],
-      "@wealthlog/common": ["../../packages/common/src"]
+      "@wealthlog/common": ["../../packages/common/src"],
+      "@/*": ["src/*"]
     },
     "plugins": [
       {

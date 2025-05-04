@@ -1,8 +1,7 @@
 // src/routes/community.js
 const express = require("express");
 const router = express.Router();
-const { PrismaClient } = require("@prisma/client");
-const prisma = new PrismaClient();
+const { prisma } = require('../lib/prisma');
 const { authenticate } = require("../middleware/authenticate");
 
 // GET /community - Get all communities

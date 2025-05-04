@@ -5,12 +5,11 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
-const { PrismaClient } = require('@prisma/client');
 const fs = require("fs");
 const path = require("path");
 
 const app = express();
-const prisma = new PrismaClient();
+const { prisma } = require('./lib/prisma');
 
 const PORT = process.env.PORT || 5000;
 const allowedOrigin = process.env.ALLOWED_ORIGIN || 'http://localhost:3000';
@@ -54,6 +53,8 @@ const transactionsRoutes = require('./routes/account/transactions.routes.js');
 const settingsRouter = require('./routes/settings/settings.routes.js');
 const tradeRouter = require("./routes/trade/trade.routes.js");
 const mt5syncRouter = require('./routes/trade/mt5sync.routes.js');
+const dashboardRouter = require('./routes/dashboard.js');
+
 
 // Attach routers
 app.use('/auth', authRouter);
@@ -65,7 +66,7 @@ app.use('/account', accountRoutes);
 app.use('/transactions', transactionsRoutes);
 app.use('/settings', settingsRouter);
 app.use('/mt5sync', mt5syncRouter);
-
+app.use('/dashboard', dashboardRouter);
 
 // Start the server
 app.listen(PORT, () => {
