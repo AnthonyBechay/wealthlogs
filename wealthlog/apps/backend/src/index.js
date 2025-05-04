@@ -53,6 +53,7 @@ const accountRoutes = require('./routes/account/account.routes.js');
 const transactionsRoutes = require('./routes/account/transactions.routes.js');
 const settingsRouter = require('./routes/settings/settings.routes.js');
 const tradeRouter = require("./routes/trade/trade.routes.js");
+const mt5syncRouter = require('./routes/trade/mt5sync.routes.js');
 
 // Attach routers
 app.use('/auth', authRouter);
@@ -63,6 +64,8 @@ app.use('/coaching', coachingRouter);
 app.use('/account', accountRoutes);
 app.use('/transactions', transactionsRoutes);
 app.use('/settings', settingsRouter);
+app.use('/mt5sync', mt5syncRouter);
+
 
 // Start the server
 app.listen(PORT, () => {
