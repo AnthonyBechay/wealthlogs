@@ -1,14 +1,14 @@
-// apps/web/next.config.js
+const path = require('path');
 const { i18n } = require('./next-i18next.config');
 
 const nextConfig = {
   i18n,
   transpilePackages: ['@wealthlog/common'],
   eslint: {
-    ignoreDuringBuilds: true, // ✅ prevent ESLint errors from blocking deploy
+    ignoreDuringBuilds: true,
   },
   typescript: {
-    ignoreBuildErrors: true,  // ✅ prevent TS errors from blocking deploy
+    ignoreBuildErrors: true,
   },
   async rewrites() {
     return [
@@ -17,6 +17,10 @@ const nextConfig = {
         destination: 'http://localhost:5000/auth/:path*',
       },
     ];
+  },
+  webpack(config) {
+    config.resolve.alias['@wealthlog/common'] = path.resolve(__dirname, '../../packages/common/src');
+    return config;
   },
 };
 
