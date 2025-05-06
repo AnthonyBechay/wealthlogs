@@ -159,7 +159,7 @@ export default function SettingsTrading() {
   if (loading) return <div className="p-4">Loading Trading Preferences…</div>;
 
   return (
-    <div className="p-6 min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-100">
+    <div className="p-6 min-h-screen bg-gray-50 dark:bg-[var(--background-2)] text-[var(--text)]  bg-[var(--background)] text-[var(--text)]">
       <h1 className="text-3xl font-bold mb-4">Trading Preferences</h1>
       {error && <div className="text-red-600 mb-4">{error}</div>}
 
@@ -235,7 +235,7 @@ export default function SettingsTrading() {
             Update
           </button>
         </div>
-        <p className="text-sm mt-2 text-gray-500 dark:text-gray-400">
+        <p className="text-sm mt-2 text-[var(--text)] ">
           Current range: {settings.beMin} – {settings.beMax}
         </p>
       </Card>
@@ -247,7 +247,7 @@ export default function SettingsTrading() {
 
 function Card({ children }: { children: React.ReactNode }) {
   return (
-    <section className="mb-8 bg-white dark:bg-gray-800 p-4 rounded shadow">
+    <section className="mb-8 bg-[var(--background-2)] dark:bg-[var(--background-2)] p-4 rounded shadow">
       {children}
     </section>
   );
@@ -258,7 +258,7 @@ function Title({ children }: { children: React.ReactNode }) {
 }
 
 function Placeholder({ children }: { children: React.ReactNode }) {
-  return <p className="text-gray-500 dark:text-gray-400">{children}</p>;
+  return <p className="text-[var(--text)] ">{children}</p>;
 }
 
 function DeleteBtn({ onClick }: { onClick: () => void }) {
@@ -301,14 +301,14 @@ function InlineInput(props: {
     <div className="flex items-center gap-2 mt-2">
       <input
         type="text"
-        className="flex-1 p-2 border rounded bg-white dark:bg-gray-700 dark:border-gray-600"
+        className="flex-1 p-2 border rounded bg-[var(--background-2)] dark:bg-[var(--background-2)] dark:border-gray-600"
         placeholder={props.placeholder}
         value={props.value}
         onChange={(e) => props.onChange(e.target.value)}
       />
       <button
         onClick={props.onAdd}
-        className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded"
+        className="px-4 py-2 bg-[var(--primary)] hover:bg-[var(--primary)] text-white rounded"
       >
         Add
       </button>
@@ -323,13 +323,13 @@ function LabeledNumber(props: {
 }) {
   return (
     <div>
-      <label className="block text-sm text-gray-600 dark:text-gray-300">
+      <label className="block text-sm text-[var(--text)] ">
         {props.label}:
       </label>
       <input
         type="number"
         step="any"
-        className="p-2 border rounded bg-white dark:bg-gray-700 dark:border-gray-600"
+        className="p-2 border rounded bg-[var(--background-2)] dark:bg-[var(--background-2)] dark:border-gray-600"
         value={props.value}
         onChange={(e) => props.onChange(e.target.value)}
       />

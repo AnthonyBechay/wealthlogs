@@ -556,7 +556,7 @@ export default function TradingPage() {
 
   if (initialLoading) {
     return (
-      <div className="flex items-center justify-center h-screen bg-white">
+      <div className="flex items-center justify-center h-screen bg-[var(--background-2)] bg-[var(--background)] text-[var(--text)]">
         <p>Loading Trading Page...</p>
       </div>
     );
@@ -566,7 +566,7 @@ export default function TradingPage() {
   const shownTrades = trades.slice(0, pageSize);
 
   return (
-    <div className="p-4 min-h-screen bg-gray-50 text-gray-800">
+    <div className="p-4 min-h-screen bg-[var(--background-2)] text-[var(--text)] bg-[var(--background)] text-[var(--text)]">
       {error && (
         <div className="bg-red-100 text-red-700 p-3 rounded mb-4">
           {error}
@@ -581,7 +581,7 @@ export default function TradingPage() {
               key={t}
               onClick={() => setActiveTab(t)}
               className={`px-4 py-2 rounded font-semibold ${
-                t === activeTab ? "bg-blue-600 text-white" : "bg-gray-200"
+                t === activeTab ? "bg-[var(--primary)] text-white" : "bg-[var(--background-2)]"
               }`}
             >
               {t}
@@ -589,13 +589,13 @@ export default function TradingPage() {
           ))}
         </div>
       ) : (
-        <p className="text-gray-500 mb-4">No accounts found yet.</p>
+        <p className="text-[var(--text)] mb-4">No accounts found yet.</p>
       )}
 
       {/* Layout: Accounts on left, Trades on right */}
       <div className="flex gap-4">
         {/* Left: Accounts */}
-        <div className="w-1/4 bg-white p-4 rounded shadow">
+        <div className="w-1/4 bg-[var(--background-2)] p-4 rounded shadow">
           <div className="flex items-center justify-between mb-2">
             <h2 className="text-xl font-bold">Accounts</h2>
             <button
@@ -616,14 +616,14 @@ export default function TradingPage() {
               />
               <button
                 type="submit"
-                className="w-full py-2 bg-blue-600 text-white font-semibold rounded"
+                className="w-full py-2 bg-[var(--primary)] text-white font-semibold rounded"
               >
                 Create
               </button>
             </form>
           )}
           {typeAccounts.length === 0 ? (
-            <p className="text-sm text-gray-500">No {activeTab} accounts found.</p>
+            <p className="text-sm text-[var(--text)]">No {activeTab} accounts found.</p>
           ) : (
             <div className="space-y-2">
               {typeAccounts.map((ac) => (
@@ -632,8 +632,8 @@ export default function TradingPage() {
                   onClick={() => setSelectedAccountId(ac.id)}
                   className={`block w-full text-left p-2 border rounded ${
                     ac.id === selectedAccountId
-                      ? "bg-blue-500 text-white"
-                      : "bg-gray-100 hover:bg-gray-200"
+                      ? "bg-[var(--primary)] text-white"
+                      : "bg-[var(--background-2)] hover:bg-[var(--background-2)]"
                   }`}
                 >
                   {ac.name}{" "}
@@ -647,7 +647,7 @@ export default function TradingPage() {
         </div>
 
         {/* Right: Trades */}
-        <div className="flex-1 bg-white p-4 rounded shadow">
+        <div className="flex-1 bg-[var(--background-2)] p-4 rounded shadow">
           {selectedAccountId ? (
             <>
               {/* Header row */}
@@ -666,7 +666,7 @@ export default function TradingPage() {
                   </select>
                   <button
                     onClick={toggleNewTradeForm}
-                    className="px-3 py-1 bg-blue-600 text-white rounded"
+                    className="px-3 py-1 bg-[var(--primary)] text-white rounded"
                   >
                     {showNewTrade ? "Close" : "New Trade"}
                   </button>
@@ -675,7 +675,7 @@ export default function TradingPage() {
 
               {/* Inline "New Trade" form */}
               {showNewTrade && (
-                <div className="border p-3 bg-gray-50 rounded mb-4">
+                <div className="border p-3 bg-[var(--background-2)] rounded mb-4">
                   <h3 className="text-lg font-semibold mb-2">Create New Trade</h3>
                   <form onSubmit={handleCreateTrade} className="space-y-3">
                     <div>
@@ -745,7 +745,7 @@ export default function TradingPage() {
                     </div>
 
                     {activeTab === "FX" && (
-                      <div className="border bg-white p-3 rounded">
+                      <div className="border bg-[var(--background-2)] p-3 rounded">
                         <p className="font-medium text-sm mb-2">FX Gains</p>
                         <div className="flex gap-4">
                           <div className="flex-1">
@@ -771,10 +771,10 @@ export default function TradingPage() {
                     )}
 
                     {/* Multiple media items */}
-                    <div className="border bg-white p-3 rounded">
+                    <div className="border bg-[var(--background-2)] p-3 rounded">
                       <h4 className="font-medium text-sm mb-2">Attach Multiple Media</h4>
                       {createMediaList.map((m, i) => (
-                        <div key={i} className="border p-2 rounded mb-2 bg-gray-50">
+                        <div key={i} className="border p-2 rounded mb-2 bg-[var(--background-2)] ">
                           <label className="block text-sm font-semibold">Tag:</label>
                           <select
                             className="border p-1 rounded w-full"
@@ -817,7 +817,7 @@ export default function TradingPage() {
                               handleCreateMediaChange(i, "externalUrl", e.target.value)
                             }
                           />
-                          <p className="text-xs text-gray-500">If provided, file is ignored.</p>
+                          <p className="text-xs text-[var(--text)]">If provided, file is ignored.</p>
                           <label className="block text-sm font-semibold mt-2">Local File</label>
                           <input
                             type="file"
@@ -841,7 +841,7 @@ export default function TradingPage() {
 
                     <button
                       type="submit"
-                      className="px-4 py-2 bg-blue-600 text-white font-semibold rounded"
+                      className="px-4 py-2 bg-[var(--primary)] text-white font-semibold rounded"
                     >
                       Create
                     </button>
@@ -851,10 +851,10 @@ export default function TradingPage() {
 
               {/* TRADES TABLE */}
               {shownTrades.length === 0 ? (
-                <p className="text-gray-500">No trades found for this account.</p>
+                <p className="text-[var(--text)]">No trades found for this account.</p>
               ) : (
                 <table className="w-full border text-sm">
-                  <thead className="bg-gray-100">
+                  <thead className="bg-[var(--background-2)]">
                     <tr>
                       <th className="border p-2">Date/Time</th>
                       <th className="border p-2">Instrument</th>
@@ -917,7 +917,7 @@ export default function TradingPage() {
                           <td className="border p-2">
                             <button
                               onClick={() => openEditModal(t)}
-                              className="px-2 py-1 bg-yellow-400 text-black rounded mr-2"
+                              className="px-2 py-1 bg-yellow-400 text-[var(--text)] rounded mr-2"
                             >
                               Edit
                             </button>
@@ -955,7 +955,7 @@ export default function TradingPage() {
               </div>
             </>
           ) : (
-            <p className="text-gray-500">No account selected.</p>
+            <p className="text-[var(--text)]">No account selected.</p>
           )}
         </div>
       </div>
@@ -967,7 +967,7 @@ export default function TradingPage() {
           onClick={() => setShowEditModal(false)}
         >
           <div
-            className="bg-white p-4 rounded shadow w-full max-w-xl max-h-screen overflow-y-auto"
+            className="bg-[var(--background-2)] p-4 rounded shadow w-full max-w-xl max-h-screen overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="text-xl font-semibold mb-3">Edit Trade #{editTrade.id}</h3>
@@ -1062,10 +1062,10 @@ export default function TradingPage() {
               )}
 
               {/* Additional media */}
-              <div className="border bg-gray-50 p-3 rounded">
+              <div className="border bg-[var(--background-2)] p-3 rounded">
                 <h4 className="font-medium mb-2">Attach Additional Media</h4>
                 {editMediaList.map((m, i) => (
-                  <div key={i} className="border p-2 rounded mb-2 bg-white">
+                  <div key={i} className="border p-2 rounded mb-2 bg-[var(--background-2)]">
                     <label className="block text-sm font-semibold">Tag:</label>
                     <select
                       className="border p-1 rounded w-full"
@@ -1110,7 +1110,7 @@ export default function TradingPage() {
                         handleEditMediaChange(i, "externalUrl", e.target.value)
                       }
                     />
-                    <p className="text-xs text-gray-500">If provided, file is ignored.</p>
+                    <p className="text-xs text-[var(--text)]">If provided, file is ignored.</p>
 
                     <label className="block text-sm font-semibold mt-2">Local File</label>
                     <input
@@ -1137,13 +1137,13 @@ export default function TradingPage() {
                 <button
                   type="button"
                   onClick={() => setShowEditModal(false)}
-                  className="px-4 py-2 bg-gray-300 rounded"
+                  className="px-4 py-2 bg-[var(--background-2)] rounded"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-blue-600 text-white rounded"
+                  className="px-4 py-2 bg-[var(--primary)] text-white rounded"
                 >
                   Save
                 </button>
@@ -1160,7 +1160,7 @@ export default function TradingPage() {
           onClick={() => setShowImageUploadModal(false)}
         >
           <div
-            className="bg-white p-4 rounded shadow w-80"
+            className="bg-[var(--background-2)] p-4 rounded shadow w-80"
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="text-lg font-semibold mb-3">
@@ -1193,13 +1193,13 @@ export default function TradingPage() {
                 <button
                   type="button"
                   onClick={() => setShowImageUploadModal(false)}
-                  className="px-4 py-2 bg-gray-300 rounded"
+                  className="px-4 py-2 bg-[var(--background-2)] rounded"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-blue-600 text-white rounded"
+                  className="px-4 py-2 bg-[var(--primary)] text-white rounded"
                 >
                   Upload
                 </button>
@@ -1253,20 +1253,20 @@ function ExistingMediaList({
   }
 
   if (loading) {
-    return <p className="text-sm text-gray-500">Loading existing media...</p>;
+    return <p className="text-sm text-[var(--text)]">Loading existing media...</p>;
   }
   if (error) {
     return <p className="text-sm text-red-500">{error}</p>;
   }
   if (media.length === 0) {
-    return <p className="text-sm text-gray-500">No existing media</p>;
+    return <p className="text-sm text-[var(--text)]">No existing media</p>;
   }
 
   return (
     <div className="space-y-2">
       <h4 className="font-medium text-sm mb-1">Existing Media</h4>
       {media.map((m) => (
-        <div key={m.id} className="border p-2 rounded bg-gray-50 flex items-center justify-between">
+        <div key={m.id} className="border p-2 rounded bg-[var(--background-2)] flex items-center justify-between">
           <div>
             <a
               href={"/" + m.imageUrl}
@@ -1277,7 +1277,7 @@ function ExistingMediaList({
               {m.label?.name || "Media"}
             </a>
             {m.description && (
-              <div className="text-xs text-gray-600">{m.description}</div>
+              <div className="text-xs text-[var(--text)]">{m.description}</div>
             )}
           </div>
           <button
@@ -1302,9 +1302,9 @@ function FxGainEditSection({
 }) {
   // if you want a separate approach, or you can inline it in the form
   return (
-    <div className="border bg-white p-3 rounded">
+    <div className="border bg-[var(--background-2)] p-3 rounded">
       <p className="font-medium text-sm mb-2">Edit FX Gains</p>
-      <p className="text-xs text-gray-500">
+      <p className="text-xs text-[var(--text)]">
         (We read or store them in the “fx” object on submit.)
       </p>
       {/* Implementation left as an exercise, or see handleEditTradeSubmit. */}

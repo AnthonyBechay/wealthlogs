@@ -27,11 +27,11 @@ export default function Landing() {
   const quick = (path: string) => router.push(path);
 
   return (
-    <div className="p-6 min-h-screen dark:bg-gray-900 dark:text-gray-100">
+    <div className="p-6 min-h-screen dark:text-[var(--text)] bg-[var(--background)]">
       <h1 className="text-3xl font-bold mb-4">{t('Dashboard')}</h1>
 
       {/* ––– Net worth card ––– */}
-      <div className="p-4 rounded shadow mb-6 bg-white dark:bg-gray-800">
+      <div className="p-4 rounded shadow mb-6 bg-[var(--background-2)] ">
         <h2 className="text-xl font-semibold mb-2">{t('NetWorth')}</h2>
         {latest === null ? (
           <p>{t('Loading')}</p>
@@ -54,7 +54,7 @@ export default function Landing() {
 
       {/* ––– Quick Actions ––– */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="p-4 rounded shadow bg-white dark:bg-gray-800">
+        <div className="p-4 rounded shadow bg-[var(--background-2)] ">
           <h2 className="text-xl font-semibold mb-2">{t('QuickActions')}</h2>
           <div className="flex flex-col space-y-2">
             <button

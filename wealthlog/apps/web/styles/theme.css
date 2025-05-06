@@ -1,0 +1,32 @@
+
+/* apps/web/styles/theme.css
+   CSS custom properties mapped to the tokens from COLOR_THEMES.
+   Any plain‑CSS element backgrounds now reference the variables,
+   while the existing Tailwind classes still apply for utility‑based UI. */
+:root {
+  --background:        #FFFFFF;
+  --background-2:      #F1F5F9;
+  --text:              #000000;
+  --primary:           #3B82F6;
+  --danger:            #EF4444;
+  --success:           #10B981;
+}
+
+.dark {
+  --background:        #1E1E1E;
+  --background-2:      #2A2A2A;
+  --text:              #FFFFFF;
+  --primary:           #2563EB;
+  --danger:            #F87171;
+  --success:           #34D399;
+}
+
+/* Provide some sensible defaults that reference the vars */
+body {
+  background-color: var(--background);
+  color: var(--text);
+}
+
+.bg-primary        { background-color: var(--primary); }
+.text-primary      { color: var(--primary); }
+.bg-background-2   { background-color: var(--background-2); }

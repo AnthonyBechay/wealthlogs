@@ -195,11 +195,11 @@ export default function AccountsPage() {
       );
 
   return (
-    <div className="p-6 min-h-screen bg-gray-50">
+    <div className="p-6 min-h-screen bg-[var(--background-2)] bg-[var(--background)] text-[var(--text)]">
       <h1 className="text-3xl font-bold mb-6">Accounts & Balances</h1>
 
       {/* =========== Accounts List & Create Form =========== */}
-      <div className="mb-8 p-4 bg-white rounded shadow">
+      <div className="mb-8 p-4 bg-[var(--background-2)] rounded shadow">
         <h2 className="text-xl font-semibold mb-4">Your Accounts</h2>
 
         {accounts.length === 0 ? (
@@ -207,7 +207,7 @@ export default function AccountsPage() {
         ) : (
           <div className="mb-4">
             <table className="w-full border-collapse">
-              <thead className="bg-gray-100">
+              <thead className="bg-[var(--background-2)]">
                 <tr>
                   <th className="border p-2 text-left">ID</th>
                   <th className="border p-2 text-left">Name</th>
@@ -278,7 +278,7 @@ export default function AccountsPage() {
       </div>
 
       {/* =========== Transaction Form =========== */}
-      <div className="mb-8 p-4 bg-white rounded shadow">
+      <div className="mb-8 p-4 bg-[var(--background-2)] rounded shadow">
         <h2 className="text-xl font-semibold mb-4">Create Transaction</h2>
         <form onSubmit={handleCreateTransaction} className="flex flex-col md:flex-row gap-4">
           <div>
@@ -348,7 +348,7 @@ export default function AccountsPage() {
           </div>
 
           <div className="flex items-end">
-            <button className="px-4 py-2 bg-blue-600 text-white rounded h-10 self-end" type="submit">
+            <button className="px-4 py-2 bg-[var(--primary)] text-white rounded h-10 self-end" type="submit">
               Submit
             </button>
           </div>
@@ -356,12 +356,12 @@ export default function AccountsPage() {
       </div>
 
       {/* =========== Transactions Table =========== */}
-      <div className="p-4 bg-white rounded shadow">
+      <div className="p-4 bg-[var(--background-2)] rounded shadow">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-semibold">Transaction History</h2>
           <button
             onClick={handleExportCsv}
-            className="px-3 py-1 bg-yellow-400 text-black font-semibold rounded"
+            className="px-3 py-1 bg-yellow-400 text-[var(--text)] font-semibold rounded"
           >
             Export CSV
           </button>
@@ -388,7 +388,7 @@ export default function AccountsPage() {
           <p>No transactions found.</p>
         ) : (
           <table className="w-full border-collapse">
-            <thead className="bg-gray-100">
+            <thead className="bg-[var(--background-2)]">
               <tr>
                 <th className="border p-2 text-left">ID</th>
                 <th className="border p-2 text-left">Type</th>

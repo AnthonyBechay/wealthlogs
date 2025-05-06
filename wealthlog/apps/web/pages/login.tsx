@@ -24,12 +24,12 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <div className="w-full max-w-md bg-white rounded-lg shadow p-6">
-        <h2 className="text-3xl font-extrabold text-center text-gray-800">
+    <div className="min-h-screen flex items-center justify-center bg-[var(--background-2)] bg-[var(--background)] text-[var(--text)]">
+      <div className="w-full max-w-md bg-[var(--background-2)] rounded-lg shadow p-6">
+        <h2 className="text-3xl font-extrabold text-center text-[var(--text)]">
           Welcome Back
         </h2>
-        <p className="text-center text-gray-500 mt-1">
+        <p className="text-center text-[var(--text)] mt-1">
           Please log in to continue.
         </p>
 
@@ -42,7 +42,7 @@ export default function Login() {
         <form onSubmit={handleLogin} className="mt-6 space-y-4">
           {/* Username */}
           <div>
-            <label className="block font-semibold text-gray-700">Username</label>
+            <label className="block font-semibold text-[var(--text)]">Username</label>
             <input
               type="text"
               className="w-full mt-1 p-2 border rounded focus:outline-none focus:ring focus:ring-blue-300"
@@ -54,7 +54,7 @@ export default function Login() {
 
           {/* Password */}
           <div>
-            <label className="block font-semibold text-gray-700">Password</label>
+            <label className="block font-semibold text-[var(--text)]">Password</label>
             <input
               type="password"
               className="w-full mt-1 p-2 border rounded focus:outline-none focus:ring focus:ring-blue-300"
@@ -67,13 +67,13 @@ export default function Login() {
           {/* Login Button */}
           <button
             type="submit"
-            className="w-full py-2 mt-3 text-white font-bold rounded bg-blue-600 hover:bg-blue-700 transition"
+            className="w-full py-2 mt-3 text-white font-bold rounded bg-[var(--primary)] hover:bg-[var(--primary)] transition"
           >
             Login
           </button>
         </form>
 
-        <p className="mt-4 text-center text-gray-600">
+        <p className="mt-4 text-center text-[var(--text)]">
           Don&apos;t have an account?{" "}
           <a href="/register" className="text-blue-600 hover:text-blue-700 font-semibold">
             Register

@@ -1,262 +1,218 @@
-/* ────────────────────────────────────────────────────────────────────
+
+/* ────────────────────────────────────────────────────────────────────────
    apps/web/pages/_app.tsx
-   (theme ‑ persisted in the DB, ‘system’ mode supported)
-   ──────────────────────────────────────────────────────────────────── */
+   Ultra‑clean theme + auth + mobile drawer
+   ──────────────────────────────────────────────────────────────────────── */
 
    import '../styles/globals.css';
-
+   import '../styles/theme.css';
+   
    import type { AppProps } from 'next/app';
-   import Link               from 'next/link';
-   import { useRouter }      from 'next/router';
    import { useEffect, useState } from 'react';
+   import { useRouter } from 'next/router';
+   import Link from 'next/link';
    
-   import { api, setAccessToken } from '@wealthlog/common';
-   
-   /* i18n */
-   import { appWithTranslation } from 'next-i18next';
-   import { useTranslation }     from 'next-i18next';
-   import nextI18NextConfig      from '../next-i18next.config';
-   
-   /* theme helper – adds / removes “dark” class on <html> */
    import { ThemeProvider } from 'next-themes';
    
-   /* ───────── public routes that DON’T require auth ───────── */
-   const publicPaths = ['/login', '/register'];
-   const isPublic    = (path: string) => publicPaths.some(p => path.startsWith(p));
+   import { api, setAccessToken } from '@wealthlog/common';
+   import { appWithTranslation } from 'next-i18next';
+   import nextI18NextConfig from '../next-i18next.config';
    
-   /* helper: cycle light → dark → system */
-   const nextMode = (
-     m: 'light' | 'dark' | 'system'
-   ): 'light' | 'dark' | 'system' =>
-     m === 'light' ? 'dark' : m === 'dark' ? 'light' : 'system';
+   /* Public routes: no auth required */
+   const PUBLIC_PATHS = ['/', '/login', '/register'];
    
-   function MyApp({ Component, pageProps }: AppProps) {
-     const { t }      = useTranslation('common');
-     const router     = useRouter();
+   /* helper: determine if a pathname is public */
+   const isPublic = (pathname: string) => PUBLIC_PATHS.some((p) => pathname === p);
    
-     /* ───────── state ───────── */
+   /* helper: cycle through display modes */
+   type Mode = 'light' | 'dark' | 'system';
+   const cycleMode = (m: Mode): Mode => (m === 'light' ? 'dark' : m === 'dark' ? 'system' : 'light');
+   
+   export default appWithTranslation(function MyApp({ Component, pageProps }: AppProps) {
+     const router = useRouter();
+   
+     /* ───────────────────────── state ───────────────────────── */
      const [checkingAuth, setCheckingAuth] = useState(true);
-     const [isLoggedIn,   setIsLoggedIn]   = useState(false);
+     const [isLoggedIn, setIsLoggedIn]     = useState(false);
    
-     /* themeMode can be light | dark | system */
-     const [themeMode, setThemeMode] =
-       useState<'light' | 'dark' | 'system'>('system');
+     const [displayMode, setDisplayMode]   = useState<Mode>('system');
+     const [drawerOpen, setDrawerOpen]     = useState(false);   // mobile sidebar
    
-     /* ───────────────────────────────────────────────────────────
-        1) Auth guard
-        ─────────────────────────────────────────────────────────── */
+     /* ────────────── fetch saved displayMode once ────────────── */
      useEffect(() => {
        (async () => {
-         if (isPublic(router.pathname)) {        // public → skip auth check
-           setCheckingAuth(false);
-           return;
+         try {
+           const { data } = await api.get('/settings'); // { displayMode }
+           setDisplayMode((data?.displayMode as Mode) ?? 'system');
+         } catch {
+           setDisplayMode('system');
          }
+       })();
+     }, []);
+   
+     /* ───────── auth guard (runs on route change) ───────── */
+     useEffect(() => {
+       if (isPublic(router.pathname)) {
+         setCheckingAuth(false);
+         return;
+       }
+   
+       (async () => {
          try {
            await api.get('/auth/me');
            setIsLoggedIn(true);
          } catch {
            setIsLoggedIn(false);
-           router.push('/login');
+           router.replace('/login');
          } finally {
            setCheckingAuth(false);
          }
        })();
      }, [router.pathname]);
    
-     /* ───────────────────────────────────────────────────────────
-        2) Pull saved displayMode once on mount
-        ─────────────────────────────────────────────────────────── */
-     useEffect(() => {
-       let mql: MediaQueryList;
-       let listener: (e: MediaQueryListEvent) => void;
-   
-       (async () => {
-         try {
-           const { data } = await api.get('/settings');   // { displayMode }
-           const saved: 'light' | 'dark' | 'system' = data.displayMode ?? 'light';
-   
-           if (saved === 'system') {
-             // respect OS; update whenever the OS theme changes
-             mql      = window.matchMedia('(prefers-color-scheme: dark)');
-             setThemeMode(mql.matches ? 'dark' : 'light');
-             listener = e => setThemeMode(e.matches ? 'dark' : 'light');
-             mql.addEventListener('change', listener);
-           } else {
-             setThemeMode(saved);
-           }
-         } catch {
-           setThemeMode('light');
-         }
-       })();
-   
-       return () => listener && mql?.removeEventListener('change', listener);
-     }, []);
-   
-     /* ───────────────────────────────────────────────────────────
-        3) Persist toggle to the DB
-        ─────────────────────────────────────────────────────────── */
+     /* ───────── toggle theme ───────── */
      async function handleToggleTheme() {
-       const newMode = nextMode(themeMode === 'light' || themeMode === 'dark'
-         ? themeMode
-         : 'system');          // when currently system we start with light
+       const next = cycleMode(displayMode);
+       setDisplayMode(next);
    
-       /* optimistic UI */
-       setThemeMode(newMode === 'system'
-         ? (window.matchMedia('(prefers-color-scheme: dark)').matches
-             ? 'dark'
-             : 'light')
-         : newMode);
+       // save asynchronously; ignore errors
+       api.post('/settings/displayMode', { displayMode: next }).catch(() => {});
+     }
    
-       try {
-         await api.post('/settings/displayMode', { displayMode: newMode });
-       } catch {
-         /* if it fails – ignore, keep current UI */
+     /* ───────── logout helper ───────── */
+     async function handleLogout() {
+       try { await api.post('/auth/logout'); } finally {
+         setAccessToken(null);
+         router.push('/login');
        }
      }
    
-     /* ───────────────────────────────────────────────────────────
-        4) Logout helper
-        ─────────────────────────────────────────────────────────── */
-     async function handleLogout() {
-       try { await api.post('/auth/logout'); } catch {/* ignore */}
-       setAccessToken(null);
-       router.push('/login');
-     }
-   
-     /* ───────────────────────────────────────────────────────────
-        5) Loading splash while auth check runs
-        ─────────────────────────────────────────────────────────── */
+     /* ───────── render splash while auth check runs ───────── */
      if (checkingAuth) {
        return (
-         <ThemeProvider attribute="class" forcedTheme={themeMode}>
-           <div className="flex items-center justify-center h-screen
-                           bg-gray-50 dark:bg-[#1e1e1e]
-                           text-gray-900 dark:text-white">
-             <p>Checking authentication…</p>
+         <ThemeProvider attribute="class" defaultTheme="system" forcedTheme={displayMode}>
+           <div className="flex items-center justify-center h-screen bg-[var(--background)] text-[var(--text)]">
+             <p>Loading …</p>
            </div>
          </ThemeProvider>
        );
      }
    
-     /* ───────────────────────────────────────────────────────────
-        6) Public pages render directly
-        ─────────────────────────────────────────────────────────── */
+     /* ───────── public pages (Login, Register, etc.) ───────── */
      if (isPublic(router.pathname)) {
        return (
-         <ThemeProvider attribute="class" forcedTheme={themeMode}>
+         <ThemeProvider attribute="class" defaultTheme="system" forcedTheme={displayMode}>
            <Component {...pageProps} />
          </ThemeProvider>
        );
      }
    
-     /* ───────────────────────────────────────────────────────────
-        7) Private pages (user must be logged‑in)
-        ─────────────────────────────────────────────────────────── */
-     if (!isLoggedIn) return null;
+     /* ───────── private pages ───────── */
+     if (!isLoggedIn) return null; // redirect in progress
+   
+     const navLinks: { href: string; label: string }[] = [
+       { href: '/landing',          label: 'Dashboard' },
+       { href: '/accounts',         label: 'Accounts' },
+       { href: '/trading',          label: 'Trading'  },
+       { href: '/realEstate',       label: 'Real Estate' },
+       { href: '/expenses',         label: 'Expenses' },
+       { href: '/loans',            label: 'Loans' },
+       { href: '/forecasting',      label: 'Forecasting' },
+       { href: '/settingsGeneral',  label: 'Settings — General' },
+       { href: '/settingsTrading',  label: 'Settings — Trading' },
+     ];
+   
+     /* icon for current displayMode */
+     const modeIcon = displayMode === 'light' ? '☀️' : displayMode === 'dark' ? '🌙' : '💻';
+   
+     /* convenience: close drawer on nav click */
+     const NavLink = ({ href, label }: { href: string; label: string }) => (
+       <Link href={href} legacyBehavior>
+         <a
+           onClick={() => setDrawerOpen(false)}
+           className={`block px-4 py-2 rounded hover:bg-[rgba(0,0,0,.05)] ${router.pathname === href ? 'font-semibold' : ''}`}
+         >
+           {label}
+         </a>
+       </Link>
+     );
    
      return (
-       <ThemeProvider attribute="class" forcedTheme={themeMode}>
-         <div
-           className="min-h-screen flex
-                      bg-gray-50 dark:bg-[#202124]
-                      text-gray-900 dark:text-[#e2e2e2]"
-         >
-           {/* ───────── Sidebar ───────── */}
-           <aside
-             className="w-64 flex flex-col
-                        bg-[#1A73E8] dark:bg-[#1A1A1A]
-                        text-white  dark:text-gray-200"
-           >
-             <div className="p-4 font-bold text-xl flex items-center gap-2">
+       <ThemeProvider attribute="class" defaultTheme="system" forcedTheme={displayMode}>
+         <div className="flex min-h-screen bg-[var(--background)] text-[var(--text)]">
+           {/* ───────── Desktop Sidebar ───────── */}
+           <aside className="hidden md:flex md:flex-col w-64 bg-[var(--primary)] text-white">
+             <header className="p-4 font-bold text-xl flex items-center gap-2">
                <img src="/logo.png" alt="WealthLog" className="h-8" />
                <span>WealthLog</span>
-             </div>
+             </header>
    
-             <nav className="flex-1 px-2 space-y-1 mt-4">
-               {[
-                 ['/landing',            t('Dashboard')],
-                 ['/accounts',           t('AccountAndBalances')],
-                 ['/trading',            t('TradingInvestments')],
-                 ['/realEstate',         t('RealEstate')],
-                 ['/expenses',           t('ExpensesBudgeting')],
-                 ['/loans',              t('Loans')],
-                 ['/forecasting',        t('Forecasting')],
-               ].map(([href, label]) => (
-                 <Link key={href} href={href} legacyBehavior>
-                   <a className="block px-3 py-2 rounded hover:bg-blue-600 dark:hover:bg-gray-700">
-                     {label}
-                   </a>
-                 </Link>
-               ))}
-   
-               {/* Collaboration group */}
-               <div className="px-3 py-2 rounded hover:bg-blue-600 dark:hover:bg-gray-700 group">
-                 <p className="font-semibold">{t('Collaboration')}</p>
-                 <div className="ml-2 mt-1 space-y-1 text-sm">
-                   {[
-                     ['/collaboration/delegated',   t('DelegatedAccess')],
-                     ['/collaboration/coaching',    t('Coaching')],
-                     ['/collaboration/communities', t('Communities')],
-                   ].map(([href, label]) => (
-                     <Link key={href} href={href} legacyBehavior>
-                       <a className="block px-2 py-1 rounded hover:bg-blue-500 dark:hover:bg-gray-600">
-                         {label}
-                       </a>
-                     </Link>
-                   ))}
-                 </div>
-               </div>
-   
-               {/* Settings group */}
-               <div className="px-3 py-2 rounded hover:bg-blue-600 dark:hover:bg-gray-700 group">
-                 <p className="font-semibold">{t('Settings')}</p>
-                 <div className="ml-2 mt-1 space-y-1 text-sm">
-                   {[
-                     ['/settingsGeneral',  t('General')],
-                     ['/settingsTrading',  t('Trading')],
-                     ['/settings',         t('Custom')],
-                   ].map(([href, label]) => (
-                     <Link key={href} href={href} legacyBehavior>
-                       <a className="block px-2 py-1 rounded hover:bg-blue-500 dark:hover:bg-gray-600">
-                         {label}
-                       </a>
-                     </Link>
-                   ))}
-                 </div>
-               </div>
+             <nav className="flex-1 space-y-1">
+               {navLinks.map((l) => <NavLink key={l.href} {...l} />)}
              </nav>
    
-             {/* bottom buttons */}
-             <div className="p-4 space-y-2">
-               <button
-                 onClick={handleToggleTheme}
-                 className="w-full py-2 rounded bg-gray-700 text-white text-xs"
-               >
-                 Toggle&nbsp;
-                 {themeMode === 'light'
-                   ? 'Dark'
-                   : themeMode === 'dark'
-                   ? 'Light'
-                   : 'System'}
+             <footer className="p-4 space-y-2">
+               <button onClick={handleToggleTheme} className="w-full py-2 rounded bg-[rgba(0,0,0,.2)]">
+                 {modeIcon}
                </button>
-   
-               <button
-                 onClick={handleLogout}
-                 className="w-full py-2 rounded bg-[#FBBC05] text-[#202124] font-semibold hover:bg-orange-400"
-               >
-                 {t('Logout')}
+               <button onClick={handleLogout} className="w-full py-2 rounded bg-[#FBBC05] text-[#202124] font-semibold">
+                 Logout
                </button>
-             </div>
+             </footer>
            </aside>
    
-           {/* main content */}
-           <main className="flex-1">
-             <Component {...pageProps} />
-           </main>
+           {/* ───────── Mobile Drawer ───────── */}
+           <div
+             className={`
+               fixed inset-0 z-40 bg-[rgba(0,0,0,.4)] backdrop-blur-sm
+               transition-opacity duration-300
+               ${drawerOpen ? 'opacity-100 visible' : 'opacity-0 invisible'}
+             `}
+             onClick={() => setDrawerOpen(false)}
+           />
+   
+           <aside
+             className={`
+               fixed inset-y-0 left-0 z-50 w-64 bg-[var(--primary)] text-white transform
+               transition-transform duration-300
+               ${drawerOpen ? 'translate-x-0' : '-translate-x-full'}
+             `}
+           >
+             <header className="p-4 font-bold text-xl flex items-center gap-2">
+               <img src="/logo.png" alt="WealthLog" className="h-8" />
+               <span>WealthLog</span>
+             </header>
+   
+             <nav className="flex-1 space-y-1">
+               {navLinks.map((l) => <NavLink key={l.href} {...l} />)}
+             </nav>
+   
+             <footer className="p-4 space-y-2">
+               <button onClick={handleToggleTheme} className="w-full py-2 rounded bg-[rgba(0,0,0,.2)]">
+                 {modeIcon}
+               </button>
+               <button onClick={handleLogout} className="w-full py-2 rounded bg-[#FBBC05] text-[#202124] font-semibold">
+                 Logout
+               </button>
+             </footer>
+           </aside>
+   
+           {/* ───────── Main Content ───────── */}
+           <div className="flex-1 flex flex-col">
+             {/* Mobile Top‑bar */}
+             <header className="md:hidden flex items-center justify-between bg-[var(--primary)] text-white px-3 py-2">
+               <button onClick={() => setDrawerOpen(true)} className="text-2xl">☰</button>
+               <h1 className="font-bold">WealthLog</h1>
+               <button onClick={handleToggleTheme} className="text-xl">{modeIcon}</button>
+             </header>
+   
+             {/* Page component */}
+             <main className="flex-1">
+               <Component {...pageProps} />
+             </main>
+           </div>
          </div>
        </ThemeProvider>
      );
-   }
-   
-   export default appWithTranslation(MyApp, nextI18NextConfig);
+   }, nextI18NextConfig);
    

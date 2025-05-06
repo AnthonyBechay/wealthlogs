@@ -128,15 +128,15 @@ export default function SettingsGeneral() {
   }
 
   return (
-    <div className="p-6 min-h-screen dark:bg-gray-900 dark:text-gray-100">
+    <div className="p-6 min-h-screen dark:bg-[var(--background-2)]  bg-[var(--background)] text-[var(--text)]">
       <h1 className="text-3xl font-bold mb-4">{t("GeneralPreferences")}</h1>
       {error && <div className="text-red-600 mb-4">{error}</div>}
 
       {/* Display Mode */}
-      <section className="mb-8 p-4 rounded shadow bg-white dark:bg-gray-800">
+      <section className="mb-8 p-4 rounded shadow bg-[var(--background-2)] dark:bg-[var(--background-2)]">
         <h2 className="text-xl font-semibold mb-2">{t("DisplayMode")}</h2>
         <select
-          className="border p-2 rounded dark:bg-gray-700"
+          className="border p-2 rounded dark:bg-[var(--background-2)]"
           value={settings.displayMode}
           onChange={e => handleDisplayMode(e.target.value)}
         >
@@ -144,16 +144,16 @@ export default function SettingsGeneral() {
           <option value="dark">{t("Dark")}</option>
           <option value="system">{t("System")}</option>
         </select>
-        <p className="text-sm text-gray-500 mt-1">
+        <p className="text-sm text-[var(--text)] mt-1">
           {t("CurrentColon")} {settings.displayMode}
         </p>
       </section>
 
       {/* Language */}
-      <section className="mb-8 p-4 rounded shadow bg-white dark:bg-gray-800">
+      <section className="mb-8 p-4 rounded shadow bg-[var(--background-2)] dark:bg-[var(--background-2)]">
         <h2 className="text-xl font-semibold mb-2">{t("Language")}</h2>
         <select
-          className="border p-2 rounded dark:bg-gray-700"
+          className="border p-2 rounded dark:bg-[var(--background-2)]"
           value={settings.language}
           onChange={e => handleLanguageChange(e.target.value)}
         >
@@ -161,16 +161,16 @@ export default function SettingsGeneral() {
           <option value="ar">{t("Arabic")}</option>
           <option value="fr">{t("French")}</option>
         </select>
-        <p className="text-sm text-gray-500 mt-1">
+        <p className="text-sm text-[var(--text)] mt-1">
           {t("CurrentColon")} {settings.language}
         </p>
       </section>
 
       {/* Timezone */}
-      <section className="mb-8 p-4 rounded shadow bg-white dark:bg-gray-800">
+      <section className="mb-8 p-4 rounded shadow bg-[var(--background-2)] dark:bg-[var(--background-2)]">
         <h2 className="text-xl font-semibold mb-2">{t("Timezone")}</h2>
         <select
-          className="border p-2 rounded dark:bg-gray-700"
+          className="border p-2 rounded dark:bg-[var(--background-2)]"
           value={settings.timezone}
           onChange={e => handleTimezoneChange(e.target.value)}
         >
@@ -180,21 +180,21 @@ export default function SettingsGeneral() {
             </option>
           ))}
         </select>
-        <p className="text-sm text-gray-500 mt-1">
+        <p className="text-sm text-[var(--text)] mt-1">
           {t("CurrentColon")} {settings.timezone}
         </p>
       </section>
 
       {/* Preferred Currency */}
-      <section className="mb-8 p-4 rounded shadow bg-white dark:bg-gray-800">
+      <section className="mb-8 p-4 rounded shadow bg-[var(--background-2)] dark:bg-[var(--background-2)]">
         <h2 className="text-xl font-semibold mb-2">{t("PreferredCurrency")}</h2>
         <input
           type="text"
-          className="border p-2 rounded dark:bg-gray-700"
+          className="border p-2 rounded dark:bg-[var(--background-2)]"
           value={settings.preferredCurrency}
           onChange={e => handleCurrencyChange(e.target.value)}
         />
-        <p className="text-sm text-gray-500 mt-1">
+        <p className="text-sm text-[var(--text)] mt-1">
           {t("CurrentColon")} {settings.preferredCurrency}
         </p>
       </section>

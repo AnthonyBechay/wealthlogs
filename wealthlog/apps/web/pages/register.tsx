@@ -44,12 +44,12 @@ export default function Register() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <div className="w-full max-w-lg bg-white rounded-lg shadow p-6">
-        <h2 className="text-3xl font-extrabold text-center text-gray-800">
+    <div className="min-h-screen flex items-center justify-center bg-[var(--background-2)] bg-[var(--background)] text-[var(--text)]">
+      <div className="w-full max-w-lg bg-[var(--background-2)] rounded-lg shadow p-6">
+        <h2 className="text-3xl font-extrabold text-center text-[var(--text)]">
           Create an Account
         </h2>
-        <p className="text-center text-gray-500 mt-1">
+        <p className="text-center text-[var(--text)] mt-1">
           Get started with your WealthLog!
         </p>
 
@@ -62,7 +62,7 @@ export default function Register() {
         <form onSubmit={handleRegister} className="mt-6 space-y-4">
           {/* Username + Email */}
           <div>
-            <label className="block font-semibold text-gray-700">Username</label>
+            <label className="block font-semibold text-[var(--text)]">Username</label>
             <input
               type="text"
               className="mt-1 p-2 w-full border rounded focus:outline-none focus:ring focus:ring-blue-300"
@@ -72,7 +72,7 @@ export default function Register() {
             />
           </div>
           <div>
-            <label className="block font-semibold text-gray-700">Email</label>
+            <label className="block font-semibold text-[var(--text)]">Email</label>
             <input
               type="email"
               className="mt-1 p-2 w-full border rounded focus:outline-none focus:ring focus:ring-blue-300"
@@ -84,7 +84,7 @@ export default function Register() {
 
           {/* Password */}
           <div>
-            <label className="block font-semibold text-gray-700">Password</label>
+            <label className="block font-semibold text-[var(--text)]">Password</label>
             <input
               type="password"
               className="mt-1 p-2 w-full border rounded focus:outline-none focus:ring focus:ring-blue-300"
@@ -97,7 +97,7 @@ export default function Register() {
           {/* First & Last Name */}
           <div className="flex gap-2">
             <div className="flex-1">
-              <label className="block font-semibold text-gray-700">First Name</label>
+              <label className="block font-semibold text-[var(--text)]">First Name</label>
               <input
                 type="text"
                 className="mt-1 p-2 w-full border rounded focus:outline-none focus:ring focus:ring-blue-300"
@@ -107,7 +107,7 @@ export default function Register() {
               />
             </div>
             <div className="flex-1">
-              <label className="block font-semibold text-gray-700">Last Name</label>
+              <label className="block font-semibold text-[var(--text)]">Last Name</label>
               <input
                 type="text"
                 className="mt-1 p-2 w-full border rounded focus:outline-none focus:ring focus:ring-blue-300"
@@ -120,7 +120,7 @@ export default function Register() {
 
           {/* Phone + DOB (optional) */}
           <div>
-            <label className="block font-semibold text-gray-700">Phone (Optional)</label>
+            <label className="block font-semibold text-[var(--text)]">Phone (Optional)</label>
             <input
               type="tel"
               className="mt-1 p-2 w-full border rounded focus:outline-none focus:ring focus:ring-blue-300"
@@ -129,7 +129,7 @@ export default function Register() {
             />
           </div>
           <div>
-            <label className="block font-semibold text-gray-700">Date of Birth (Optional)</label>
+            <label className="block font-semibold text-[var(--text)]">Date of Birth (Optional)</label>
             <input
               type="date"
               className="mt-1 p-2 w-full border rounded focus:outline-none focus:ring focus:ring-blue-300"
@@ -140,7 +140,7 @@ export default function Register() {
 
           {/* Security Q/A (optional) */}
           <div>
-            <label className="block font-semibold text-gray-700">Security Question (Optional)</label>
+            <label className="block font-semibold text-[var(--text)]">Security Question (Optional)</label>
             <input
               type="text"
               className="mt-1 p-2 w-full border rounded focus:outline-none focus:ring focus:ring-blue-300"
@@ -149,7 +149,7 @@ export default function Register() {
             />
           </div>
           <div>
-            <label className="block font-semibold text-gray-700">Security Answer (Optional)</label>
+            <label className="block font-semibold text-[var(--text)]">Security Answer (Optional)</label>
             <input
               type="text"
               className="mt-1 p-2 w-full border rounded focus:outline-none focus:ring focus:ring-blue-300"
@@ -160,7 +160,7 @@ export default function Register() {
 
           {/* Role */}
           <div>
-            <label className="block font-semibold text-gray-700">Role</label>
+            <label className="block font-semibold text-[var(--text)]">Role</label>
             <select
               className="mt-1 p-2 w-full border rounded focus:outline-none focus:ring focus:ring-blue-300"
               value={roleName}
@@ -180,7 +180,7 @@ export default function Register() {
           </button>
         </form>
 
-        <p className="mt-4 text-center text-gray-600">
+        <p className="mt-4 text-center text-[var(--text)]">
           Already have an account?{" "}
           <a href="/login" className="text-blue-600 hover:text-blue-700 font-semibold">
             Login
