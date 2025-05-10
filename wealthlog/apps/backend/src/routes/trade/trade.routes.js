@@ -90,8 +90,16 @@ router.post("/", authenticate, async (req, res) => {
       await prisma.fxTrade.create({
         data: {
           tradeId: newTrade.id,
-          amountGain: amountGain ?? null,
-          percentageGain: percentageGain ?? null,
+          lots:           fx.lots           ?? null,
+          entryPrice:     fx.entryPrice     ?? null,
+          exitPrice:      fx.exitPrice      ?? null,
+          stopLossPips:   fx.stopLossPips   ?? null,
+          pipsGain:       fx.pipsGain       ?? null,
+          amountGain:     amountGain != null && percentageGain != null
+                             ? null
+                             : amountGain      ?? null,
+          percentageGain: percentageGain    ?? null,
+          source:         fx.source         ?? null,
         },
       });
     } else if (tradeType === "BOND") {
@@ -236,8 +244,16 @@ router.put("/:id", authenticate, async (req, res) => {
       await prisma.fxTrade.update({
         where: { tradeId },
         data: {
-          amountGain: amountGain ?? null,
-          percentageGain: percentageGain ?? null,
+          lots:           fx.lots           ?? existing.fxTrade.lots,
+          entryPrice:     fx.entryPrice     ?? existing.fxTrade.entryPrice,
+          exitPrice:      fx.exitPrice      ?? existing.fxTrade.exitPrice,
+          stopLossPips:   fx.stopLossPips   ?? existing.fxTrade.stopLossPips,
+          pipsGain:       fx.pipsGain       ?? existing.fxTrade.pipsGain,
+          amountGain:     amountGain != null && percentageGain != null
+                             ? null
+                             : amountGain      ?? existing.fxTrade.amountGain,
+          percentageGain: percentageGain    ?? existing.fxTrade.percentageGain,
+          source:         fx.source         ?? existing.fxTrade.source,
         },
       });
     } else if (existing.tradeType === "BOND" && existing.bondTrade) {

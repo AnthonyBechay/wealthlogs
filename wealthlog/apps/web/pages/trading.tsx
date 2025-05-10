@@ -104,6 +104,13 @@ export default function TradingPage() {
   const [fxAmountGain, setFxAmountGain] = useState("0");
   const [fxPercentageGain, setFxPercentageGain] = useState("0");
   const [createMediaList, setCreateMediaList] = useState<MediaTagItem[]>([]);
+  const [showFxAdvanced, setShowFxAdvanced] = useState(false);
+  const [fxLots, setFxLots] = useState("0");
+  const [fxEntryPrice, setFxEntryPrice] = useState("0");
+  const [fxExitPrice, setFxExitPrice] = useState("0");
+  const [fxStopLossPips, setFxStopLossPips] = useState("0");
+  const [fxPipsGain, setFxPipsGain] = useState("0");
+
 
   // EDIT TRADE
   const [showEditModal, setShowEditModal] = useState(false);
@@ -319,6 +326,11 @@ export default function TradingPage() {
     // parse Gains
     let fxData: any = undefined;
     if (activeTab === "FX") {
+      const lots                = parseFloat(fxLots)        || null;
+      const entryPrice          = parseFloat(fxEntryPrice)  || null;
+      const exitPrice           = parseFloat(fxExitPrice)   || null;
+      const stopLossPips        = parseFloat(fxStopLossPips)|| null;
+      const pipsGain            = parseFloat(fxPipsGain)    || null;
       const aGain = parseFloat(fxAmountGain) || 0;
       const pGain = parseFloat(fxPercentageGain) || 0;
       if (aGain !== 0 && pGain !== 0) {
@@ -329,7 +341,19 @@ export default function TradingPage() {
       } else if (pGain !== 0) {
         fxData = { percentageGain: pGain / 100 };
       }
+
+      fxData = {
+        ...fxData,
+        lots,
+        entryPrice,
+        exitPrice,
+        stopLossPips,
+        pipsGain,
+      };
+      
     }
+
+    
 
     // pick tradeType from account
     const acct = allAccounts.find((a) => a.id === selectedAccountId);
@@ -745,30 +769,93 @@ export default function TradingPage() {
                     </div>
 
                     {activeTab === "FX" && (
-                      <div className="border bg-[var(--background-2)] p-3 rounded">
-                        <p className="font-medium text-sm mb-2">FX Gains</p>
-                        <div className="flex gap-4">
-                          <div className="flex-1">
-                            <label className="block text-sm">amount Gain ($)</label>
-                            <input
-                              type="text"
-                              className="w-full border p-1 rounded"
-                              value={fxAmountGain}
-                              onChange={(e) => setFxAmountGain(e.target.value)}
-                            />
-                          </div>
-                          <div className="flex-1">
-                            <label className="block text-sm">percentage Gain (%)</label>
-                            <input
-                              type="text"
-                              className="w-full border p-1 rounded"
-                              value={fxPercentageGain}
-                              onChange={(e) => setFxPercentageGain(e.target.value)}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    )}
+  <div className="border bg-[var(--background-2)] p-3 rounded space-y-3">
+    <div className="flex justify-between items-center">
+      <p className="font-medium text-sm">FX Details</p>
+      <button
+        type="button"
+        onClick={() => setShowFxAdvanced(!showFxAdvanced)}
+        className="text-sm text-blue-600"
+      >
+        {showFxAdvanced ? "Hide Advanced" : "Show Advanced"}
+      </button>
+    </div>
+
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {/* amount & percentage */}
+      <div>
+        <label className="block text-sm">Amount Gain ($)</label>
+        <input
+          type="text"
+          className="w-full border p-1 rounded"
+          value={fxAmountGain}
+          onChange={e => setFxAmountGain(e.target.value)}
+        />
+      </div>
+      <div>
+        <label className="block text-sm">% Gain</label>
+        <input
+          type="text"
+          className="w-full border p-1 rounded"
+          value={fxPercentageGain}
+          onChange={e => setFxPercentageGain(e.target.value)}
+        />
+      </div>
+
+          {/* advanced fields, only if toggled */}
+          {showFxAdvanced && (
+            <>
+              <div>
+                <label className="block text-sm">Lots</label>
+                <input
+                  type="text"
+                  className="w-full border p-1 rounded"
+                  value={fxLots}
+                  onChange={e => setFxLots(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="block text-sm">Entry Price</label>
+                <input
+                  type="text"
+                  className="w-full border p-1 rounded"
+                  value={fxEntryPrice}
+                  onChange={e => setFxEntryPrice(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="block text-sm">Exit Price</label>
+                <input
+                  type="text"
+                  className="w-full border p-1 rounded"
+                  value={fxExitPrice}
+                  onChange={e => setFxExitPrice(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="block text-sm">Stop-Loss (pips)</label>
+                <input
+                  type="text"
+                  className="w-full border p-1 rounded"
+                  value={fxStopLossPips}
+                  onChange={e => setFxStopLossPips(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="block text-sm">Pips Gain</label>
+                <input
+                  type="text"
+                  className="w-full border p-1 rounded"
+                  value={fxPipsGain}
+                  onChange={e => setFxPipsGain(e.target.value)}
+                />
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    )}
+
 
                     {/* Multiple media items */}
                     <div className="border bg-[var(--background)] p-3 rounded">
@@ -882,11 +969,13 @@ export default function TradingPage() {
                           percentGain = t.fxTrade.percentageGain * 100;
                         }
                         // if only amountGain was stored, compute approximate percent:
-                        if (amountGain && !percentGain && t.postTradeBalance) {
-                          // we guess we do: amountGain / (postTradeBalance - amountGain?)
-                          // or if there's no preTradeBalance. We'll do a rough approach:
-                          percentGain = 100 * (amountGain / (t.postTradeBalance - amountGain || 1));
-                        } else if (percentGain && !amountGain && t.postTradeBalance) {
+                        if (amountGain && !percentGain && t.postTradeBalance != null) {
+                          // recalculate the true pre-trade balance by undoing both gain and fees:
+                          const preBalance = t.postTradeBalance - amountGain + (t.fees || 0);
+                          // now %-gain = profit ÷ true starting balance
+                          percentGain = 100 * (amountGain / (preBalance || 1));
+                        }
+                        else if (percentGain && !amountGain && t.postTradeBalance) {
                           // if only % => compute approximate $?
                           amountGain = (percentGain / 100) * (t.postTradeBalance / (1 + percentGain / 100));
                         }

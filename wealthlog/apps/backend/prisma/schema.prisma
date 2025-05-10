@@ -273,9 +273,11 @@ model FxTrade {
   entryPrice     Float?
   exitPrice      Float?
   lots           Float?
+  stopLossPips   Float?
   pipsGain       Float?
   amountGain     Float?
   percentageGain Float?
+  source         String?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @default(now())
 }
