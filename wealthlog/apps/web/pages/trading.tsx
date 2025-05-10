@@ -771,7 +771,7 @@ export default function TradingPage() {
                     )}
 
                     {/* Multiple media items */}
-                    <div className="border bg-[var(--background-2)] p-3 rounded">
+                    <div className="border bg-[var(--background)] p-3 rounded">
                       <h4 className="font-medium text-sm mb-2">Attach Multiple Media</h4>
                       {createMediaList.map((m, i) => (
                         <div key={i} className="border p-2 rounded mb-2 bg-[var(--background-2)] ">

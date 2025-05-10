@@ -195,7 +195,7 @@ export default function AccountsPage() {
       );
 
   return (
-    <div className="p-6 min-h-screen bg-[var(--background-2)] bg-[var(--background)] text-[var(--text)]">
+    <div className="p-6 min-h-screen bg-[var(--background)] bg-[var(--background)] text-[var(--text)]">
       <h1 className="text-3xl font-bold mb-6">Accounts & Balances</h1>
 
       {/* =========== Accounts List & Create Form =========== */}

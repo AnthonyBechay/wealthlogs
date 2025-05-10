@@ -4,11 +4,11 @@
    Any plain‑CSS element backgrounds now reference the variables,
    while the existing Tailwind classes still apply for utility‑based UI. */
 :root {
-  --background:        #FFFFFF;
-  --background-2:      #F1F5F9;
+  --background:        #d8dae7e1;
+  --background-2:      #FFFFFF;
   --text:              #000000;
   --primary:           #3B82F6;
-  --danger:            #EF4444;
+  --danger:            #ff6868;
   --success:           #10B981;
 }
 
