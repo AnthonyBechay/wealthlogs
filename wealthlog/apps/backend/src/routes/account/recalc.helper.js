@@ -2,111 +2,95 @@
 const { prisma } = require('../../lib/prisma');
 
 /**
- * Recalculate the entire account balance for the given accountId.
- * - Sort all transactions and trades by date ascending
- * - For trades: If tradeType="FX" and fxTrade is present, apply amountGain or percentageGain
- * - Optionally handle BOND or STOCK sub-trades
+ * Recalculates an account's balance by summing all trade impacts
+ * @param {number} accountId - The account ID to recalculate
+ * @returns {Promise<number>} The new calculated balance
  */
 async function recalcAccountBalance(accountId) {
-  const account = await prisma.financialAccount.findUnique({
-    where: { id: accountId },
-  });
-  if (!account) throw new Error(`Account ${accountId} not found`);
-
-  // 1) Reset the balance to 0 first
-  await prisma.financialAccount.update({
-    where: { id: accountId },
-    data: { balance: 0 },
-  });
-
-  // 2) Gather transactions (asc by date)
-  const transactions = await prisma.transaction.findMany({
-    where: {
-      OR: [
-        { fromAccountId: accountId },
-        { toAccountId: accountId },
-      ]
-    },
-    orderBy: { dateTime: "asc" },
-  });
-
-  // 3) Gather trades (asc by entryDate)
-  const trades = await prisma.trade.findMany({
-    where: { accountId },
-    orderBy: { entryDate: "asc" },
-    include: {
-      fxTrade: true,
-      bondTrade: true,
-      stocksTrade: true,
-    },
-  });
-
-  // Combine into a single event array
-  const events = [];
-
-  for (const tx of transactions) {
-    events.push({
-      type: "transaction",
-      date: tx.dateTime,
-      transaction: tx,
+  try {
+    // Get all trades for this account
+    const trades = await prisma.trade.findMany({
+      where: { accountId },
+      include: {
+        fxTrade: true,
+        bondTrade: true,
+        stocksTrade: true,
+      },
+      orderBy: { entryDate: 'asc' }, // Process in chronological order
     });
-  }
-  for (const tr of trades) {
-    events.push({
-      type: "trade",
-      date: tr.entryDate || new Date(),
-      trade: tr,
+
+    // Get the account's initial balance
+    const account = await prisma.financialAccount.findUnique({
+      where: { id: accountId },
     });
-  }
-
-  events.sort((a, b) => new Date(a.date) - new Date(b.date));
-
-  let runningBalance = 0;
-  for (const event of events) {
-    if (event.type === "transaction") {
-      const tx = event.transaction;
-      if (tx.type === "DEPOSIT" && tx.toAccountId === accountId) {
-        runningBalance += tx.amount;
-      } else if (tx.type === "WITHDRAW" && tx.fromAccountId === accountId) {
-        runningBalance -= tx.amount;
-      } else if (tx.type === "TRANSFER") {
-        if (tx.fromAccountId === accountId) {
-          runningBalance -= tx.amount;
-        } else if (tx.toAccountId === accountId) {
-          runningBalance += tx.amount;
-        }
-      }
-    } else {
-      // event.type === "trade"
-      const tr = event.trade;
-      // Subtract fees
-      runningBalance -= tr.fees;
-
-      // If FX
-      if (tr.tradeType === "FX" && tr.fxTrade) {
-        const fx = tr.fxTrade;
-        // If both exist, prefer percentageGain
-        if (fx.percentageGain != null) {
-          const gain = runningBalance * fx.percentageGain;
-          runningBalance += gain;
-        } else if (fx.amountGain != null) {
-          runningBalance += fx.amountGain;
-        }
-      } else if (tr.tradeType === "BOND" && tr.bondTrade) {
-        // placeholder: do your BOND logic, e.g. coupon or exit price
-      } else if (tr.tradeType === "STOCK" && tr.stocksTrade) {
-        // placeholder: handle dividends or exit price etc.
-      }
+    
+    if (!account) {
+      throw new Error('Account not found');
     }
-  }
 
-  // Finally update the account's balance
-  await prisma.financialAccount.update({
-    where: { id: accountId },
-    data: { balance: runningBalance },
-  });
+    let runningBalance = account.initialBalance || 0;
+
+    // Process each trade
+    for (const trade of trades) {
+      let tradeImpact = 0;
+
+      // Calculate impact based on trade type
+      switch (trade.tradeType) {
+        case 'FX':
+          if (trade.fxTrade) {
+            // Prefer amountGain if provided, otherwise calculate from percentage
+            if (trade.fxTrade.amountGain !== null) {
+              tradeImpact = parseFloat(trade.fxTrade.amountGain);
+            } else if (trade.fxTrade.percentageGain !== null && 
+                      trade.fxTrade.lots !== null && 
+                      trade.fxTrade.entryPrice !== null) {
+              const lotSize = 100000; // Standard FX lot size
+              const positionSize = trade.fxTrade.lots * lotSize * trade.fxTrade.entryPrice;
+              tradeImpact = (trade.fxTrade.percentageGain / 100) * positionSize;
+            }
+          }
+          break;
+
+        case 'STOCK':
+          if (trade.stocksTrade) {
+            tradeImpact = trade.stocksTrade.quantity * 
+                         (trade.stocksTrade.exitPrice - trade.stocksTrade.entryPrice);
+          }
+          break;
+
+        case 'BOND':
+          if (trade.bondTrade) {
+            // Simplified bond calculation - adjust as needed
+            const priceDiff = trade.bondTrade.exitPrice - trade.bondTrade.entryPrice;
+            tradeImpact = trade.bondTrade.quantity * priceDiff;
+            
+            // If you want to include coupon payments:
+            // const couponPayment = ...;
+            // tradeImpact += couponPayment;
+          }
+          break;
+
+        // Add other trade types as needed
+      }
+
+      // Subtract fees
+      tradeImpact -= parseFloat(trade.fees || 0);
+
+      // Apply to running balance
+      runningBalance += tradeImpact;
+    }
+
+    // Update the account with the new balance
+    await prisma.financialAccount.update({
+      where: { id: accountId },
+      data: { balance: runningBalance },
+    });
+
+    return runningBalance;
+  } catch (error) {
+    console.error('Error in recalcAccountBalance:', error);
+    throw error; // Re-throw for the route to handle
+  }
 }
 
-module.exports = {
-  recalcAccountBalance,
-};
+module.exports = { recalcAccountBalance };

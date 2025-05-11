@@ -1,0 +1,26 @@
+
+> wealthlog-web@0.1.0 dev
+> next dev
+
+   ▲ Next.js 15.1.7
+   - Local:        http://localhost:3000
+   - Network:      http://192.168.68.160:3000
+
+ ✓ Starting...
+ ✓ Ready in 4.3s
+ ○ Compiling /_error ...
+ ✓ Compiled /_error in 4s (476 modules)
+ ✓ Compiled in 472ms (344 modules)
+ GET /_next/static/webpack/f1e3212823d2d7a5.webpack.hot-update.json 404 in 5926ms
+ ⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+ ○ Compiling /trading ...
+ ✓ Compiled /trading in 992ms (480 modules)
+ GET /_next/static/webpack/f1e3212823d2d7a5.webpack.hot-update.json 404 in 1308ms
+ ⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+ GET /trading 200 in 1703ms
+ GET /trading 200 in 635ms
+ ○ Compiling /accounts ...
+ ✓ Compiled /accounts in 756ms (484 modules)
+ GET /trading 200 in 508ms
+ GET /_next/static/chunks/pages/trading/advanced-filter.js 404 in 457ms
+ GET /trading/advanced-filter 404 in 452ms
