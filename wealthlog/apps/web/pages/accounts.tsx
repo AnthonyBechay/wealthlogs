@@ -14,12 +14,15 @@ interface FinancialAccount {
 
 interface Transaction {
   id: number;
-  type: string;      // e.g. "DEPOSIT", "WITHDRAW", "TRANSFER"
+  type: string;      // "DEPOSIT", "WITHDRAW", "TRANSFER", "DIVIDEND"
   amount: number;
   dateTime: string;  // ISO string
   currency: string;
+  description?: string;
   fromAccountId?: number;
+  fromAccount?: { name: string };
   toAccountId?: number;
+  toAccount?: { name: string };
 }
 
 export default function AccountsPage() {
@@ -64,14 +67,18 @@ export default function AccountsPage() {
     }
   }
 
-  async function loadTransactions() {
-    try {
-      const res = await api.get<Transaction[]>("/transactions");
-      setTransactions(res.data || []);
-    } catch (error) {
-      console.error("Failed to load transactions:", error);
-    }
+
+async function loadTransactions() {
+  try {
+    const res = await api.get<Transaction[]>("/transactions");
+    setTransactions(res.data);
+  } catch (error) {
+    console.error("Failed to load transactions:", error);
+    // Optional: show user-friendly error message
+    setTransactions([]); // Reset to empty array on error
   }
+}
+
 
   // --- CREATE A NEW ACCOUNT ---
   async function handleCreateAccount(e: React.FormEvent) {

@@ -217,6 +217,8 @@ model FinancialAccount {
 
   brokerInstitutionId Int?
   brokerInstitution   BrokerInstitution? @relation(fields: [brokerInstitutionId], references: [id])
+  initialBalance      Float              @default(0)
+  lastRecalculatedAt  DateTime?
 
   // Transaction relations
   transactionsFrom Transaction[] @relation("TransactionFrom")
@@ -252,11 +254,11 @@ model Trade {
   notes          String?
   createdAt      DateTime         @default(now())
   updatedAt      DateTime         @default(now())
-
-  fxTrade     FxTrade?
-  stocksTrade StocksTrade?
-  bondTrade   BondTrade?
-  tradeLabels TradeLabel[]
+  realizedPL     Float?           @default(0)
+  fxTrade        FxTrade?
+  stocksTrade    StocksTrade?
+  bondTrade      BondTrade?
+  tradeLabels    TradeLabel[]
 
   // NEW: Add relation to TradeMedia
   media TradeMedia[]
@@ -324,16 +326,16 @@ model Transaction {
   fromAccountId Int?
   fromAccount   FinancialAccount? @relation("TransactionFrom", fields: [fromAccountId], references: [id])
 
-  toAccountId Int?
-  toAccount   FinancialAccount? @relation("TransactionTo", fields: [toAccountId], references: [id])
-
-  type        TransactionType
-  amount      Float
-  dateTime    DateTime        @default(now())
-  currency    String          @default("USD")
-  description String?
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @default(now())
+  toAccountId   Int?
+  toAccount     FinancialAccount? @relation("TransactionTo", fields: [toAccountId], references: [id])
+  balanceImpact Float?
+  type          TransactionType
+  amount        Float
+  dateTime      DateTime          @default(now())
+  currency      String            @default("USD")
+  description   String?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @default(now())
 
   @@index([fromAccountId])
   @@index([toAccountId])
@@ -420,24 +422,23 @@ model RecurringEntry {
 }
 
 model Settings {
-  id       Int     @id @default(autoincrement())
-  userId   Int     @unique
-  user     User    @relation(fields: [userId], references: [id])
-  instruments Json
-  patterns    Json
-  beMin       Float   @default(-0.2)
-  beMax       Float   @default(0.3)
-  preferredCurrency String? @default("USD")
-  language    String? @default("en")
-  timezone    String? @default("UTC")
-  displayMode String?
-  notificationPreferences Json?
+  id                                Int     @id @default(autoincrement())
+  userId                            Int     @unique
+  user                              User    @relation(fields: [userId], references: [id])
+  instruments                       Json
+  patterns                          Json
+  beMin                             Float   @default(-0.2)
+  beMax                             Float   @default(0.3)
+  preferredCurrency                 String? @default("USD")
+  language                          String? @default("en")
+  timezone                          String? @default("UTC")
+  displayMode                       String?
+  notificationPreferences           Json?
   defaultExpenseWithdrawalAccountId Int?
 
   // NEW:
-  mediaTags   Json? // e.g. store as an array of strings
+  mediaTags Json? // e.g. store as an array of strings
 }
-
 
 model Subscription {
   id        Int       @id @default(autoincrement())
@@ -712,13 +713,13 @@ model CollectibleValuation {
 }
 
 model TradeMedia {
-  id          Int       @id @default(autoincrement())
+  id          Int      @id @default(autoincrement())
   tradeId     Int
-  trade       Trade     @relation(fields: [tradeId], references: [id])
+  trade       Trade    @relation(fields: [tradeId], references: [id])
   labelId     Int?
-  label       Label?    @relation(fields: [labelId], references: [id])
+  label       Label?   @relation(fields: [labelId], references: [id])
   imageUrl    String
   description String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @default(now())
 }

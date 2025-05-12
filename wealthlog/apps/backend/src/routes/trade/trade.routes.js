@@ -30,33 +30,39 @@ function detectSession(dateString) {
   return "Other";
 }
 
-// 1) CREATE a new trade
+
+
+
+
+// 1) CREATE a new trade (Complete version)
 router.post("/", authenticate, async (req, res) => {
   try {
     const {
       tradeType,
       accountId,
       instrument,
+      status = 'OPEN',
       direction = "Long",
       fees = 0,
-      dateTime,
+      entryDate,
+      exitDate,
       pattern,
+      notes,
+      amount,
+      realizedPL,
       fx = {},
       bond = {},
       stock = {},
+      crypto = {},
+      etf = {}
     } = req.body;
 
-    if (!tradeType) {
-      return res.status(400).json({ error: "tradeType is required" });
-    }
-    if (!accountId) {
-      return res.status(400).json({ error: "accountId is required" });
-    }
-    if (!instrument) {
-      return res.status(400).json({ error: "instrument is required" });
-    }
+    // Validate required fields
+    if (!tradeType) return res.status(400).json({ error: "tradeType is required" });
+    if (!accountId) return res.status(400).json({ error: "accountId is required" });
+    if (!instrument) return res.status(400).json({ error: "instrument is required" });
 
-    // confirm ownership
+    // Verify account ownership
     const account = await prisma.financialAccount.findUnique({
       where: { id: accountId },
     });
@@ -64,76 +70,125 @@ router.post("/", authenticate, async (req, res) => {
       return res.status(403).json({ error: "Not authorized for that account" });
     }
 
-    const dt = dateTime ? new Date(dateTime) : new Date();
-    const session = detectSession(dt);
+    // Prepare dates and session info
+    const entryDt = entryDate ? new Date(entryDate) : new Date();
+    const exitDt = exitDate ? new Date(exitDate) : null;
+    const session = detectSession(entryDt);
 
-    // create trade
+    // Create main trade record
     const newTrade = await prisma.trade.create({
       data: {
         tradeType,
         accountId,
         instrument,
+        status,
         tradeDirection: direction === "Short" ? "SHORT" : "LONG",
         fees,
-        entryDate: dt,
+        entryDate: entryDt,
+        exitDate: exitDt,
         pattern: pattern || null,
-        notes: `session: ${session}`,
+        notes: notes || `session: ${session}`,
+        amount: amount || null,
+        realizedPL: realizedPL || null,
       },
     });
 
-    // create sub-trade if needed
-    if (tradeType === "FX") {
-      let { amountGain, percentageGain } = fx;
-      if (amountGain != null && percentageGain != null) {
-        amountGain = null; // prefer percentage
-      }
-      await prisma.fxTrade.create({
-        data: {
-          tradeId: newTrade.id,
-          lots:           fx.lots           ?? null,
-          entryPrice:     fx.entryPrice     ?? null,
-          exitPrice:      fx.exitPrice      ?? null,
-          stopLossPips:   fx.stopLossPips   ?? null,
-          pipsGain:       fx.pipsGain       ?? null,
-          amountGain:     amountGain != null && percentageGain != null
-                             ? null
-                             : amountGain      ?? null,
-          percentageGain: percentageGain    ?? null,
-          source:         fx.source         ?? null,
-        },
-      });
-    } else if (tradeType === "BOND") {
-      await prisma.bondTrade.create({
-        data: {
-          tradeId: newTrade.id,
-          entryPrice: bond.entryPrice || 0,
-          exitPrice: bond.exitPrice || 0,
-          quantity: bond.quantity || 0,
-          couponRate: bond.couponRate || 0,
-          maturityDate: bond.maturityDate ? new Date(bond.maturityDate) : null,
-        },
-      });
-    } else if (tradeType === "STOCK") {
-      await prisma.stocksTrade.create({
-        data: {
-          tradeId: newTrade.id,
-          entryPrice: stock.entryPrice || 0,
-          exitPrice: stock.exitPrice || 0,
-          quantity: stock.quantity || 0,
-        },
-      });
+    // Create specific trade subtype based on tradeType
+    switch (tradeType) {
+      case "FX":
+        await handleFxTrade(newTrade.id, fx);
+        break;
+      case "STOCK":
+        await handleStockTrade(newTrade.id, stock);
+        break;
+      case "BOND":
+        await handleBondTrade(newTrade.id, bond);
+        break;
+      case "CRYPTO":
+        await handleCryptoTrade(newTrade.id, crypto);
+        break;
+      case "ETF":
+        await handleEtfTrade(newTrade.id, etf);
+        break;
+      default:
+        console.warn(`Unhandled trade type: ${tradeType}`);
     }
-    // CRYPTO, etc. if needed
 
-    // recalc
-    await recalcAccountBalance(accountId);
+    // Recalculate account balance if trade is closed
+    if (status === 'CLOSED') {
+      await recalcAccountBalance(accountId);
+    }
 
-    res.json({ message: "Trade created", tradeId: newTrade.id });
+    res.json({ 
+      message: "Trade created successfully", 
+      tradeId: newTrade.id,
+      status: "Balance will be recalculated when trade is closed"
+    });
+
   } catch (err) {
     console.error("Error creating trade:", err);
     res.status(500).json({ error: "Failed to create trade" });
   }
 });
+
+// Helper functions for specific trade types
+async function handleFxTrade(tradeId, fxData) {
+  let { amountGain, percentageGain } = fxData;
+  if (amountGain != null && percentageGain != null) {
+    amountGain = null; // prefer percentage if both provided
+  }
+
+  return prisma.fxTrade.create({
+    data: {
+      tradeId,
+      lots: fxData.lots ?? null,
+      entryPrice: fxData.entryPrice ?? null,
+      exitPrice: fxData.exitPrice ?? null,
+      stopLossPips: fxData.stopLossPips ?? null,
+      pipsGain: fxData.pipsGain ?? null,
+      amountGain: amountGain ?? null,
+      percentageGain: percentageGain ?? null,
+      source: fxData.source ?? null,
+    },
+  });
+}
+
+async function handleStockTrade(tradeId, stockData) {
+  return prisma.stocksTrade.create({
+    data: {
+      tradeId,
+      entryPrice: stockData.entryPrice || 0,
+      exitPrice: stockData.exitPrice || 0,
+      quantity: stockData.quantity || 0,
+    },
+  });
+}
+
+async function handleBondTrade(tradeId, bondData) {
+  return prisma.bondTrade.create({
+    data: {
+      tradeId,
+      entryPrice: bondData.entryPrice || 0,
+      exitPrice: bondData.exitPrice || 0,
+      quantity: bondData.quantity || 0,
+      couponRate: bondData.couponRate || 0,
+      maturityDate: bondData.maturityDate ? new Date(bondData.maturityDate) : null,
+    },
+  });
+}
+
+async function handleCryptoTrade(tradeId, cryptoData) {
+  // Implement similar to other trade types when ready
+  console.log("Crypto trade creation not yet implemented");
+}
+
+async function handleEtfTrade(tradeId, etfData) {
+  // Implement similar to other trade types when ready
+  console.log("ETF trade creation not yet implemented");
+}
+
+
+
 
 // 2) GET /trade
 router.get("/", authenticate, async (req, res) => {

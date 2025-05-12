@@ -1,96 +1,159 @@
-// src/routes/account/recalc.helper.js
 const { prisma } = require('../../lib/prisma');
 
 /**
- * Recalculates an account's balance by summing all trade impacts
- * @param {number} accountId - The account ID to recalculate
- * @returns {Promise<number>} The new calculated balance
+ * Recalculates account balance with proper sequencing of transactions and trades
+ * Records balance history at each significant point
  */
 async function recalcAccountBalance(accountId) {
   try {
-    // Get all trades for this account
-    const trades = await prisma.trade.findMany({
-      where: { accountId },
-      include: {
-        fxTrade: true,
-        bondTrade: true,
-        stocksTrade: true,
-      },
-      orderBy: { entryDate: 'asc' }, // Process in chronological order
-    });
-
-    // Get the account's initial balance
-    const account = await prisma.financialAccount.findUnique({
-      where: { id: accountId },
-    });
-    
-    if (!account) {
-      throw new Error('Account not found');
-    }
-
-    let runningBalance = account.initialBalance || 0;
-
-    // Process each trade
-    for (const trade of trades) {
-      let tradeImpact = 0;
-
-      // Calculate impact based on trade type
-      switch (trade.tradeType) {
-        case 'FX':
-          if (trade.fxTrade) {
-            // Prefer amountGain if provided, otherwise calculate from percentage
-            if (trade.fxTrade.amountGain !== null) {
-              tradeImpact = parseFloat(trade.fxTrade.amountGain);
-            } else if (trade.fxTrade.percentageGain !== null && 
-                      trade.fxTrade.lots !== null && 
-                      trade.fxTrade.entryPrice !== null) {
-              const lotSize = 100000; // Standard FX lot size
-              const positionSize = trade.fxTrade.lots * lotSize * trade.fxTrade.entryPrice;
-              tradeImpact = (trade.fxTrade.percentageGain / 100) * positionSize;
-            }
+    // Get all data in chronological order
+    const [account, transactions, trades] = await prisma.$transaction([
+      prisma.financialAccount.findUnique({
+        where: { id: accountId },
+        include: {
+          balanceHistory: {
+            orderBy: { date: 'desc' },
+            take: 1
           }
-          break;
+        }
+      }),
+      prisma.transaction.findMany({
+        where: { 
+          OR: [
+            { toAccountId: accountId },
+            { fromAccountId: accountId }
+          ]
+        },
+        orderBy: { dateTime: 'asc' }
+      }),
+      prisma.trade.findMany({
+        where: { accountId },
+        include: {
+          fxTrade: true,
+          stocksTrade: true,
+          bondTrade: true
+        },
+        orderBy: { entryDate: 'asc' }
+      })
+    ]);
 
-        case 'STOCK':
-          if (trade.stocksTrade) {
-            tradeImpact = trade.stocksTrade.quantity * 
-                         (trade.stocksTrade.exitPrice - trade.stocksTrade.entryPrice);
+    if (!account) throw new Error('Account not found');
+
+    // Merge and sort all events by date
+    const allEvents = [
+      ...transactions.map(t => ({ 
+        type: 'transaction', 
+        data: t, 
+        date: t.dateTime 
+      })),
+      ...trades
+        .filter(t => t.status === 'CLOSED')
+        .map(t => ({ 
+          type: 'trade', 
+          data: t, 
+          date: t.exitDate || t.updatedAt 
+        }))
+    ].sort((a, b) => a.date - b.date);
+
+    // Initialize balance tracking
+    let currentBalance = account.initialBalance;
+    const balanceHistory = [];
+
+    // Process each event in chronological order
+    for (const event of allEvents) {
+      const preEventBalance = currentBalance;
+
+      if (event.type === 'transaction') {
+        const tx = event.data;
+        if (tx.toAccountId === accountId) {
+          currentBalance += tx.amount;
+        } else if (tx.fromAccountId === accountId) {
+          currentBalance -= tx.amount;
+        }
+      } 
+      else if (event.type === 'trade') {
+        const trade = event.data;
+        let pl = 0;
+
+        if (trade.tradeType === 'FX' && trade.fxTrade) {
+          const fx = trade.fxTrade;
+          if (fx.amountGain !== null) {
+            pl = fx.amountGain;
+          } else if (fx.percentageGain !== null) {
+            // Calculate based on balance at trade opening
+            const openingBalance = getBalanceAtDate(
+              balanceHistory, 
+              trade.entryDate,
+              account.initialBalance
+            );
+            pl = (fx.percentageGain / 100) * openingBalance;
           }
-          break;
+        }
+        else if (trade.tradeType === 'STOCK' && trade.stocksTrade) {
+          const stock = trade.stocksTrade;
+          pl = (stock.exitPrice - stock.entryPrice) * stock.quantity;
+        }
+        else if (trade.tradeType === 'BOND' && trade.bondTrade) {
+          const bond = trade.bondTrade;
+          pl = (bond.exitPrice - bond.entryPrice) * bond.quantity;
+        }
 
-        case 'BOND':
-          if (trade.bondTrade) {
-            // Simplified bond calculation - adjust as needed
-            const priceDiff = trade.bondTrade.exitPrice - trade.bondTrade.entryPrice;
-            tradeImpact = trade.bondTrade.quantity * priceDiff;
-            
-            // If you want to include coupon payments:
-            // const couponPayment = ...;
-            // tradeImpact += couponPayment;
-          }
-          break;
+        // Apply fees and update trade record
+        pl -= trade.fees || 0;
+        currentBalance += pl;
 
-        // Add other trade types as needed
+        // Update realizedPL if not already set
+        if (!trade.realizedPL) {
+          await prisma.trade.update({
+            where: { id: trade.id },
+            data: { realizedPL: pl }
+          });
+        }
       }
 
-      // Subtract fees
-      tradeImpact -= parseFloat(trade.fees || 0);
-
-      // Apply to running balance
-      runningBalance += tradeImpact;
+      // Record balance snapshot if changed
+      if (preEventBalance !== currentBalance) {
+        balanceHistory.push({
+          date: event.date,
+          balance: currentBalance
+        });
+      }
     }
 
-    // Update the account with the new balance
-    await prisma.financialAccount.update({
-      where: { id: accountId },
-      data: { balance: runningBalance },
-    });
+    // Update account and save balance history
+    await prisma.$transaction([
+      prisma.financialAccount.update({
+        where: { id: accountId },
+        data: { 
+          balance: currentBalance,
+          lastRecalculatedAt: new Date()
+        }
+      }),
+      ...balanceHistory.map(bh => 
+        prisma.balanceHistory.create({
+          data: {
+            accountId,
+            date: bh.date,
+            balance: bh.balance
+          }
+        })
+      )
+    ]);
 
-    return runningBalance;
+    return currentBalance;
   } catch (error) {
     console.error('Error in recalcAccountBalance:', error);
-    throw error; // Re-throw for the route to handle
+    throw error;
   }
+}
+
+// Helper to get balance at specific point in time
+function getBalanceAtDate(history, date, initialBalance) {
+  const snapshot = history
+    .filter(bh => bh.date <= date)
+    .sort((a, b) => b.date - a.date)[0];
+  
+  return snapshot ? snapshot.balance : initialBalance;
 }
 
 module.exports = { recalcAccountBalance };

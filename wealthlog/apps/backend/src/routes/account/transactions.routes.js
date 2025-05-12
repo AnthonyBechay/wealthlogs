@@ -5,23 +5,30 @@ const { prisma } = require('../../lib/prisma');
 const { authenticate } = require('../../middleware/authenticate');
 const { recalcAccountBalance } = require('./recalc.helper'); // or your local helper
 
-// GET all transactions for the user's accounts
+
+// GET all transactions for authenticated user
 router.get('/', authenticate, async (req, res) => {
   try {
+    // Get user's accounts first
     const userAccounts = await prisma.financialAccount.findMany({
       where: { userId: req.user.userId },
-      select: { id: true },
+      select: { id: true }
     });
     const accountIds = userAccounts.map(a => a.id);
 
+    // Get all transactions involving these accounts
     const transactions = await prisma.transaction.findMany({
       where: {
         OR: [
           { fromAccountId: { in: accountIds } },
-          { toAccountId: { in: accountIds } },
-        ],
+          { toAccountId: { in: accountIds } }
+        ]
       },
       orderBy: { dateTime: 'desc' },
+      include: {
+        fromAccount: { select: { name: true } },
+        toAccount: { select: { name: true } }
+      }
     });
 
     res.json(transactions);
@@ -31,43 +38,58 @@ router.get('/', authenticate, async (req, res) => {
   }
 });
 
-// POST a new transaction with immediate partial recalc
+
 router.post('/', authenticate, async (req, res) => {
   try {
-    const { type, amount, dateTime, currency, fromAccountId, toAccountId } = req.body;
-    if (!type || !amount || amount <= 0) {
-      return res.status(400).json({ error: "Invalid type or amount" });
+    const { type, amount, fromAccountId, toAccountId, dateTime } = req.body;
+
+    // Validate transaction type
+    if (!['DEPOSIT', 'WITHDRAW', 'TRANSFER', 'DIVIDEND'].includes(type)) {
+      return res.status(400).json({ error: "Invalid transaction type" });
     }
 
-    // Validate from/to ownership, etc.
-    // (identical checks as your existing code)
-    // ...
+    // Verify account ownership
+    const verifyAccount = async (accountId) => {
+      if (!accountId) return null;
+      const account = await prisma.financialAccount.findUnique({
+        where: { id: accountId }
+      });
+      if (!account || account.userId !== req.user.userId) {
+        throw new Error(`Not authorized for account ${accountId}`);
+      }
+      return account;
+    };
+
+    const [fromAccount, toAccount] = await Promise.all([
+      verifyAccount(fromAccountId),
+      verifyAccount(toAccountId)
+    ]);
 
     // Create transaction
-    const dt = dateTime ? new Date(dateTime) : new Date();
     const newTx = await prisma.transaction.create({
       data: {
         type,
         amount,
-        dateTime: dt,
-        currency: currency || "USD",
-        fromAccountId: fromAccountId || null,
-        toAccountId: toAccountId || null,
+        fromAccountId: ['WITHDRAW', 'TRANSFER'].includes(type) ? fromAccountId : null,
+        toAccountId: ['DEPOSIT', 'TRANSFER', 'DIVIDEND'].includes(type) ? toAccountId : null,
+        dateTime: dateTime ? new Date(dateTime) : new Date()
       }
     });
 
-    // Now recalc only the fromAccount (if any) and toAccount (if any)
-    if (fromAccountId) {
-      await recalcAccountBalance(Number(fromAccountId));
-    }
-    if (toAccountId) {
-      await recalcAccountBalance(Number(toAccountId));
-    }
+    // Recalculate affected accounts
+    const recalcAccounts = [];
+    if (fromAccountId) recalcAccounts.push(recalcAccountBalance(fromAccountId));
+    if (toAccountId) recalcAccounts.push(recalcAccountBalance(toAccountId));
+    await Promise.all(recalcAccounts);
 
-    res.json({ message: "Transaction created", transactionId: newTx.id });
+    res.json({ 
+      message: "Transaction created", 
+      transactionId: newTx.id 
+    });
+
   } catch (error) {
-    console.error("Failed to create transaction:", error);
-    res.status(500).json({ error: "Failed to process transaction" });
+    console.error("Transaction error:", error);
+    res.status(403).json({ error: error.message });
   }
 });
 
