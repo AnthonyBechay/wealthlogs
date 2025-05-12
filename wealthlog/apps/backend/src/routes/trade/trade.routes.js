@@ -29,162 +29,115 @@ function detectSession(dateString) {
   if (hour >= 16 && hour <= 19) return "US";
   return "Other";
 }
-
-
-
-
-
-// 1) CREATE a new trade (Complete version)
-router.post("/", authenticate, async (req, res) => {
+router.post('/', authenticate, async (req, res) => {
   try {
     const {
       tradeType,
       accountId,
       instrument,
-      status = 'OPEN',
-      direction = "Long",
-      fees = 0,
+      status      = 'CLOSED',
+      direction   = 'LONG',
+      fees        = 0,
       entryDate,
       exitDate,
       pattern,
       notes,
-      amount,
-      realizedPL,
-      fx = {},
+      fx   = {},
       bond = {},
-      stock = {},
+      stock= {},
       crypto = {},
-      etf = {}
+      etf   = {}
     } = req.body;
 
-    // Validate required fields
-    if (!tradeType) return res.status(400).json({ error: "tradeType is required" });
-    if (!accountId) return res.status(400).json({ error: "accountId is required" });
-    if (!instrument) return res.status(400).json({ error: "instrument is required" });
+    // Mandatory guards
+    if (!tradeType)  return res.status(400).json({ error: 'tradeType is required' });
+    if (!accountId)  return res.status(400).json({ error: 'accountId is required' });
+    if (!instrument) return res.status(400).json({ error: 'instrument is required' });
 
-    // Verify account ownership
-    const account = await prisma.financialAccount.findUnique({
-      where: { id: accountId },
-    });
-    if (!account || account.userId !== req.user.userId) {
-      return res.status(403).json({ error: "Not authorized for that account" });
-    }
+    /* Account ownership check */
+    const account = await prisma.financialAccount.findUnique({ where: { id: accountId } });
+    if (!account || account.userId !== req.user.userId)
+      return res.status(403).json({ error: 'Not authorised for that account' });
 
-    // Prepare dates and session info
     const entryDt = entryDate ? new Date(entryDate) : new Date();
-    const exitDt = exitDate ? new Date(exitDate) : null;
-    const session = detectSession(entryDt);
+    const exitDt  = exitDate  ? new Date(exitDate)  : null;
 
-    // Create main trade record
+    /* We *do not* set openingBalance or realisedPL here – those are derived
+       centrally by the recalc helper so that the logic lives in ONE place. */
     const newTrade = await prisma.trade.create({
       data: {
-        tradeType,
         accountId,
+        tradeType,
         instrument,
         status,
-        tradeDirection: direction === "Short" ? "SHORT" : "LONG",
+        tradeDirection : direction.toUpperCase() === 'SHORT' ? 'SHORT' : 'LONG',
         fees,
-        entryDate: entryDt,
-        exitDate: exitDt,
-        pattern: pattern || null,
-        notes: notes || `session: ${session}`,
-        amount: amount || null,
-        realizedPL: realizedPL || null,
-      },
+        entryDate      : entryDt,
+        exitDate       : exitDt,
+        pattern        : pattern ?? null,
+        notes          : notes ?? `session: ${detectSession(entryDt)}`
+      }
     });
 
-    // Create specific trade subtype based on tradeType
+    /* Sub‑type payloads */
     switch (tradeType) {
-      case "FX":
-        await handleFxTrade(newTrade.id, fx);
-        break;
-      case "STOCK":
-        await handleStockTrade(newTrade.id, stock);
-        break;
-      case "BOND":
-        await handleBondTrade(newTrade.id, bond);
-        break;
-      case "CRYPTO":
-        await handleCryptoTrade(newTrade.id, crypto);
-        break;
-      case "ETF":
-        await handleEtfTrade(newTrade.id, etf);
-        break;
-      default:
-        console.warn(`Unhandled trade type: ${tradeType}`);
+      case 'FX':    await createFx(newTrade.id, fx);    break;
+      case 'STOCK': await createStock(newTrade.id, stock); break;
+      case 'BOND':  await createBond(newTrade.id, bond); break;
+      case 'CRYPTO': /* todo */ break;
+      case 'ETF':    /* todo */ break;
+      default: break;
     }
 
-    // Recalculate account balance if trade is closed
-    if (status === 'CLOSED') {
-      await recalcAccountBalance(accountId);
-    }
+    /* Trigger balance / PL recomputation from this trade forward */
+    await recalcAccountBalance(accountId, { afterDate: entryDt });
 
-    res.json({ 
-      message: "Trade created successfully", 
-      tradeId: newTrade.id,
-      status: "Balance will be recalculated when trade is closed"
+    /* Fetch the freshly updated trade row (with openingBalance / realisedPL) */
+    const updated = await prisma.trade.findUnique({
+      where  : { id: newTrade.id },
+      include: { fxTrade: true, stocksTrade: true, bondTrade: true }
     });
+
+    res.json({ message: 'Trade created', tradeId: newTrade.id });
 
   } catch (err) {
-    console.error("Error creating trade:", err);
-    res.status(500).json({ error: "Failed to create trade" });
+    console.error('Trade creation failed:', err);
+    res.status(500).json({ error: 'Failed to create trade' });
   }
 });
 
-// Helper functions for specific trade types
-async function handleFxTrade(tradeId, fxData) {
-  let { amountGain, percentageGain } = fxData;
-  if (amountGain != null && percentageGain != null) {
-    amountGain = null; // prefer percentage if both provided
-  }
-
+/* ------------------ helpers ------------------ */
+async function createFx(tradeId, d) {
+  const { amountGain, percentageGain, ...rest } = d;
   return prisma.fxTrade.create({
     data: {
       tradeId,
-      lots: fxData.lots ?? null,
-      entryPrice: fxData.entryPrice ?? null,
-      exitPrice: fxData.exitPrice ?? null,
-      stopLossPips: fxData.stopLossPips ?? null,
-      pipsGain: fxData.pipsGain ?? null,
-      amountGain: amountGain ?? null,
-      percentageGain: percentageGain ?? null,
-      source: fxData.source ?? null,
-    },
+      ...rest,
+      amountGain     : amountGain != null && percentageGain == null ? amountGain : null,
+      percentageGain : percentageGain ?? null
+    }
   });
+  
 }
 
-async function handleStockTrade(tradeId, stockData) {
+async function createStock(tradeId, d) {
   return prisma.stocksTrade.create({
-    data: {
-      tradeId,
-      entryPrice: stockData.entryPrice || 0,
-      exitPrice: stockData.exitPrice || 0,
-      quantity: stockData.quantity || 0,
-    },
+    data: { tradeId,
+            entryPrice : d.entryPrice ?? 0,
+            exitPrice  : d.exitPrice  ?? 0,
+            quantity   : d.quantity   ?? 0 }
   });
 }
 
-async function handleBondTrade(tradeId, bondData) {
+async function createBond(tradeId, d) {
   return prisma.bondTrade.create({
-    data: {
-      tradeId,
-      entryPrice: bondData.entryPrice || 0,
-      exitPrice: bondData.exitPrice || 0,
-      quantity: bondData.quantity || 0,
-      couponRate: bondData.couponRate || 0,
-      maturityDate: bondData.maturityDate ? new Date(bondData.maturityDate) : null,
-    },
+    data: { tradeId,
+            entryPrice   : d.entryPrice   ?? 0,
+            exitPrice    : d.exitPrice    ?? 0,
+            quantity     : d.quantity     ?? 0,
+            couponRate   : d.couponRate   ?? 0,
+            maturityDate : d.maturityDate ? new Date(d.maturityDate) : null }
   });
-}
-
-async function handleCryptoTrade(tradeId, cryptoData) {
-  // Implement similar to other trade types when ready
-  console.log("Crypto trade creation not yet implemented");
-}
-
-async function handleEtfTrade(tradeId, etfData) {
-  // Implement similar to other trade types when ready
-  console.log("ETF trade creation not yet implemented");
 }
 
 
@@ -240,85 +193,77 @@ router.get("/", authenticate, async (req, res) => {
 
 // 3) GET /trade/advanced-search
 // ... (unchanged) your advanced search
-
-// 4) PUT /trade/:id (edit trade)
+// 4) PUT /trade/:id  – edit trade
 router.put("/:id", authenticate, async (req, res) => {
   try {
-    const tradeId = parseInt(req.params.id, 10);
+    const tradeId = Number(req.params.id);
     const existing = await prisma.trade.findUnique({
       where: { id: tradeId },
       include: { fxTrade: true, bondTrade: true, stocksTrade: true },
     });
-    if (!existing) {
-      return res.status(404).json({ error: "Trade not found" });
-    }
+    if (!existing) return res.status(404).json({ error: "Trade not found" });
 
-    // confirm ownership
+    /* ownership */
     const acct = await prisma.financialAccount.findUnique({
       where: { id: existing.accountId },
     });
-    if (!acct || acct.userId !== req.user.userId) {
+    if (!acct || acct.userId !== req.user.userId)
       return res.status(403).json({ error: "Not authorized" });
-    }
 
+    /* payload */
     const {
       instrument,
       direction,
       fees,
-      dateTime,
+      entryDate,          // FIX  — use entryDate, not dateTime
       pattern,
       fx = {},
       bond = {},
       stock = {},
     } = req.body;
 
-    if (!instrument) {
-      return res.status(400).json({ error: "instrument is required" });
-    }
+    if (!instrument) return res.status(400).json({ error: "instrument is required" });
 
-    const dt = dateTime ? new Date(dateTime) : existing.entryDate;
-
-    // update main trade
+    /* ---------- update parent trade ---------- */
+    const newEntry = entryDate ? new Date(entryDate) : existing.entryDate;  // FIX
     await prisma.trade.update({
       where: { id: tradeId },
       data: {
         instrument,
         tradeDirection: direction === "Short" ? "SHORT" : "LONG",
         fees: fees ?? 0,
-        entryDate: dt,
+        entryDate: newEntry,
         pattern: pattern ?? null,
       },
     });
 
-    // update sub-trade if needed
+    /* ---------- update subtype ---------- */
     if (existing.tradeType === "FX" && existing.fxTrade) {
+      /* percentage overrides amount, same rule as create */
       let { amountGain, percentageGain } = fx;
-      if (amountGain != null && percentageGain != null) {
-        amountGain = null; // prefer percentage
-      }
+      if (amountGain != null && percentageGain != null) amountGain = null;
+
       await prisma.fxTrade.update({
         where: { tradeId },
         data: {
-          lots:           fx.lots           ?? existing.fxTrade.lots,
-          entryPrice:     fx.entryPrice     ?? existing.fxTrade.entryPrice,
-          exitPrice:      fx.exitPrice      ?? existing.fxTrade.exitPrice,
-          stopLossPips:   fx.stopLossPips   ?? existing.fxTrade.stopLossPips,
-          pipsGain:       fx.pipsGain       ?? existing.fxTrade.pipsGain,
-          amountGain:     amountGain != null && percentageGain != null
-                             ? null
-                             : amountGain      ?? existing.fxTrade.amountGain,
-          percentageGain: percentageGain    ?? existing.fxTrade.percentageGain,
-          source:         fx.source         ?? existing.fxTrade.source,
+          lots:         fx.lots         ?? existing.fxTrade.lots,
+          entryPrice:   fx.entryPrice   ?? existing.fxTrade.entryPrice,
+          exitPrice:    fx.exitPrice    ?? existing.fxTrade.exitPrice,
+          stopLossPips: fx.stopLossPips ?? existing.fxTrade.stopLossPips,
+          pipsGain:     fx.pipsGain     ?? existing.fxTrade.pipsGain,
+          amountGain:   amountGain      ?? (percentageGain == null ? existing.fxTrade.amountGain : null),
+          percentageGain: percentageGain ?? existing.fxTrade.percentageGain,
+          source:       fx.source       ?? existing.fxTrade.source,
         },
       });
     } else if (existing.tradeType === "BOND" && existing.bondTrade) {
       await prisma.bondTrade.update({
         where: { tradeId },
         data: {
-          entryPrice: bond.entryPrice ?? existing.bondTrade.entryPrice,
-          exitPrice: bond.exitPrice ?? existing.bondTrade.exitPrice,
-          quantity: bond.quantity ?? existing.bondTrade.quantity,
-          couponRate: bond.couponRate ?? existing.bondTrade.couponRate,
+          entryPrice:  bond.entryPrice  ?? existing.bondTrade.entryPrice,
+          exitPrice:   bond.exitPrice   ?? existing.bondTrade.exitPrice,
+          quantity:    bond.quantity    ?? existing.bondTrade.quantity,
+          couponRate:  bond.couponRate  ?? existing.bondTrade.couponRate,
           maturityDate: bond.maturityDate
             ? new Date(bond.maturityDate)
             : existing.bondTrade.maturityDate,
@@ -329,13 +274,18 @@ router.put("/:id", authenticate, async (req, res) => {
         where: { tradeId },
         data: {
           entryPrice: stock.entryPrice ?? existing.stocksTrade.entryPrice,
-          exitPrice: stock.exitPrice ?? existing.stocksTrade.exitPrice,
-          quantity: stock.quantity ?? existing.stocksTrade.quantity,
+          exitPrice:  stock.exitPrice  ?? existing.stocksTrade.exitPrice,
+          quantity:   stock.quantity   ?? existing.stocksTrade.quantity,
         },
       });
     }
 
-    await recalcAccountBalance(existing.accountId);
+    /* ---------- partial replay from the earliest affected date ---------- */
+    const replayFrom = new Date(
+      Math.min(newEntry.getTime(), existing.entryDate.getTime()) // FIX
+    );
+    await recalcAccountBalance(existing.accountId, { afterDate: replayFrom }); // FIX
+
     res.json({ message: "Trade updated" });
   } catch (err) {
     console.error("Error updating trade:", err);
@@ -372,8 +322,11 @@ router.delete("/:id", authenticate, async (req, res) => {
     // remove media
     await prisma.tradeMedia.deleteMany({ where: { tradeId } });
 
+
     await prisma.trade.delete({ where: { id: tradeId } });
-    await recalcAccountBalance(existing.accountId);
+    await recalcAccountBalance(existing.accountId, { afterDate: existing.entryDate });
+
+
     res.json({ message: "Trade deleted" });
   } catch (err) {
     console.error("Error deleting trade:", err);

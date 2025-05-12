@@ -67,19 +67,17 @@ export default function AccountsPage() {
     }
   }
 
-
-async function loadTransactions() {
-  try {
-    const res = await api.get<Transaction[]>("/transactions");
-    setTransactions(res.data);
-  } catch (error) {
-    console.error("Failed to load transactions:", error);
-    // Optional: show user-friendly error message
-    setTransactions([]); // Reset to empty array on error
+  async function loadTransactions() {
+    try {
+      const res = await api.get<Transaction[]>("/transactions");
+      setTransactions(res.data || []);
+    } catch (error) {
+      console.error("Failed to load transactions:", error);
+    }
   }
-}
 
 
+  
   // --- CREATE A NEW ACCOUNT ---
   async function handleCreateAccount(e: React.FormEvent) {
     e.preventDefault();

@@ -255,6 +255,8 @@ model Trade {
   createdAt      DateTime         @default(now())
   updatedAt      DateTime         @default(now())
   realizedPL     Float?           @default(0)
+    openingBalance Float?
+  closingBalance Float?
   fxTrade        FxTrade?
   stocksTrade    StocksTrade?
   bondTrade      BondTrade?
@@ -343,16 +345,17 @@ model Transaction {
 }
 
 model BalanceHistory {
-  id        Int              @id @default(autoincrement())
   accountId Int
   account   FinancialAccount @relation(fields: [accountId], references: [id])
   date      DateTime         @default(now())
   balance   Float
   createdAt DateTime         @default(now())
   updatedAt DateTime         @default(now())
-
+  @@id([accountId, date])   
   @@index([accountId, date], name: "idx_balanceHistory_account_date")
 }
+
+
 
 model RealEstateInvestment {
   id               Int              @id @default(autoincrement())
