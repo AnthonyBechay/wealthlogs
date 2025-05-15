@@ -3,6 +3,8 @@ const crypto  = require("crypto");
 const bcrypt  = require("bcrypt");
 const router  = express.Router();
 const { prisma } = require("../../lib/prisma");
+const { recalcAccountBalance } = require("../account/recalc.helper");
+
 
 // ── CONFIG ─────────────────────────────────────────────────────────
 const API_KEY     = process.env.MT5_SYNC_TOKEN;
@@ -146,6 +148,7 @@ router.post("/", async (req, res) => {
         },
       },
     });
+    await recalcAccountBalance(account.id, { afterDate: entryDate });  // NEW
 
     console.info("✅ MT5 trade imported:", trade.id);
     res.json({ ok: true, tradeId: trade.id });

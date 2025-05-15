@@ -121,6 +121,14 @@ const [editFxSL, setEditFxSL]               = useState("");
 const [editFxPipsGain, setEditFxPipsGain]   = useState("");
 const [showEditFxAdvanced, setShowEditFxAdvanced] = useState(false);
 
+
+
+/* place just after state hooks */
+const currentAccount = accounts.find((a) => a.id === selectedAccountId) ?? null;
+const selectedAccountIsMt5 =
+  currentAccount?.name.toLowerCase().includes("mt5") ?? false;
+
+
   /*────────────────── Initial load (auth check + settings) ─────────────────*/
   useEffect(() => {
     (async () => {
@@ -138,6 +146,9 @@ const [showEditFxAdvanced, setShowEditFxAdvanced] = useState(false);
         setInitialLoading(false);
       }
     })();
+
+
+    
   }, []);
 
   /*────────────────── Account & Trade loaders ─────────────────*/
@@ -176,6 +187,18 @@ const [showEditFxAdvanced, setShowEditFxAdvanced] = useState(false);
   }
 
 
+
+  /* add after the existing "load trades when account changes" effect */
+useEffect(() => {
+  if (!selectedAccountId || !selectedAccountIsMt5) return;   // nothing to poll
+
+  const id = setInterval(() => loadTrades(selectedAccountId), 60_000); // 15 s
+  return () => clearInterval(id);                             
+}, [selectedAccountId, selectedAccountIsMt5]);
+
+
+
+
   /*────────────────── Create FX Trade ─────────────────*/
   async function handleCreateTrade(e: React.FormEvent) {
     e.preventDefault();
@@ -184,16 +207,21 @@ const [showEditFxAdvanced, setShowEditFxAdvanced] = useState(false);
 
     const numericFees = parseFloat(formFees) || 0;
 
+/* parse – undefined means “box empty” */
+const aGain = editFxAmount.trim() === "" ? undefined : parseFloat(editFxAmount);
+const pGain = editFxPercent.trim() === "" ? undefined : parseFloat(editFxPercent);
 
-const aGain = Number.isFinite(+editFxAmount) ? parseFloat(editFxAmount) : null;
-const pGain = Number.isFinite(+editFxPercent) ? parseFloat(editFxPercent) : null;
+ 
+/* decide winner */
+let fxData: any = {};
+if (aGain != null && pGain != null) {
+  fxData = { amountGain: null, percentageGain: pGain / 100 }; // % wins
+} else if (pGain != null) {
+  fxData = { percentageGain: pGain / 100 };
+} else if (aGain != null) {
+  fxData = { amountGain: aGain };
+}
 
-
-    /* percentage overrides when both are filled */
-    let fxData: any = {};
-    if (aGain !== 0 && pGain !== 0) fxData = { amountGain: null, percentageGain: pGain / 100 };
-    else if (pGain !== 0) fxData = { percentageGain: pGain / 100 };
-    else if (aGain !== 0) fxData = { amountGain: aGain };
 
 
 
@@ -411,7 +439,7 @@ if (fxData) {
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
           <h1 className="text-2xl font-bold">FX Trading</h1>
           <button
-            onClick={() => router.push("/trading/advanced-filter")}
+            onClick={() => router.push("/trading/advancedFilter")}
             className="mt-2 md:mt-0 px-4 py-2 bg-[var(--primary)] text-white font-semibold rounded"
           >
             Advanced Filter
@@ -422,28 +450,8 @@ if (fxData) {
         <div className="bg-[var(--background-2)] p-4 rounded-lg shadow mb-6">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-semibold">FX Accounts</h2>
-            <button
-              onClick={() => setShowAcctForm((s) => !s)}
-              className="px-3 py-1 bg-green-600 text-white rounded text-sm"
-            >
-              {showAcctForm ? "Cancel" : "+ Account"}
-            </button>
           </div>
 
-          {showAcctForm && (
-            <form onSubmit={handleCreateAccount} className="mb-4">
-              <input
-                type="text"
-                className="border p-2 rounded w-full mb-2 bg-[var(--background)] text-[var(--text)]"
-                placeholder="New FX Account Name"
-                value={newAcctName}
-                onChange={(e) => setNewAcctName(e.target.value)}
-              />
-              <button type="submit" className="w-full py-2 bg-[var(--primary)] text-white rounded">
-                Create
-              </button>
-            </form>
-          )}
 
           {accounts.length === 0 ? (
             <p className="text-sm">No FX accounts found.</p>
@@ -757,7 +765,7 @@ if (fxData) {
                       onChange={(e) =>
                         setEditTrade((prev) => ({
                           ...prev,
-                          fees: e.target.value,
+                          fees: parseFloat(e.target.value) || 0,  // number
                         }))
                       }
                     />
@@ -896,22 +904,6 @@ if (fxData) {
               className="px-4 py-2 bg-[var(--primary)] text-white rounded"
             >
               Save Changes
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
                   </button>
                 </div>
               </form>

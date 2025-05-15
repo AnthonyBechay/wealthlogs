@@ -158,19 +158,7 @@ export default function Register() {
             />
           </div>
 
-          {/* Role */}
-          <div>
-            <label className="block font-semibold text-[var(--text)]">Role</label>
-            <select
-              className="mt-1 p-2 w-full border rounded focus:outline-none focus:ring focus:ring-blue-300"
-              value={roleName}
-              onChange={(e) => setRoleName(e.target.value)}
-            >
-              <option value="MEMBER">MEMBER</option>
-              <option value="ADMIN">ADMIN</option>
-              <option value="MANAGER">MANAGER</option>
-            </select>
-          </div>
+       
 
           <button
             type="submit"

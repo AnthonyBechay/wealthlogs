@@ -58,7 +58,7 @@ export default function Landing() {
           <h2 className="text-xl font-semibold mb-2">{t('QuickActions')}</h2>
           <div className="flex flex-col space-y-2">
             <button
-              onClick={() => quick('/tradeManagement')}
+              onClick={() => quick('/trading')}
               className="px-4 py-2 bg-[#34A853] text-white rounded font-semibold hover:bg-green-600 transition"
             >
               {t('AddNewTrade')}

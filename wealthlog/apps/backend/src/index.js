@@ -52,14 +52,16 @@ const accountRoutes = require('./routes/account/account.routes.js');
 const transactionsRoutes = require('./routes/account/transactions.routes.js');
 const settingsRouter = require('./routes/settings/settings.routes.js');
 const tradeRouter = require("./routes/trade/trade.routes.js");
+const tradeFilterRouter = require("./routes/trade/filter.routes.js");
+
 const mt5syncRouter = require('./routes/trade/mt5sync.routes.js');
 const dashboardRouter = require('./routes/dashboard.js');
-
 
 // Attach routers
 app.use('/auth', authRouter);
 app.use('/admin', adminRouter);
 app.use("/trade", tradeRouter);
+app.use("/trade/filter", tradeFilterRouter);
 app.use('/community', communityRouter);
 app.use('/coaching', coachingRouter);
 app.use('/account', accountRoutes);
