@@ -239,24 +239,24 @@ router.put("/:id", authenticate, async (req, res) => {
 
     /* ---------- update subtype ---------- */
     if (existing.tradeType === "FX" && existing.fxTrade) {
-      /* percentage overrides amount, same rule as create */
-      let { amountGain, percentageGain } = fx;
-      if (amountGain != null && percentageGain != null) amountGain = null;
+  const wantAmt = fx.amountGain != null;
+  const wantPct = fx.percentageGain != null;
 
-      await prisma.fxTrade.update({
-        where: { tradeId },
-        data: {
-          lots:         fx.lots         ?? existing.fxTrade.lots,
-          entryPrice:   fx.entryPrice   ?? existing.fxTrade.entryPrice,
-          exitPrice:    fx.exitPrice    ?? existing.fxTrade.exitPrice,
-          stopLossPips: fx.stopLossPips ?? existing.fxTrade.stopLossPips,
-          pipsGain:     fx.pipsGain     ?? existing.fxTrade.pipsGain,
-          amountGain:   amountGain      ?? (percentageGain == null ? existing.fxTrade.amountGain : null),
-          percentageGain: percentageGain ?? existing.fxTrade.percentageGain,
-          source:       fx.source       ?? existing.fxTrade.source,
-        },
-      });
-    } else if (existing.tradeType === "BOND" && existing.bondTrade) {
+  await prisma.fxTrade.update({
+    where: { tradeId },
+    data: {
+      lots         : fx.lots         ?? existing.fxTrade.lots,
+      entryPrice   : fx.entryPrice   ?? existing.fxTrade.entryPrice,
+      exitPrice    : fx.exitPrice    ?? existing.fxTrade.exitPrice,
+      stopLossPips : fx.stopLossPips ?? existing.fxTrade.stopLossPips,
+      pipsGain     : fx.pipsGain     ?? existing.fxTrade.pipsGain,
+
+      amountGain     : wantAmt ? fx.amountGain       : null,
+      percentageGain : wantPct ? fx.percentageGain   : null,
+      source         : fx.source ?? existing.fxTrade.source,
+    },
+  });
+}else if (existing.tradeType === "BOND" && existing.bondTrade) {
       await prisma.bondTrade.update({
         where: { tradeId },
         data: {

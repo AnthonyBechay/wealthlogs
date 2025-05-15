@@ -304,18 +304,22 @@ const pGain = Number.isFinite(+editFxPercent) ? parseFloat(editFxPercent) : null
 
     try {
       const numericFees = parseFloat(String(editTrade.fees)) || 0;
-      const aGain = parseFloat(editFxAmount) || 0;
-      const pGain = parseFloat(editFxPercent) || 0;
+const amtRaw = editFxAmount.trim();
+const pctRaw = editFxPercent.trim();
 
-      let fxData: any = {};
-      if (aGain !== 0 && pGain !== 0) {
-        fxData = { amountGain: null, percentageGain: pGain / 100 };
-      } else if (aGain !== 0) {
-        fxData = { amountGain: aGain };
-      } else if (pGain !== 0) {
-        fxData = { percentageGain: pGain / 100 };
-      }
+const aGain = amtRaw === "" ? null : parseFloat(amtRaw);
+const pGain = pctRaw === "" ? null : parseFloat(pctRaw) / 100;
 
+let fxData: any = {};
+if (aGain != null && pGain != null) {
+  fxData = { amountGain: null, percentageGain: pGain };
+} else if (aGain != null) {
+  fxData = { amountGain: aGain };           // ← percentageGain omitted ⇒ null
+} else if (pGain != null) {
+  fxData = { percentageGain: pGain };
+}
+
+      
 
 if (fxData) {
   fxData = {
@@ -692,26 +696,104 @@ if (fxData) {
         </div>
       </div>
 
- {/*──────── Edit modal ─────────*/}
+
+
+
+
+
+
+
+
+
+
+
+
+
+{/*──────── Edit modal ─────────*/}
 {showEditModal && editTrade.id && (
   <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
     <div className="bg-[var(--background-2)] rounded-lg shadow-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
       <div className="p-6">
         <h3 className="text-xl font-semibold mb-4">Edit Trade #{editTrade.id}</h3>
 
-        <form onSubmit={handleEditTradeSubmit} className="space-y-4">
-          {/* instrument + direction */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* … Instrument + Direction inputs unchanged … */}
-          </div>
+          <form onSubmit={handleEditTradeSubmit} className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block font-medium text-sm mb-1">Instrument</label>
+                    <input
+                      type="text"
+                      className="border p-2 rounded w-full bg-[var(--background)] text-[var(--text)]"
+                      value={editTrade.instrument || ""}
+                      onChange={(e) =>
+                        setEditTrade((prev) => ({ ...prev, instrument: e.target.value }))
+                      }
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-medium text-sm mb-1">Direction</label>
+                    <select
+                      className="border p-2 rounded w-full bg-[var(--background)] text-[var(--text)]"
+                      value={editTrade.tradeDirection || "LONG"}
+                      onChange={(e) =>
+                        setEditTrade((prev) => ({
+                          ...prev,
+                          tradeDirection: e.target.value === "SHORT" ? "SHORT" : "LONG",
+                        }))
+                      }
+                    >
+                      <option value="LONG">Long</option>
+                      <option value="SHORT">Short</option>
+                    </select>
+                  </div>
+                </div>
 
-          {/* fees + date */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* … Fees + Date inputs unchanged … */}
-          </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block font-medium text-sm mb-1">Fees</label>
+                    <input
+                      type="text"
+                      className="border p-2 rounded w-full bg-[var(--background)] text-[var(--text)]"
+                      value={String(editTrade.fees ?? "0")}
+                      onChange={(e) =>
+                        setEditTrade((prev) => ({
+                          ...prev,
+                          fees: e.target.value,
+                        }))
+                      }
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-medium text-sm mb-1">Date/Time</label>
+                    <input
+                      type="datetime-local"
+                      className="border p-2 rounded w-full bg-[var(--background)] text-[var(--text)]"
+                      value={
+                        editTrade.entryDate
+                          ? new Date(editTrade.entryDate).toISOString().slice(0, 16)
+                          : ""
+                      }
+                      onChange={(e) =>
+                        setEditTrade((prev) => ({ ...prev, entryDate: e.target.value }))
+                      }
+                    />
+                  </div>
+                </div>
 
-          {/* pattern */}
-          {/* … Pattern select unchanged … */}
+                <div>
+                  <label className="block font-medium text-sm mb-1">Pattern</label>
+                  <select
+                    className="border p-2 rounded w-full bg-[var(--background)] text-[var(--text)]"
+                    value={editTrade.pattern || ""}
+                    onChange={(e) => setEditTrade((prev) => ({ ...prev, pattern: e.target.value }))}
+                  >
+                    <option value="">(none)</option>
+                    {patterns.map((pat) => (
+                      <option key={pat} value={pat}>
+                        {pat}
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
           {/*──────── FX gains + Advanced toggle ────────*/}
           <div className="border bg-[var(--background-2)] p-4 rounded-lg">
@@ -814,6 +896,22 @@ if (fxData) {
               className="px-4 py-2 bg-[var(--primary)] text-white rounded"
             >
               Save Changes
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
                   </button>
                 </div>
               </form>
