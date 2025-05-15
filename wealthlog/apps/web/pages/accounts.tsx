@@ -96,16 +96,18 @@ export default function AccountsPage() {
   }
 
   // --- DELETE AN ACCOUNT ---
-  async function handleDeleteAccount(id: number) {
-    if (!confirm("Are you sure you want to delete this account?")) return;
-    try {
-      await api.delete(`/account/${id}`);
-      loadAccounts();
-      loadTransactions();
-    } catch (error) {
-      console.error("Failed to delete account:", error);
-    }
+async function handleDeleteAccount(id: number) {
+  const cascade = confirm(
+    "Delete all trades & transactions attached to this account as well?"
+  );
+  try {
+    await api.delete(`/account/${id}?cascade=${cascade ? "true" : "false"}`);
+    await loadAccounts();
+  } catch (err) {
+    console.error("Failed to delete account:", err);
   }
+}
+
 
   // --- CREATE TRANSACTION ---
   async function handleCreateTransaction(e: React.FormEvent) {

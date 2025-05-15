@@ -68,21 +68,46 @@ router.put('/:id', authenticate, async (req, res) => {
   }
 });
 
-// DELETE an account
-router.delete('/:id', authenticate, async (req, res) => {
-  try {
-    const { id } = req.params;
-    const account = await prisma.financialAccount.findUnique({ where: { id: Number(id) } });
-    if (!account || account.userId !== req.user.userId) {
-      return res.status(403).json({ error: "Not authorized or account not found" });
+
+
+
+
+
+router.delete("/:id", authenticate, async (req, res) => {
+  const id = Number(req.params.id);
+  const cascade = req.query.cascade === "true";
+
+  const account = await prisma.financialAccount.findUnique({ where: { id } });
+  if (!account || account.userId !== req.user.userId)
+    return res.status(403).json({ error: "Not authorized or account not found" });
+
+  if (cascade) {
+    /* wipe trades & sub-tables */
+    const trades = await prisma.trade.findMany({ where: { accountId: id } });
+
+    for (const t of trades) {
+      if (t.tradeType === "FX")    await prisma.fxTrade.deleteMany({ where: { tradeId: t.id } });
+      if (t.tradeType === "BOND")  await prisma.bondTrade.deleteMany({ where: { tradeId: t.id } });
+      if (t.tradeType === "STOCK") await prisma.stocksTrade.deleteMany({ where: { tradeId: t.id } });
+      await prisma.tradeMedia.deleteMany({ where: { tradeId: t.id } });
     }
-    // Optionally check if balance is zero before deleting
-    await prisma.financialAccount.delete({ where: { id: Number(id) } });
-    res.json({ message: "Account deleted" });
-  } catch (error) {
-    console.error("Error deleting account:", error);
-    res.status(500).json({ error: "Failed to delete account" });
+    await prisma.trade.deleteMany({ where: { accountId: id } });
+
+    /* wipe cash-transactions & balance history */
+    await prisma.transaction.deleteMany({
+      where: { OR: [{ fromAccountId: id }, { toAccountId: id }] },
+    });
+    await prisma.balanceHistory.deleteMany({ where: { accountId: id } });
+  } else {
+    /* refuse if balance ≠ 0 */
+    if (account.balance !== 0)
+      return res
+        .status(400)
+        .json({ error: "Account balance must be zero or use cascade=true" });
   }
+
+  await prisma.financialAccount.delete({ where: { id } });
+  res.json({ message: "Account deleted", cascade });
 });
 
 module.exports = router;
