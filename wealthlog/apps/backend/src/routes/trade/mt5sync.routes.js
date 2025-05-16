@@ -148,7 +148,7 @@ router.post("/", async (req, res) => {
         },
       },
     });
-    await recalcAccountBalance(account.id, { afterDate: entryDate });  // NEW
+    await recalcAccountBalance(account.id, { afterDate: new Date(tsSec * 1000) });  // NEW
 
     console.info("✅ MT5 trade imported:", trade.id);
     res.json({ ok: true, tradeId: trade.id });
