@@ -5,18 +5,16 @@ const router  = express.Router();
 const { prisma } = require("../../lib/prisma");
 const { recalcAccountBalance } = require("../account/recalc.helper");
 
-
-// ── CONFIG ─────────────────────────────────────────────────────────
+/*──────────────────────── CONFIG ────────────────────────*/
 const API_KEY     = process.env.MT5_SYNC_TOKEN;
 const SIGN_SECRET = process.env.MT5_SYNC_SIGN_SECRET;
 const SIGN_TTL    = parseInt(process.env.MT5_SYNC_TTL || "300", 10);
 
 const requireApiKey = !!API_KEY;
 const requireHmac   = !!SIGN_SECRET;
-if (!API_KEY)     console.warn("⚠️ MT5 sync: MT5_SYNC_TOKEN not set; skipping API key check");
-if (!SIGN_SECRET) console.warn("⚠️ MT5 sync: MT5_SYNC_SIGN_SECRET not set; skipping HMAC check");
+if (!API_KEY)     console.warn("⚠️  MT5 sync: MT5_SYNC_TOKEN not set; skipping API key check");
+if (!SIGN_SECRET) console.warn("⚠️  MT5 sync: MT5_SYNC_SIGN_SECRET not set; skipping HMAC check");
 
-// timing-safe compare for HMAC
 function safeEqual(a, b) {
   try { return crypto.timingSafeEqual(Buffer.from(a), Buffer.from(b)); }
   catch { return false; }
@@ -25,17 +23,17 @@ function parseInstrument(sym) {
   return sym.toUpperCase().replace(/[^A-Z0-9]/g, "");
 }
 
-/*────────────────────────────── ROUTE ─────────────────────────────*/
+/*──────────────────────── ROUTE ─────────────────────────*/
 router.post("/", async (req, res) => {
   /* 0 – debug log */
   console.debug("↳ MT5 headers", {
     Auth: req.get("Authorization"),
     Ts  : req.get("X-Timestamp"),
-    Sig : req.get("X-Signature")
+    Sig : req.get("X-Signature"),
   });
   console.debug("↳ BODY", req.body);
 
-  /* 1 – API-key */
+  /* 1 – API-key check */
   if (requireApiKey) {
     const [scheme, token] = (req.get("Authorization") || "").split(" ");
     if (scheme !== "Bearer" || token !== API_KEY)
@@ -59,27 +57,33 @@ router.post("/", async (req, res) => {
       return res.status(403).json({ error: "Invalid signature" });
   }
 
-  /* 3 – request fields */
+  /* 3 – unpack body */
   const {
     username, password,
-    accountName = "MT5",               // NEW – default
+    accountName = "MT5",
     ticket, symbol,
-    volume,                            // lots signed (− = short)
-    entryPrice = null,
-    exitPrice  = null,
-    stopLossPips = null,               // NEW – will map straight to FXTrade
-    pipsGain   = null,
-    fees = 0,
-    profit = null,                     // amountGain ($)
-    pctGain = null,                    // NEW – optional % gain
-    time: tsSec                        // seconds since epoch
+    volume,
+    entryPrice  = null,
+    exitPrice   = null,
+    stopLossPips = null,
+    pipsGain    = null,
+    fees        = 0,
+    profit      = null,
+    pctGain     = null,
+    time: tsSec
   } = req.body;
 
   if (!username || !password || ticket == null || !symbol)
     return res.status(400).json({ error: "Missing required field(s)" });
 
+  /* ▶ FIX — normalise fees
+     MT5 sends commission as a **negative** number. Flip the sign so we always
+     store a positive cost. (If your broker ever sends rebates as +ve numbers,
+     those will stay positive.) */
+  const feeSanitised = fees < 0 ? -fees : fees;
+
   try {
-    /* 4 – user & password */
+    /* 4 – user auth */
     const user = await prisma.user.findUnique({ where: { username } });
     if (!user) return res.status(403).json({ error: "Invalid credentials" });
 
@@ -87,7 +91,7 @@ router.post("/", async (req, res) => {
     const ok   = await bcrypt.compare(password, hash);
     if (!ok)   return res.status(403).json({ error: "Invalid credentials" });
 
-    /* 5 – account (create “MT5” if not exists) */
+    /* 5 – account (auto-create “MT5” once) */
     let account = await prisma.financialAccount.findFirst({
       where: { userId: user.id, name: accountName },
     });
@@ -96,14 +100,14 @@ router.post("/", async (req, res) => {
         data: {
           userId: user.id,
           name:   accountName,
-          accountType: "FX_COMMODITY",
-          currency: "USD",
-          balance: 0,
+          accountType   : "FX_COMMODITY",
+          currency      : "USD",
+          balance       : 0,
           initialBalance: 0,
-          isLiquid: true,
+          isLiquid      : true,
         },
       });
-      console.info("ℹ️ Created account:", accountName);
+      console.info("ℹ️  Created account:", accountName);
     }
 
     /* 6 – dedupe on ticket */
@@ -113,33 +117,33 @@ router.post("/", async (req, res) => {
     });
     if (dup) return res.json({ ok: true, tradeId: dup.id, duplicate: true });
 
-    /* 7 – decide amount vs % */
+    /* 7 – choose amount vs % */
     let amountGain = null, percentageGain = null;
     if (pctGain != null && pctGain !== 0 && profit != null) {
-      percentageGain = pctGain / 100;     // % wins
+      percentageGain = pctGain / 100;
     } else if (pctGain != null && pctGain !== 0) {
       percentageGain = pctGain / 100;
     } else {
-      amountGain = profit ?? 0;           // default to amount ($)
+      amountGain = profit ?? 0;
     }
 
-    /* 8 – create trade */
+    /* 8 – write trade */
     const trade = await prisma.trade.create({
       data: {
-        tradeType      : "FX",
-        accountId      : account.id,
-        instrument     : parseInstrument(symbol),
-        tradeDirection : volume >= 0 ? "LONG" : "SHORT",
-        fees,
-        entryDate      : new Date(tsSec * 1000),
-        notes          : note,
-        status         : "CLOSED",
+        tradeType : "FX",
+        accountId : account.id,
+        instrument: parseInstrument(symbol),
+        tradeDirection: volume >= 0 ? "LONG" : "SHORT",
+        fees: feeSanitised,                 // ▶ FIX – use positive fee
+        entryDate: new Date(tsSec * 1000),
+        notes,
+        status: "CLOSED",
         fxTrade: {
           create: {
-            lots           : Math.abs(volume),
+            lots          : Math.abs(volume),
             entryPrice,
             exitPrice,
-            stopLossPips,                   // NEW – mapped
+            stopLossPips,
             pipsGain,
             amountGain,
             percentageGain,
@@ -148,8 +152,8 @@ router.post("/", async (req, res) => {
         },
       },
     });
-    await recalcAccountBalance(account.id, { afterDate: new Date(tsSec * 1000) });  // NEW
 
+    await recalcAccountBalance(account.id, { afterDate: new Date(tsSec * 1000) });
     console.info("✅ MT5 trade imported:", trade.id);
     res.json({ ok: true, tradeId: trade.id });
   } catch (err) {
