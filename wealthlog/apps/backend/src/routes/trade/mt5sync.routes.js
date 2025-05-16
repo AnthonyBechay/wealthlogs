@@ -136,7 +136,7 @@ router.post("/", async (req, res) => {
         tradeDirection: volume >= 0 ? "LONG" : "SHORT",
         fees: feeSanitised,                 // ▶ FIX – use positive fee
         entryDate: new Date(tsSec * 1000),
-        notes,
+        notes          : note,
         status: "CLOSED",
         fxTrade: {
           create: {
