@@ -123,7 +123,6 @@ const [showEditFxAdvanced, setShowEditFxAdvanced] = useState(false);
 
 
 
-/* place just after state hooks */
 const currentAccount = accounts.find((a) => a.id === selectedAccountId) ?? null;
 const selectedAccountIsMt5 =
   currentAccount?.name.toLowerCase().includes("mt5") ?? false;
@@ -192,7 +191,7 @@ const selectedAccountIsMt5 =
 useEffect(() => {
   if (!selectedAccountId || !selectedAccountIsMt5) return;   // nothing to poll
 
-  const id = setInterval(() => loadTrades(selectedAccountId), 60_000); // 15 s
+  const id = setInterval(() => loadTrades(selectedAccountId), 10_000); // 15 s
   return () => clearInterval(id);                             
 }, [selectedAccountId, selectedAccountIsMt5]);
 
