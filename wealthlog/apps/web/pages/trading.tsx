@@ -207,21 +207,23 @@ useEffect(() => {
 
     const numericFees = parseFloat(formFees) || 0;
 
-/* parse – undefined means “box empty” */
-const aGain = editFxAmount.trim() === "" ? undefined : parseFloat(editFxAmount);
-const pGain = editFxPercent.trim() === "" ? undefined : parseFloat(editFxPercent);
 
- 
-/* decide winner */
+/* ---------- parse gains ---------- */
+const amtRaw = fxAmountGain.trim();
+const pctRaw = fxPercentageGain.trim();
+
+const aGain = amtRaw === "" ? undefined : parseFloat(amtRaw);
+const pGain = pctRaw === "" ? undefined : parseFloat(pctRaw);
+
+/* ---------- decide winner ---------- */
 let fxData: any = {};
 if (aGain != null && pGain != null) {
-  fxData = { amountGain: null, percentageGain: pGain / 100 }; // % wins
+  fxData = { amountGain: null, percentageGain: pGain / 100 };   // % wins
 } else if (pGain != null) {
   fxData = { percentageGain: pGain / 100 };
 } else if (aGain != null) {
   fxData = { amountGain: aGain };
 }
-
 
 
 
