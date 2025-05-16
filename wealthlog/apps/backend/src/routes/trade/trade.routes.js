@@ -232,7 +232,7 @@ router.put("/:id", authenticate, async (req, res) => {
       data: {
         instrument,
         tradeDirection: direction === "Short" ? "SHORT" : "LONG",
-        fees: fees ?? 0,
+        fees:  Math.abs(fees || 0),
         entryDate: newEntry,
         pattern: pattern ?? null,
       },

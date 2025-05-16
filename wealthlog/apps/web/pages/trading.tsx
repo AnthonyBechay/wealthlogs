@@ -205,7 +205,7 @@ useEffect(() => {
     if (!selectedAccountId) return setError("No account selected");
     if (!formInstrument.trim()) return setError("Instrument is required");
 
-    const numericFees = parseFloat(formFees) || 0;
+    const numericFees = Math.abs(parseFloat(formFees) || 0);
 
 
 /* ---------- parse gains ---------- */
@@ -278,12 +278,12 @@ if (aGain != null && pGain != null) {
       setFormDate(new Date().toISOString().slice(0, 19));
       setFormPattern("");
       setFxAmountGain("0");
-      setFxPercentageGain("0");
-      setFxLots("0");
-      setFxEntryPrice("0");
-      setFxExitPrice("0");
-      setFxStopLossPips("0");
-      setFxPipsGain("0");
+      setFxPercentageGain("");
+      setFxLots("");
+      setFxEntryPrice("");
+      setFxExitPrice("");
+      setFxStopLossPips("");
+      setFxPipsGain("");
       setCreateMediaList([{ tagName: "", description: "", externalUrl: "", file: null }]);
       setShowFxAdvanced(false);
       setShowNewTrade(false);
@@ -333,7 +333,7 @@ if (aGain != null && pGain != null) {
     if (!editTrade.id) return;
 
     try {
-      const numericFees = parseFloat(String(editTrade.fees)) || 0;
+     const numericFees = Math.abs(parseFloat(String(editTrade.fees)) || 0);
 const amtRaw = editFxAmount.trim();
 const pctRaw = editFxPercent.trim();
 
