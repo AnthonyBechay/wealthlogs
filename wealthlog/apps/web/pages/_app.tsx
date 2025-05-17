@@ -114,12 +114,12 @@
        { href: '/landing',          label: 'Dashboard' },
        { href: '/accounts',         label: 'Accounts' },
        { href: '/trading',          label: 'Trading'  },
-       { href: '/realEstate',       label: 'Real Estate' },
-       { href: '/expenses',         label: 'Expenses' },
-       { href: '/loans',            label: 'Loans' },
-       { href: '/forecasting',      label: 'Forecasting' },
-       { href: '/settingsGeneral',  label: 'Settings — General' },
-       { href: '/settingsTrading',  label: 'Settings — Trading' },
+       { href: '/comingSoon',       label: 'Real Estate' },
+       { href: '/comingSoon',       label: 'Expenses' },
+       { href: '/comingSoon',       label: 'Loans' },
+       { href: '/comingSoon',       label: 'Forecasting' },
+       { href: '/settingsGeneral',  label: 'General settings' },
+       { href: '/settingsTrading',  label: 'Trading settings' },
      ];
    
      /* icon for current displayMode */

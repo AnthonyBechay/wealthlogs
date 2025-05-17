@@ -8,6 +8,11 @@
   "ViewAccounts": "View Accounts",
   "NoRecentActivity": "No recent activity",
   "Loading": "Loading...",
+  "GlobalNetWorth":"Global net worth",
+"FXNetWorth": "Forex net worth",
+"LiquidNetWorth": "Liquid net worth",
+"IlliquidNetWorth": "Invested net worth",
+"NetWorthTrend30d":   "Net worth trend last 30 days",
 
   "GeneralPreferences": "General Preferences",
   "DisplayMode": "Display Mode",

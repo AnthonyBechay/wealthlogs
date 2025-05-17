@@ -33,4 +33,31 @@ router.get('/networth', authenticate, async (req, res) => {
   }
 });
 
+
+router.get('/networth/summary', authenticate, async (req, res) => {
+  try {
+    const accounts = await prisma.financialAccount.findMany({
+      where: { userId: req.user.userId, active: true },
+      select: {
+        balance: true,
+        accountType: true,
+        isLiquid: true,
+      },
+    });
+
+    const fx       = accounts.filter(a => a.accountType === 'FX_COMMODITY')
+                             .reduce((s, a) => s + a.balance, 0);
+    const liquid   = accounts.filter(a => a.isLiquid)
+                             .reduce((s, a) => s + a.balance, 0);
+    const global   = accounts.reduce((s, a) => s + a.balance, 0);
+    const illiquid = global - liquid;
+
+    res.json({ fx, liquid, illiquid, global });
+  } catch (e) {
+    console.error('Net‑worth summary error:', e);
+    res.status(500).json({ error: 'Failed to compute net‑worth summary' });
+  }
+});
+
+
 module.exports = router;

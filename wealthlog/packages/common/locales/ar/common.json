@@ -23,7 +23,11 @@
     "LoadingDot": "Loading...",
     "CouldNotLoadSettings": "Could not load settings",
     "FailedToUpdateDisplayMode": "Could not update display mode",
-
+"GlobalNetWorth":"Global net worth",
+"FXNetWorth": "Forex net worth",
+"LiquidNetWorth": "Liquid net worth",
+"IlliquidNetWorth": "Invested net worth",
+"NetWorthTrend30d":   "Net worth trend last 30 days",
 
     "AccountAndBalances": "Comptes &amp; Balances"
   }

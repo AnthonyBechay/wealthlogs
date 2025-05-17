@@ -19,7 +19,7 @@ export default function ComingSoon() {
         </p>
 
         <Link
-          href="/"
+          href="/landing"
           className="rounded-xl border px-6 py-2 text-base font-medium
                      border-primary hover:bg-primary/10 transition"
         >
