@@ -1,43 +1,51 @@
-// apps/web/pages/settingsTrading.tsx
+// =============================================
+// apps/web/pages/settingsTrading.tsx  (FULL FILE, v3) – completed + icon fallback
+// =============================================
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { api } from '@wealthlog/common';
+let TrashIcon: React.FC<{ size?: number }> = () => <span>🗑</span>;
+try {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  TrashIcon = require('react-icons/fa').FaTrash ?? TrashIcon;
+} catch {}
 
-interface SettingsTradingData {
+interface TradingSettingsData {
   instruments: string[];
   patterns: string[];
+  mediaTags: string[];
   beMin: number;
   beMax: number;
-  mediaTags?: string[];
 }
 
+const Card = ({ children }: { children: React.ReactNode }) => (
+  <section className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-[var(--background-2)] p-5 shadow-sm mb-6">
+    {children}
+  </section>
+);
+const Title = ({ children }: { children: React.ReactNode }) => <h2 className="text-lg font-semibold mb-3">{children}</h2>;
+const DeleteBtn = ({ onClick }: { onClick: () => void }) => (
+  <button onClick={onClick} className="p-1 rounded hover:bg-red-600 bg-red-500 text-white"><TrashIcon size={12} /></button>
+);
+
 export default function SettingsTrading() {
-  /* ───────────────────── state ───────────────────── */
   const router = useRouter();
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [data, setData] = useState<TradingSettingsData>({ instruments: [], patterns: [], mediaTags: [], beMin: -0.2, beMax: 0.3 });
 
-  const [settings, setSettings] = useState<SettingsTradingData>({
-    instruments: [],
-    patterns: [],
-    beMin: -0.2,
-    beMax: 0.3,
-    mediaTags: [],
-  });
-
-  /* form helpers */
   const [newInstrument, setNewInstrument] = useState('');
   const [newPattern, setNewPattern] = useState('');
   const [newMediaTag, setNewMediaTag] = useState('');
   const [tempBeMin, setTempBeMin] = useState('-0.2');
   const [tempBeMax, setTempBeMax] = useState('0.3');
 
-  /* ───────────────────── init ───────────────────── */
   useEffect(() => {
     (async () => {
       try {
         await api.get('/auth/me');
-        await loadSettings();
+        await refresh();
       } catch {
         router.push('/login');
       } finally {
@@ -46,293 +54,83 @@ export default function SettingsTrading() {
     })();
   }, []);
 
-  async function loadSettings() {
-    try {
-      const { data } = await api.get('/settings');
-      setSettings({
-        instruments: data.instruments || [],
-        patterns: data.patterns || [],
-        beMin: data.beMin ?? -0.2,
-        beMax: data.beMax ?? 0.3,
-        mediaTags: data.mediaTags || [],
-      });
-      setTempBeMin(String(data.beMin ?? -0.2));
-      setTempBeMax(String(data.beMax ?? 0.3));
-    } catch (err) {
-      console.error('Failed to load settings:', err);
-      setError('Could not load settings');
-    }
-  }
+  const refresh = async () => {
+    const { data } = await api.get('/tradingSettings');
+    setData(data);
+    setTempBeMin(String(data.beMin));
+    setTempBeMax(String(data.beMax));
+  };
 
-  /* ───────────────────── api helpers ───────────────────── */
-  async function addInstrument() {
-    if (!newInstrument.trim()) return;
+  async function add(kind: 'instrument' | 'pattern' | 'mediaTag') {
+    const val = kind === 'instrument' ? newInstrument.trim() : kind === 'pattern' ? newPattern.trim() : newMediaTag.trim();
+    if (!val) return;
     try {
-      const { data } = await api.post('/settings/instruments/add', {
-        instrument: newInstrument.trim(),
-      });
-      setSettings((s) => ({ ...s, instruments: data.instruments }));
-      setNewInstrument('');
-    } catch {
-      setError('Could not add instrument');
-    }
+      await api.post(`/tradingSettings/${kind}s/add`, { name: val });
+      await refresh();
+      if (kind === 'instrument') setNewInstrument('');
+      if (kind === 'pattern') setNewPattern('');
+      if (kind === 'mediaTag') setNewMediaTag('');
+    } catch { setError('Could not add'); }
   }
-
-  async function deleteInstrument(instr: string) {
-    try {
-      const { data } = await api.post('/settings/instruments/delete', {
-        instrument: instr,
-      });
-      setSettings((s) => ({ ...s, instruments: data.instruments }));
-    } catch {
-      setError('Could not delete instrument');
-    }
-  }
-
-  async function addPattern() {
-    if (!newPattern.trim()) return;
-    try {
-      const { data } = await api.post('/settings/patterns/add', {
-        pattern: newPattern.trim(),
-      });
-      setSettings((s) => ({ ...s, patterns: data.patterns }));
-      setNewPattern('');
-    } catch {
-      setError('Could not add pattern');
-    }
-  }
-
-  async function deletePattern(p: string) {
-    try {
-      const { data } = await api.post('/settings/patterns/delete', {
-        pattern: p,
-      });
-      setSettings((s) => ({ ...s, patterns: data.patterns }));
-    } catch {
-      setError('Could not delete pattern');
-    }
-  }
-
-  async function addMediaTag() {
-    if (!newMediaTag.trim()) return;
-    try {
-      const { data } = await api.post('/settings/mediaTags/add', {
-        mediaTag: newMediaTag.trim(),
-      });
-      setSettings((s) => ({ ...s, mediaTags: data.mediaTags }));
-      setNewMediaTag('');
-    } catch {
-      setError('Could not add media tag');
-    }
-  }
-
-  async function deleteMediaTag(tag: string) {
-    try {
-      const { data } = await api.post('/settings/mediaTags/delete', {
-        mediaTag: tag,
-      });
-      setSettings((s) => ({ ...s, mediaTags: data.mediaTags }));
-    } catch {
-      setError('Could not delete media tag');
-    }
+  async function del(kind: 'instrument' | 'pattern' | 'mediaTag', name: string) {
+    try { await api.post(`/tradingSettings/${kind}s/delete`, { name }); await refresh(); }
+    catch { setError('Could not delete'); }
   }
 
   async function updateBeRange() {
-    const minVal = parseFloat(tempBeMin);
-    const maxVal = parseFloat(tempBeMax);
-    if (isNaN(minVal) || isNaN(maxVal) || minVal >= maxVal) {
-      alert('Invalid break‑even range');
-      return;
-    }
-    try {
-      const { data } = await api.post('/settings/beRange/update', {
-        beMin: minVal,
-        beMax: maxVal,
-      });
-      setSettings((s) => ({ ...s, beMin: data.beMin, beMax: data.beMax }));
-    } catch {
-      setError('Could not update BE range');
-    }
+    const minVal = parseFloat(tempBeMin); const maxVal = parseFloat(tempBeMax);
+    if (isNaN(minVal) || isNaN(maxVal) || minVal >= maxVal) { alert('Invalid range'); return; }
+    try { await api.post('/tradingSettings/beRange/update', { beMin: minVal, beMax: maxVal }); await refresh(); }
+    catch { setError('Could not update range'); }
   }
 
-  /* ───────────────────── UI ───────────────────── */
-  if (loading) return <div className="p-4">Loading Trading Preferences…</div>;
+  if (loading) return <div className="p-4">Loading Trading Settings…</div>;
 
   return (
-    <div className="p-6 min-h-screen bg-gray-50 dark:bg-[var(--background-2)] text-[var(--text)]  bg-[var(--background)] text-[var(--text)]">
-      <h1 className="text-3xl font-bold mb-4">Trading Preferences</h1>
-      {error && <div className="text-red-600 mb-4">{error}</div>}
+    <div className="p-6 space-y-6 min-h-screen bg-[var(--background)] dark:text-[var(--text)]">
+      <h1 className="text-3xl font-bold">Trading Settings</h1>
+      {error && <p className="text-red-600">{error}</p>}
 
-      {/* ───────── Instruments ───────── */}
+      {/* Instruments */}
       <Card>
         <Title>Instruments</Title>
-        {settings.instruments.length === 0 ? (
-          <Placeholder>No instruments yet.</Placeholder>
-        ) : (
-          <ItemList
-            items={settings.instruments}
-            onDelete={deleteInstrument}
-          />
-        )}
-        <InlineInput
-          value={newInstrument}
-          placeholder="New Instrument"
-          onChange={setNewInstrument}
-          onAdd={addInstrument}
-        />
+        {data.instruments.length ? (
+          <ul className="space-y-1">{data.instruments.map((i)=>(<li key={i} className="flex justify-between items-center"><span>{i}</span><DeleteBtn onClick={()=>del('instrument', i)} /></li>))}</ul>
+        ) : <p>No instruments</p>}
+        <div className="flex gap-2 mt-3"><input className="flex-1 p-2 border rounded dark:bg-[var(--background-2)]" value={newInstrument} onChange={(e)=>setNewInstrument(e.target.value)} placeholder="Add instrument" /><button onClick={()=>add('instrument')} className="px-4 py-2 bg-[var(--primary)] text-white rounded">Add</button></div>
       </Card>
 
-      {/* ───────── Patterns ───────── */}
+      {/* Patterns */}
       <Card>
         <Title>Patterns</Title>
-        {settings.patterns.length === 0 ? (
-          <Placeholder>No patterns yet.</Placeholder>
-        ) : (
-          <ItemList items={settings.patterns} onDelete={deletePattern} />
-        )}
-        <InlineInput
-          value={newPattern}
-          placeholder="New Pattern"
-          onChange={setNewPattern}
-          onAdd={addPattern}
-        />
+        {data.patterns.length ? (
+          <ul className="space-y-1">{data.patterns.map((p)=>(<li key={p} className="flex justify-between items-center"><span>{p}</span><DeleteBtn onClick={()=>del('pattern', p)} /></li>))}</ul>
+        ) : <p>No patterns</p>}
+        <div className="flex gap-2 mt-3"><input className="flex-1 p-2 border rounded dark:bg-[var(--background-2)]" value={newPattern} onChange={(e)=>setNewPattern(e.target.value)} placeholder="Add pattern" /><button onClick={()=>add('pattern')} className="px-4 py-2 bg-[var(--primary)] text-white rounded">Add</button></div>
       </Card>
 
-      {/* ───────── Media tags ───────── */}
-      <Card>
+      {/* Media Tags */}
+      {/* <Card>
         <Title>Media Tags</Title>
-        {(!settings.mediaTags || settings.mediaTags.length === 0) ? (
-          <Placeholder>No media tags yet.</Placeholder>
-        ) : (
-          <ItemList items={settings.mediaTags} onDelete={deleteMediaTag} />
-        )}
-        <InlineInput
-          value={newMediaTag}
-          placeholder="e.g. 5‑Min Chart"
-          onChange={setNewMediaTag}
-          onAdd={addMediaTag}
-        />
-      </Card>
+        {data.mediaTags.length ? (
+          <ul className="space-y-1">{data.mediaTags.map((m)=>(<li key={m} className="flex justify-between items-center"><span>{m}</span><DeleteBtn onClick={()=>del('mediaTag', m)} /></li>))}</ul>
+        ) : <p>No media tags</p>}
+        <div className="flex gap-2 mt-3"><input className="flex-1 p-2 border rounded dark:bg-[var(--background-2)]" value={newMediaTag} onChange={(e)=>setNewMediaTag(e.target.value)} placeholder="Add media tag" /><button onClick={()=>add('mediaTag')} className="px-4 py-2 bg-[var(--primary)] text-white rounded">Add</button></div>
+      </Card> */}
 
-      {/* ───────── Break‑even range ───────── */}
+      {/* Break-even */}
       <Card>
         <Title>Break‑Even Range</Title>
-        <div className="flex items-center gap-4">
-          <LabeledNumber
-            label="beMin"
-            value={tempBeMin}
-            onChange={setTempBeMin}
-          />
-          <LabeledNumber
-            label="beMax"
-            value={tempBeMax}
-            onChange={setTempBeMax}
-          />
-          <button
-            onClick={updateBeRange}
-            className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded"
-          >
-            Update
-          </button>
+        <div className="flex items-end gap-4 flex-wrap">
+          <div><label className="block text-sm">beMin</label><input type="number" step="any" className="p-2 border rounded w-28 dark:bg-[var(--background-2)]" value={tempBeMin} onChange={(e)=>setTempBeMin(e.target.value)} /></div>
+          <div><label className="block text-sm">beMax</label><input type="number" step="any" className="p-2 border rounded w-28 dark:bg-[var(--background-2)]" value={tempBeMax} onChange={(e)=>setTempBeMax(e.target.value)} /></div>
+          <button onClick={updateBeRange} className="px-4 py-2 bg-green-600 text-white rounded h-10">Save</button>
         </div>
-        <p className="text-sm mt-2 text-[var(--text)] ">
-          Current range: {settings.beMin} – {settings.beMax}
-        </p>
+        <p className="text-sm mt-2">Current: {data.beMin} – {data.beMax}</p>
       </Card>
     </div>
   );
 }
 
-/* ───────────────────── small sub‑components ───────────────────── */
-
-function Card({ children }: { children: React.ReactNode }) {
-  return (
-    <section className="mb-8 bg-[var(--background-2)] dark:bg-[var(--background-2)] p-4 rounded shadow">
-      {children}
-    </section>
-  );
-}
-
-function Title({ children }: { children: React.ReactNode }) {
-  return <h2 className="text-xl font-semibold mb-2">{children}</h2>;
-}
-
-function Placeholder({ children }: { children: React.ReactNode }) {
-  return <p className="text-[var(--text)] ">{children}</p>;
-}
-
-function DeleteBtn({ onClick }: { onClick: () => void }) {
-  return (
-    <button
-      onClick={onClick}
-      className="text-sm px-2 py-1 bg-red-500 hover:bg-red-600 text-white rounded"
-    >
-      Delete
-    </button>
-  );
-}
-
-function ItemList({
-  items,
-  onDelete,
-}: {
-  items: string[];
-  onDelete: (v: string) => void;
-}) {
-  return (
-    <ul className="list-disc ml-5 mt-1">
-      {items.map((it) => (
-        <li key={it} className="flex items-center justify-between">
-          <span>{it}</span>
-          <DeleteBtn onClick={() => onDelete(it)} />
-        </li>
-      ))}
-    </ul>
-  );
-}
-
-function InlineInput(props: {
-  value: string;
-  placeholder: string;
-  onChange: (v: string) => void;
-  onAdd: () => void;
-}) {
-  return (
-    <div className="flex items-center gap-2 mt-2">
-      <input
-        type="text"
-        className="flex-1 p-2 border rounded bg-[var(--background-2)] dark:bg-[var(--background-2)] dark:border-gray-600"
-        placeholder={props.placeholder}
-        value={props.value}
-        onChange={(e) => props.onChange(e.target.value)}
-      />
-      <button
-        onClick={props.onAdd}
-        className="px-4 py-2 bg-[var(--primary)] hover:bg-[var(--primary)] text-white rounded"
-      >
-        Add
-      </button>
-    </div>
-  );
-}
-
-function LabeledNumber(props: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-}) {
-  return (
-    <div>
-      <label className="block text-sm text-[var(--text)] ">
-        {props.label}:
-      </label>
-      <input
-        type="number"
-        step="any"
-        className="p-2 border rounded bg-[var(--background-2)] dark:bg-[var(--background-2)] dark:border-gray-600"
-        value={props.value}
-        onChange={(e) => props.onChange(e.target.value)}
-      />
-    </div>
-  );
-}
+// =============================================
+// END

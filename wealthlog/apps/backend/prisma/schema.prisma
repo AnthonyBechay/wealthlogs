@@ -239,31 +239,31 @@ model FinancialAccount {
 }
 
 model Trade {
-  id             Int              @id @default(autoincrement())
+  id             Int                  @id @default(autoincrement())
   accountId      Int
-  account        FinancialAccount @relation(fields: [accountId], references: [id])
-  instrument     String
+  account        FinancialAccount     @relation(fields: [accountId], references: [id])
+  instrumentId   Int?
+  instrument     FinancialInstrument? @relation(fields: [instrumentId], references: [id])
+  patternId      Int?
+  pattern        TradingPattern?      @relation(fields: [patternId], references: [id])
   tradeType      TradeType
-  tradeDirection TradeDirection?  @default(LONG)
-  status         TradeStatus      @default(OPEN)
-  fees           Float            @default(0)
-  entryDate      DateTime?        @default(now())
+  tradeDirection TradeDirection?      @default(LONG)
+  status         TradeStatus          @default(OPEN)
+  fees           Float                @default(0)
+  entryDate      DateTime?            @default(now())
   exitDate       DateTime?
   amount         Float?
-  pattern        String?
   notes          String?
-  createdAt      DateTime         @default(now())
-  updatedAt      DateTime         @default(now())
-  realizedPL     Float?           @default(0)
-    openingBalance Float?
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @default(now())
+  realizedPL     Float?               @default(0)
+  openingBalance Float?
   closingBalance Float?
   fxTrade        FxTrade?
   stocksTrade    StocksTrade?
   bondTrade      BondTrade?
   tradeLabels    TradeLabel[]
-
-  // NEW: Add relation to TradeMedia
-  media TradeMedia[]
+  media          TradeMedia[]
 
   @@index([entryDate])
 }
@@ -351,11 +351,10 @@ model BalanceHistory {
   balance   Float
   createdAt DateTime         @default(now())
   updatedAt DateTime         @default(now())
-  @@id([accountId, date])   
+
+  @@id([accountId, date])
   @@index([accountId, date], name: "idx_balanceHistory_account_date")
 }
-
-
 
 model RealEstateInvestment {
   id               Int              @id @default(autoincrement())
@@ -428,8 +427,6 @@ model Settings {
   id                                Int     @id @default(autoincrement())
   userId                            Int     @unique
   user                              User    @relation(fields: [userId], references: [id])
-  instruments                       Json
-  patterns                          Json
   beMin                             Float   @default(-0.2)
   beMax                             Float   @default(0.3)
   preferredCurrency                 String? @default("USD")
@@ -438,9 +435,25 @@ model Settings {
   displayMode                       String?
   notificationPreferences           Json?
   defaultExpenseWithdrawalAccountId Int?
+  mediaTags                         Json?
+}
 
-  // NEW:
-  mediaTags Json? // e.g. store as an array of strings
+model FinancialInstrument {
+  id     Int     @id @default(autoincrement())
+  userId Int
+  name   String
+  Trade  Trade[]
+
+  @@unique([userId, name])
+}
+
+model TradingPattern {
+  id     Int     @id @default(autoincrement())
+  userId Int
+  name   String
+  Trade  Trade[]
+
+  @@unique([userId, name])
 }
 
 model Subscription {

@@ -92,8 +92,8 @@ export default function TradingPage() {
   const [formFees, setFormFees] = useState("0");
   const [formDate, setFormDate] = useState(() => new Date().toISOString().slice(0, 19));
   const [formPattern, setFormPattern] = useState("");
-  const [fxAmountGain, setFxAmountGain] = useState("0");
-  const [fxPercentageGain, setFxPercentageGain] = useState("0");
+  const [fxAmountGain, setFxAmountGain] = useState("");
+  const [fxPercentageGain, setFxPercentageGain] = useState("");
   const [createMediaList, setCreateMediaList] = useState<MediaTagItem[]>([
     { tagName: "", description: "", externalUrl: "", file: null },
   ]);
@@ -114,18 +114,18 @@ export default function TradingPage() {
   const [editMediaList, setEditMediaList] = useState<MediaTagItem[]>([
     { tagName: "", description: "", externalUrl: "", file: null },
   ]);
-  const [editFxLots, setEditFxLots]           = useState("");
-const [editFxEntry, setEditFxEntry]         = useState("");
-const [editFxExit, setEditFxExit]           = useState("");
-const [editFxSL, setEditFxSL]               = useState("");
-const [editFxPipsGain, setEditFxPipsGain]   = useState("");
-const [showEditFxAdvanced, setShowEditFxAdvanced] = useState(false);
+  const [editFxLots, setEditFxLots] = useState("");
+  const [editFxEntry, setEditFxEntry] = useState("");
+  const [editFxExit, setEditFxExit] = useState("");
+  const [editFxSL, setEditFxSL] = useState("");
+  const [editFxPipsGain, setEditFxPipsGain] = useState("");
+  const [showEditFxAdvanced, setShowEditFxAdvanced] = useState(false);
 
 
 
-const currentAccount = accounts.find((a) => a.id === selectedAccountId) ?? null;
-const selectedAccountIsMt5 =
-  currentAccount?.name.toLowerCase().includes("mt5") ?? false;
+  const currentAccount = accounts.find((a) => a.id === selectedAccountId) ?? null;
+  const selectedAccountIsMt5 =
+    currentAccount?.name.toLowerCase().includes("mt5") ?? false;
 
 
   /*────────────────── Initial load (auth check + settings) ─────────────────*/
@@ -135,7 +135,7 @@ const selectedAccountIsMt5 =
         await api.get("/auth/me");
         await loadAccounts();
 
-        const resp = await api.get("/settings");
+        const resp = await api.get("/tradingSettings");
         setInstruments(resp.data.instruments || []);
         setPatterns(resp.data.patterns || []);
         setMediaTags(resp.data.mediaTags || []);
@@ -147,7 +147,7 @@ const selectedAccountIsMt5 =
     })();
 
 
-    
+
   }, []);
 
   /*────────────────── Account & Trade loaders ─────────────────*/
@@ -188,12 +188,12 @@ const selectedAccountIsMt5 =
 
 
   /* add after the existing "load trades when account changes" effect */
-useEffect(() => {
-  if (!selectedAccountId || !selectedAccountIsMt5) return;   // nothing to poll
+  useEffect(() => {
+    if (!selectedAccountId || !selectedAccountIsMt5) return;   // nothing to poll
 
-  const id = setInterval(() => loadTrades(selectedAccountId), 10_000); // 15 s
-  return () => clearInterval(id);                             
-}, [selectedAccountId, selectedAccountIsMt5]);
+    const id = setInterval(() => loadTrades(selectedAccountId), 10_000); // 15 s
+    return () => clearInterval(id);
+  }, [selectedAccountId, selectedAccountIsMt5]);
 
 
 
@@ -207,22 +207,22 @@ useEffect(() => {
     const numericFees = Math.abs(parseFloat(formFees) || 0);
 
 
-/* ---------- parse gains ---------- */
-const amtRaw = fxAmountGain.trim();
-const pctRaw = fxPercentageGain.trim();
+    /* ---------- parse gains ---------- */
+    const amtRaw = fxAmountGain.trim();
+    const pctRaw = fxPercentageGain.trim();
 
-const aGain = amtRaw === "" ? undefined : parseFloat(amtRaw);
-const pGain = pctRaw === "" ? undefined : parseFloat(pctRaw);
+    const aGain = amtRaw === "" ? undefined : parseFloat(amtRaw);
+    const pGain = pctRaw === "" ? undefined : parseFloat(pctRaw);
 
-/* ---------- decide winner ---------- */
-let fxData: any = {};
-if (aGain != null && pGain != null) {
-  fxData = { amountGain: null, percentageGain: pGain / 100 };   // % wins
-} else if (pGain != null) {
-  fxData = { percentageGain: pGain / 100 };
-} else if (aGain != null) {
-  fxData = { amountGain: aGain };
-}
+    /* ---------- decide winner ---------- */
+    let fxData: any = {};
+    if (aGain != null && pGain != null) {
+      fxData = { amountGain: null, percentageGain: pGain / 100 };   // % wins
+    } else if (pGain != null) {
+      fxData = { percentageGain: pGain / 100 };
+    } else if (aGain != null) {
+      fxData = { amountGain: aGain };
+    }
 
 
 
@@ -311,55 +311,55 @@ if (aGain != null && pGain != null) {
   /*────────────────── Edit helpers unchanged … ─────────────────*/
   // EDIT trade
   function openEditModal(trade: Trade) {
-  setEditTrade(trade);
-  setEditFxAmount(String(trade.fxTrade?.amountGain ?? ""));
-  setEditFxPercent(
-    trade.fxTrade?.percentageGain != null ? String(trade.fxTrade.percentageGain * 100) : ""
-  );
-  setEditFxLots(String(trade.fxTrade?.lots ?? ""));
-  setEditFxEntry(String(trade.fxTrade?.entryPrice ?? ""));
-  setEditFxExit(String(trade.fxTrade?.exitPrice ?? ""));
-  setEditFxSL(String(trade.fxTrade?.stopLossPips ?? ""));
-  setEditFxPipsGain(String(trade.fxTrade?.pipsGain ?? ""));
-  setShowEditFxAdvanced(
-    !!(trade.fxTrade?.lots || trade.fxTrade?.entryPrice || trade.fxTrade?.exitPrice)
-  );
-  setShowEditModal(true);
-}
+    setEditTrade(trade);
+    setEditFxAmount(String(trade.fxTrade?.amountGain ?? ""));
+    setEditFxPercent(
+      trade.fxTrade?.percentageGain != null ? String(trade.fxTrade.percentageGain * 100) : ""
+    );
+    setEditFxLots(String(trade.fxTrade?.lots ?? ""));
+    setEditFxEntry(String(trade.fxTrade?.entryPrice ?? ""));
+    setEditFxExit(String(trade.fxTrade?.exitPrice ?? ""));
+    setEditFxSL(String(trade.fxTrade?.stopLossPips ?? ""));
+    setEditFxPipsGain(String(trade.fxTrade?.pipsGain ?? ""));
+    setShowEditFxAdvanced(
+      !!(trade.fxTrade?.lots || trade.fxTrade?.entryPrice || trade.fxTrade?.exitPrice)
+    );
+    setShowEditModal(true);
+  }
 
   async function handleEditTradeSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!editTrade.id) return;
 
     try {
-     const numericFees = Math.abs(parseFloat(String(editTrade.fees)) || 0);
-const amtRaw = editFxAmount.trim();
-const pctRaw = editFxPercent.trim();
+      const numericFees = Math.abs(parseFloat(String(editTrade.fees)) || 0);
+      const amtRaw = editFxAmount.trim();
+      const pctRaw = editFxPercent.trim();
 
-const aGain = amtRaw === "" ? null : parseFloat(amtRaw);
-const pGain = pctRaw === "" ? null : parseFloat(pctRaw) / 100;
+      const aGain = amtRaw === "" ? null : parseFloat(amtRaw);
+      const pGain = pctRaw === "" ? null : parseFloat(pctRaw) / 100;
 
-let fxData: any = {};
-if (aGain != null && pGain != null) {
-  fxData = { amountGain: null, percentageGain: pGain };
-} else if (aGain != null) {
-  fxData = { amountGain: aGain };           // ← percentageGain omitted ⇒ null
-} else if (pGain != null) {
-  fxData = { percentageGain: pGain };
-}
+      let fxData: any = {};
+      if (aGain != null && pGain != null) {
+        fxData = { amountGain: null, percentageGain: pGain };
+      } else if (aGain != null) {
+        fxData = { amountGain: aGain };           // ← percentageGain omitted ⇒ null
+      } else if (pGain != null) {
+        fxData = { percentageGain: pGain };
+      }
 
-      
 
-if (fxData) {
-  fxData = {
-    ...fxData,
-    lots        : Number(editFxLots)        || null,
-    entryPrice  : Number(editFxEntry)       || null,
-    exitPrice   : Number(editFxExit)        || null,
-    stopLossPips: Number(editFxSL)          || null,
-    pipsGain    : Number(editFxPipsGain)    || null,
-  };
-}
+
+      if (fxData) {
+        fxData = {
+          ...fxData,
+          lots: Number(editFxLots) || null,
+          entryPrice: Number(editFxEntry) || null,
+          exitPrice: Number(editFxExit) || null,
+          stopLossPips: Number(editFxSL) || null,
+          pipsGain: Number(editFxPipsGain) || null,
+        };
+      }
 
       await api.put(`/trade/${editTrade.id}`, {
         instrument: editTrade.instrument,
@@ -379,7 +379,7 @@ if (fxData) {
     }
   }
 
-  
+
   /*────────────────── Loading splash ─────────────────*/
   if (initialLoading) {
     return (
@@ -462,11 +462,10 @@ if (fxData) {
                 <button
                   key={ac.id}
                   onClick={() => setSelectedAccountId(ac.id)}
-                  className={`p-3 border rounded-lg text-left ${
-                    ac.id === selectedAccountId
+                  className={`p-3 border rounded-lg text-left ${ac.id === selectedAccountId
                       ? "bg-[var(--primary)] text-white"
                       : "bg-[var(--background-2)] hover:bg-[var(--background)]"
-                  }`}
+                    }`}
                 >
                   <div className="font-medium">{ac.name}</div>
                   <div className="text-sm">
@@ -510,23 +509,24 @@ if (fxData) {
                   <form onSubmit={handleCreateTrade} className="space-y-4">
                     {/* instrument / direction */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block font-medium text-sm mb-1">Instrument</label>
-                        <select
-                          className="border p-2 rounded w-full bg-[var(--background)]"
-                          value={formInstrument}
-                          onChange={(e) => setFormInstrument(e.target.value)}
-                          required
-                        >
-                          <option value="">Select instrument</option>
-                          {instruments.map((inst) => (
-                            <option key={inst} value={inst}>
-                              {inst}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                      <div>
+  <div>
+    <label className="block font-medium text-sm mb-1">Instrument</label>
+    <select
+      className="border p-2 rounded w-full bg-[var(--background)] text-[var(--text)]"
+      value={formInstrument}               // <-- use formInstrument
+      onChange={(e) => setFormInstrument(e.target.value)}  // <-- update it
+      required
+    >
+      <option value="">Select instrument</option>
+      {instruments.map((inst) => (
+        <option key={inst} value={inst}>
+          {inst}
+        </option>
+      ))}
+    </select>
+  </div>
+  
+  <div>
                         <label className="block font-medium text-sm mb-1">Direction</label>
                         <select
                           className="border p-2 rounded w-full bg-[var(--background)]"
@@ -556,7 +556,7 @@ if (fxData) {
                         <label className="block font-medium text-sm mb-1">Date/Time</label>
                         <input
                           type="datetime-local"
-                            step="1"
+                          step="1"
                           className="border p-2 rounded w-full bg-[var(--background)]"
                           value={formDate}
                           onChange={(e) => setFormDate(e.target.value)}
@@ -718,26 +718,35 @@ if (fxData) {
 
 
 
-{/*──────── Edit modal ─────────*/}
-{showEditModal && editTrade.id && (
-  <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-    <div className="bg-[var(--background-2)] rounded-lg shadow-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-      <div className="p-6">
-        <h3 className="text-xl font-semibold mb-4">Edit Trade #{editTrade.id}</h3>
+      {/*──────── Edit modal ─────────*/}
+      {showEditModal && editTrade.id && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-[var(--background-2)] rounded-lg shadow-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <h3 className="text-xl font-semibold mb-4">Edit Trade #{editTrade.id}</h3>
 
-          <form onSubmit={handleEditTradeSubmit} className="space-y-4">
+              <form onSubmit={handleEditTradeSubmit} className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block font-medium text-sm mb-1">Instrument</label>
-                    <input
-                      type="text"
-                      className="border p-2 rounded w-full bg-[var(--background)] text-[var(--text)]"
-                      value={editTrade.instrument || ""}
-                      onChange={(e) =>
-                        setEditTrade((prev) => ({ ...prev, instrument: e.target.value }))
-                      }
-                    />
-                  </div>
+            {/* ✅ replace with this in your edit modal */}
+<div>
+  <label className="block font-medium text-sm mb-1">Instrument</label>
+  <select
+    className="border p-2 rounded w-full bg-[var(--background)] text-[var(--text)]"
+    value={editTrade.instrument || ""}
+    onChange={(e) =>
+      setEditTrade(prev => ({ ...prev, instrument: e.target.value }))
+    }
+    required
+  >
+    <option value="">Select instrument</option>
+    {instruments.map(inst => (
+      <option key={inst} value={inst}>
+        {inst}
+      </option>
+    ))}
+  </select>
+</div>
+
                   <div>
                     <label className="block font-medium text-sm mb-1">Direction</label>
                     <select
@@ -804,107 +813,107 @@ if (fxData) {
                   </select>
                 </div>
 
-          {/*──────── FX gains + Advanced toggle ────────*/}
-          <div className="border bg-[var(--background-2)] p-4 rounded-lg">
-            <div className="flex justify-between items-center mb-2">
-              <h4 className="font-medium text-sm">FX Gains</h4>
-              <button
-                type="button"
-                onClick={() => setShowEditFxAdvanced((v) => !v)}
-                className="text-sm text-blue-600"
-              >
-                {showEditFxAdvanced ? "Hide Advanced" : "Show Advanced"}
-              </button>
-            </div>
+                {/*──────── FX gains + Advanced toggle ────────*/}
+                <div className="border bg-[var(--background-2)] p-4 rounded-lg">
+                  <div className="flex justify-between items-center mb-2">
+                    <h4 className="font-medium text-sm">FX Gains</h4>
+                    <button
+                      type="button"
+                      onClick={() => setShowEditFxAdvanced((v) => !v)}
+                      className="text-sm text-blue-600"
+                    >
+                      {showEditFxAdvanced ? "Hide Advanced" : "Show Advanced"}
+                    </button>
+                  </div>
 
-            {/* basic amount / % */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm mb-1">Amount Gain ($)</label>
-                <input
-                  type="text"
-                  className="w-full border p-2 rounded bg-[var(--background)]"
-                  value={editFxAmount}
-                  onChange={(e) => setEditFxAmount(e.target.value)}
-                />
-              </div>
-              <div>
-                <label className="block text-sm mb-1">% Gain</label>
-                <input
-                  type="text"
-                  className="w-full border p-2 rounded bg-[var(--background)]"
-                  value={editFxPercent}
-                  onChange={(e) => setEditFxPercent(e.target.value)}
-                />
-              </div>
-            </div>
+                  {/* basic amount / % */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm mb-1">Amount Gain ($)</label>
+                      <input
+                        type="text"
+                        className="w-full border p-2 rounded bg-[var(--background)]"
+                        value={editFxAmount}
+                        onChange={(e) => setEditFxAmount(e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm mb-1">% Gain</label>
+                      <input
+                        type="text"
+                        className="w-full border p-2 rounded bg-[var(--background)]"
+                        value={editFxPercent}
+                        onChange={(e) => setEditFxPercent(e.target.value)}
+                      />
+                    </div>
+                  </div>
 
-            {/* advanced grid */}
-            {showEditFxAdvanced && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
-                <div>
-                  <label className="block text-sm mb-1">Lots</label>
-                  <input
-                    type="text"
-                    className="w-full border p-2 rounded bg-[var(--background)]"
-                    value={editFxLots}
-                    onChange={(e) => setEditFxLots(e.target.value)}
-                  />
+                  {/* advanced grid */}
+                  {showEditFxAdvanced && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
+                      <div>
+                        <label className="block text-sm mb-1">Lots</label>
+                        <input
+                          type="text"
+                          className="w-full border p-2 rounded bg-[var(--background)]"
+                          value={editFxLots}
+                          onChange={(e) => setEditFxLots(e.target.value)}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm mb-1">Entry Price</label>
+                        <input
+                          type="text"
+                          className="w-full border p-2 rounded bg-[var(--background)]"
+                          value={editFxEntry}
+                          onChange={(e) => setEditFxEntry(e.target.value)}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm mb-1">Exit Price</label>
+                        <input
+                          type="text"
+                          className="w-full border p-2 rounded bg-[var(--background)]"
+                          value={editFxExit}
+                          onChange={(e) => setEditFxExit(e.target.value)}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm mb-1">Stop-Loss (pips)</label>
+                        <input
+                          type="text"
+                          className="w-full border p-2 rounded bg-[var(--background)]"
+                          value={editFxSL}
+                          onChange={(e) => setEditFxSL(e.target.value)}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm mb-1">Pips Gain</label>
+                        <input
+                          type="text"
+                          className="w-full border p-2 rounded bg-[var(--background)]"
+                          value={editFxPipsGain}
+                          onChange={(e) => setEditFxPipsGain(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
-                <div>
-                  <label className="block text-sm mb-1">Entry Price</label>
-                  <input
-                    type="text"
-                    className="w-full border p-2 rounded bg-[var(--background)]"
-                    value={editFxEntry}
-                    onChange={(e) => setEditFxEntry(e.target.value)}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm mb-1">Exit Price</label>
-                  <input
-                    type="text"
-                    className="w-full border p-2 rounded bg-[var(--background)]"
-                    value={editFxExit}
-                    onChange={(e) => setEditFxExit(e.target.value)}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm mb-1">Stop-Loss (pips)</label>
-                  <input
-                    type="text"
-                    className="w-full border p-2 rounded bg-[var(--background)]"
-                    value={editFxSL}
-                    onChange={(e) => setEditFxSL(e.target.value)}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm mb-1">Pips Gain</label>
-                  <input
-                    type="text"
-                    className="w-full border p-2 rounded bg-[var(--background)]"
-                    value={editFxPipsGain}
-                    onChange={(e) => setEditFxPipsGain(e.target.value)}
-                  />
-                </div>
-              </div>
-            )}
-          </div>
 
-          {/* footer buttons */}
-          <div className="flex justify-end gap-3 pt-4">
-            <button
-              type="button"
-              onClick={() => setShowEditModal(false)}
-              className="px-4 py-2 border rounded bg-[var(--background)]"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="px-4 py-2 bg-[var(--primary)] text-white rounded"
-            >
-              Save Changes
+                {/* footer buttons */}
+                <div className="flex justify-end gap-3 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => setShowEditModal(false)}
+                    className="px-4 py-2 border rounded bg-[var(--background)]"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-2 bg-[var(--primary)] text-white rounded"
+                  >
+                    Save Changes
                   </button>
                 </div>
               </form>
