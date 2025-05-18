@@ -68,6 +68,17 @@ export default function TradingPage() {
   const [initialLoading, setInitialLoading] = useState(true);
   const [error, setError] = useState("");
 
+
+// util – convert an ISO/DB string → yyyy-MM-ddTHH:mm for local pickers
+const toLocalInputValue = (isoDate: string) => {
+  const d = new Date(isoDate);
+  return new Date(d.getTime() - d.getTimezoneOffset() * 60000)
+           .toISOString()
+           .slice(0, 16);               // "YYYY-MM-DDTHH:mm"
+};
+
+
+
   /*────────── Accounts ─────────*/
   const [accounts, setAccounts] = useState<FinancialAccount[]>([]);
   const [selectedAccountId, setSelectedAccountId] = useState<number | null>(null);
@@ -90,7 +101,7 @@ export default function TradingPage() {
   const [formInstrument, setFormInstrument] = useState("");
   const [formDirection, setFormDirection] = useState<"LONG" | "SHORT">("LONG");
   const [formFees, setFormFees] = useState("0");
-  const [formDate, setFormDate] = useState(() => new Date().toISOString().slice(0, 19));
+  const [formDate, setFormDate] = useState(() => toLocalInputValue(new Date().toISOString()));
   const [formPattern, setFormPattern] = useState("");
   const [fxAmountGain, setFxAmountGain] = useState("");
   const [fxPercentageGain, setFxPercentageGain] = useState("");
@@ -786,9 +797,7 @@ export default function TradingPage() {
                       type="datetime-local"
                       className="border p-2 rounded w-full bg-[var(--background)] text-[var(--text)]"
                       value={
-                        editTrade.entryDate
-                          ? new Date(editTrade.entryDate).toISOString().slice(0, 16)
-                          : ""
+                          editTrade.entryDate ? toLocalInputValue(editTrade.entryDate) : ""
                       }
                       onChange={(e) =>
                         setEditTrade((prev) => ({ ...prev, entryDate: e.target.value }))

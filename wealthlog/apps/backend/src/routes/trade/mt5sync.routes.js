@@ -118,7 +118,7 @@ router.post('/', async (req, res) => {
     }
 
     /* 9 — insert trade */
-    const entryDate = new Date(tsSec * 1000 + GMT_TO_BEIRUT_MS);
+    const entryDate = new Date(tsSec * 1000);
 
     const trade = await prisma.trade.create({
       data: {
