@@ -15,7 +15,7 @@ import { appWithTranslation } from 'next-i18next';
 import nextI18NextConfig from '../next-i18next.config';
 
 /* Public routes requiring no auth */
-const PUBLIC_PATHS = ['/', '/login', '/register'];
+const PUBLIC_PATHS = ['/', '/login', '/register','/forgot-password'];
 const isPublic = (p: string) => PUBLIC_PATHS.includes(p);
 
 /* Display‑mode helpers */
