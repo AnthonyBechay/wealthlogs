@@ -20,12 +20,12 @@ router.get('/', authenticate, async (req, res) => {
     if (!row) {
       row = await prisma.settings.create({
         data: {
-          userId : req.user.userId,
-          beMin  : -0.2,
-          beMax  :  0.3,
+          userId: req.user.userId,
+          beMin: -0.2,
+          beMax: 0.3,
           preferredCurrency: 'USD',
-          language : 'en',
-          timezone : 'UTC',
+          language: 'en',
+          timezone: 'UTC',
           displayMode: 'light',
           notificationPreferences: {},
           mediaTags: [],            // keep mediaTags here
@@ -34,13 +34,13 @@ router.get('/', authenticate, async (req, res) => {
     }
 
     return res.json({
-      beMin      : row.beMin,
-      beMax      : row.beMax,
+      beMin: row.beMin,
+      beMax: row.beMax,
       preferredCurrency: row.preferredCurrency,
-      language   : row.language,
-      timezone   : row.timezone,
+      language: row.language,
+      timezone: row.timezone,
       displayMode: row.displayMode,
-      mediaTags  : row.mediaTags || [],
+      mediaTags: row.mediaTags || [],
     });
   } catch (err) {
     console.error('GET /generalSettings error:', err);

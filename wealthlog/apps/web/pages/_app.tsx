@@ -13,7 +13,7 @@ import nextI18NextConfig from '../next-i18next.config';
 
 
 /* Public routes requiring no auth */
-const PUBLIC_PATHS = ['/', '/login', '/register','/forgot-password'];
+const PUBLIC_PATHS = ['/', '/login', '/register', '/forgot-password'];
 const isPublic = (p: string) => PUBLIC_PATHS.includes(p);
 
 type ThemeMode = 'light' | 'dark' | 'system';
@@ -68,8 +68,8 @@ const NavigationLink = ({ item, isCollapsed = false, onNavigate }: NavigationLin
         className={`
           group flex items-center gap-3 px-4 py-3 rounded-lg
           transition-all duration-200 ease-in-out
-          ${isActive 
-            ? 'bg-white/20 text-white font-semibold' 
+          ${isActive
+            ? 'bg-white/20 text-white font-semibold'
             : 'text-white/80 hover:bg-white/10 hover:text-white'
           }
           ${isCollapsed ? 'justify-center' : ''}
@@ -106,7 +106,7 @@ function MyApp({ Component, pageProps }: AppProps) {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  
+
   // Initialize theme from localStorage
   useEffect(() => {
     setThemeMode(getStoredTheme());
@@ -183,9 +183,9 @@ function MyApp({ Component, pageProps }: AppProps) {
   // Render conditions
   if (isCheckingAuth) {
     return (
-      <ThemeProvider 
-        attribute="class" 
-        defaultTheme="system" 
+      <ThemeProvider
+        attribute="class"
+        defaultTheme="system"
         forcedTheme={themeMode === 'system' ? undefined : themeMode}
       >
         <LoadingScreen />
@@ -195,9 +195,9 @@ function MyApp({ Component, pageProps }: AppProps) {
 
   if (isPublicRoute(router.pathname)) {
     return (
-      <ThemeProvider 
-        attribute="class" 
-        defaultTheme="system" 
+      <ThemeProvider
+        attribute="class"
+        defaultTheme="system"
         forcedTheme={themeMode === 'system' ? undefined : themeMode}
       >
         <Component {...pageProps} />
@@ -211,15 +211,15 @@ function MyApp({ Component, pageProps }: AppProps) {
 
   // Main layout
   return (
-    <ThemeProvider 
-      attribute="class" 
-      defaultTheme="system" 
+    <ThemeProvider
+      attribute="class"
+      defaultTheme="system"
       forcedTheme={themeMode === 'system' ? undefined : themeMode}
     >
       <div className="flex min-h-screen bg-gray-50 dark:bg-gray-900">
-        
+
         {/* Desktop Sidebar */}
-        <aside 
+        <aside
           className={`
             hidden md:flex flex-col h-screen
             transition-all duration-300 ease-in-out
@@ -230,13 +230,13 @@ function MyApp({ Component, pageProps }: AppProps) {
           `}
         >
           {/* Header */}
-          <header 
+          <header
             className="flex items-center gap-3 p-6 cursor-pointer hover:bg-white/5 transition-colors"
             onClick={handleLogoClick}
           >
-            <img 
-              src="/logo.png" 
-              alt="WealthLog" 
+            <img
+              src="/logo.png"
+              alt="WealthLog"
               className="h-8 w-8 object-contain"
             />
             {!isSidebarCollapsed && (
@@ -296,7 +296,7 @@ function MyApp({ Component, pageProps }: AppProps) {
         </aside>
 
         {/* Mobile overlay */}
-        <div 
+        <div
           className={`
             fixed inset-0 z-40 
             bg-black/40 backdrop-blur-sm
@@ -307,7 +307,7 @@ function MyApp({ Component, pageProps }: AppProps) {
         />
 
         {/* Mobile drawer */}
-        <aside 
+        <aside
           className={`
             fixed inset-y-0 left-0 z-50 w-72
             bg-gradient-to-b from-blue-600 to-blue-700
@@ -317,13 +317,13 @@ function MyApp({ Component, pageProps }: AppProps) {
           `}
         >
           {/* Mobile header */}
-          <header 
+          <header
             className="flex items-center gap-3 p-6 border-b border-white/10"
             onClick={handleLogoClick}
           >
-            <img 
-              src="/logo.png" 
-              alt="WealthLog" 
+            <img
+              src="/logo.png"
+              alt="WealthLog"
               className="h-8 w-8 object-contain"
             />
             <h1 className="text-white font-bold text-xl tracking-tight">
@@ -380,7 +380,7 @@ function MyApp({ Component, pageProps }: AppProps) {
                 </svg>
               </button>
 
-              <h1 
+              <h1
                 className="text-lg font-bold text-gray-900 dark:text-white cursor-pointer"
                 onClick={handleLogoClick}
               >

@@ -1,6 +1,6 @@
 // src/routes/trade/filter.routes.js
 const express = require("express");
-const router  = express.Router();
+const router = express.Router();
 const { prisma } = require("../../lib/prisma");              // ✔ same as other routes
 const { authenticate } = require("../../middleware/authenticate"); // ✔ fixed path
 
@@ -11,8 +11,8 @@ const { authenticate } = require("../../middleware/authenticate"); // ✔ fixed 
 function buildWhere(q, userId) {
   const w = {
     tradeType: "FX",
-    status:    "CLOSED",
-    account:   { is: { userId } },          // ← user-scope
+    status: "CLOSED",
+    account: { is: { userId } },          // ← user-scope
   };
 
   /* ── optional query-string filters ───────────────────── */
@@ -31,15 +31,15 @@ function buildWhere(q, userId) {
   if (q.from || q.to) {
     w.entryDate = {};
     if (q.from) w.entryDate.gte = new Date(`${q.from}T00:00:00`);
-    if (q.to)   w.entryDate.lte = new Date(`${q.to}T23:59:59`);
+    if (q.to) w.entryDate.lte = new Date(`${q.to}T23:59:59`);
   }
 
   /* FX-specific numeric filters */
   const fxAND = [];
   if (+q.minLots) fxAND.push({ lots: { gte: +q.minLots } });
   if (+q.maxLots) fxAND.push({ lots: { lte: +q.maxLots } });
-  if (+q.minPct)  fxAND.push({ percentageGain: { gte: +q.minPct / 100 } });
-  if (+q.maxPct)  fxAND.push({ percentageGain: { lte: +q.maxPct / 100 } });
+  if (+q.minPct) fxAND.push({ percentageGain: { gte: +q.minPct / 100 } });
+  if (+q.maxPct) fxAND.push({ percentageGain: { lte: +q.maxPct / 100 } });
   if (fxAND.length) w.fxTrade = { is: { AND: fxAND } };
 
   return w;
@@ -51,13 +51,13 @@ function buildWhere(q, userId) {
 router.get("/", authenticate, async (req, res) => {
   try {
     const userId = req.user.userId;                    // set by authenticate()
-    const where  = buildWhere(req.query, userId);
+    const where = buildWhere(req.query, userId);
 
     const { page = "1", size = "10", groupBy } = req.query;
     const p = Math.max(1, +page);
     const s = Math.max(1, +size);
 
-    const total  = await prisma.trade.count({ where });
+    const total = await prisma.trade.count({ where });
     const trades = await prisma.trade.findMany({
       where,
       include: { fxTrade: true, instrument: true, pattern: true },
@@ -67,25 +67,25 @@ router.get("/", authenticate, async (req, res) => {
     });
 
     const rows = trades.map(t => ({
-      id:             t.id,
-      instrument:     t.instrument?.name ?? "",
-      entryDate:      t.entryDate.toISOString(),
+      id: t.id,
+      instrument: t.instrument?.name ?? "",
+      entryDate: t.entryDate.toISOString(),
       tradeDirection: t.tradeDirection,
-      lots:           t.fxTrade?.lots ?? null,
-      entryPrice:     t.fxTrade?.entryPrice ?? null,
-      exitPrice:      t.fxTrade?.exitPrice ?? null,
-      stopLossPips:   t.fxTrade?.stopLossPips ?? null,
-      pipsGain:       t.fxTrade?.pipsGain ?? null,
-      amountGain:     t.fxTrade?.amountGain ?? null,
+      lots: t.fxTrade?.lots ?? null,
+      entryPrice: t.fxTrade?.entryPrice ?? null,
+      exitPrice: t.fxTrade?.exitPrice ?? null,
+      stopLossPips: t.fxTrade?.stopLossPips ?? null,
+      pipsGain: t.fxTrade?.pipsGain ?? null,
+      amountGain: t.fxTrade?.amountGain ?? null,
       percentageGain: t.fxTrade?.percentageGain ?? null,
-      fees:           t.fees,
+      fees: t.fees,
     }));
 
     /* simple bucket aggregation */
     const keyFn = r =>
-      groupBy === "month"     ? r.entryDate.slice(0, 7) :
-      groupBy === "direction" ? r.tradeDirection        :
-                                r.instrument;
+      groupBy === "month" ? r.entryDate.slice(0, 7) :
+        groupBy === "direction" ? r.tradeDirection :
+          r.instrument;
 
     const buckets = Object.values(
       rows.reduce((acc, r) => {
@@ -100,10 +100,10 @@ router.get("/", authenticate, async (req, res) => {
         return acc;
       }, {})
     ).map(b => ({
-      key:     b.key,
-      count:   b.count,
+      key: b.key,
+      count: b.count,
       grossPL: b.grossPL,
-      avgPct:  b.avgPct / b.count,
+      avgPct: b.avgPct / b.count,
       winRate: (b.wins / b.count) * 100,
     }));
 

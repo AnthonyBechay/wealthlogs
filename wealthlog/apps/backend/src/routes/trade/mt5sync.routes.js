@@ -1,18 +1,18 @@
 // src/routes/mt5sync.routes.js
-const express  = require('express');
-const crypto   = require('crypto');
-const bcrypt   = require('bcrypt');
-const router   = express.Router();
+const express = require('express');
+const crypto = require('crypto');
+const bcrypt = require('bcrypt');
+const router = express.Router();
 const { prisma } = require('../../lib/prisma');
 const { recalcAccountBalance } = require('../account/recalc.helper');
 
 /* ────── config ────── */
-const API_KEY     = process.env.MT5_SYNC_TOKEN;
+const API_KEY = process.env.MT5_SYNC_TOKEN;
 const SIGN_SECRET = process.env.MT5_SYNC_SIGN_SECRET;
-const SIGN_TTL    = parseInt(process.env.MT5_SYNC_TTL || '300', 10);
+const SIGN_TTL = parseInt(process.env.MT5_SYNC_TTL || '300', 10);
 
 const requireApiKey = !!API_KEY;
-const requireHmac   = !!SIGN_SECRET;
+const requireHmac = !!SIGN_SECRET;
 
 /* helpers */
 const safeEqual = (a, b) => {
@@ -36,18 +36,18 @@ router.post('/', async (req, res) => {
   /* 2 — optional HMAC */
   if (requireHmac) {
     const tsHdr = req.get('X-Timestamp');
-    const sigHdr= req.get('X-Signature');
+    const sigHdr = req.get('X-Signature');
     if (!tsHdr || !sigHdr)
       return res.status(400).json({ error: 'Missing X-Timestamp or X-Signature' });
 
     const now = Math.floor(Date.now() / 1000);
-    const ts  = Number(tsHdr);
+    const ts = Number(tsHdr);
     if (!Number.isFinite(ts) || Math.abs(now - ts) > SIGN_TTL)
       return res.status(401).json({ error: 'Stale timestamp' });
 
     const payload = Buffer.from(JSON.stringify(req.body));
-    const data    = Buffer.from(tsHdr + '.' + payload);
-    const hmac    = crypto.createHmac('sha256', SIGN_SECRET).update(data).digest('hex');
+    const data = Buffer.from(tsHdr + '.' + payload);
+    const hmac = crypto.createHmac('sha256', SIGN_SECRET).update(data).digest('hex');
     if (!safeEqual(hmac, sigHdr))
       return res.status(403).json({ error: 'Invalid signature' });
   }
@@ -96,17 +96,17 @@ router.post('/', async (req, res) => {
 
     /* 6 — dedupe by MT5 ticket */
     const note = `MT5 ticket ${ticket}`;
-    const dup  = await prisma.trade.findFirst({
+    const dup = await prisma.trade.findFirst({
       where: { accountId: account.id, notes: note },
     });
     if (dup) return res.json({ ok: true, duplicate: true, tradeId: dup.id });
 
     /* 7 — ensure instrument exists / create */
     const instName = normInstrument(symbol);
-    const instRow  = await prisma.financialInstrument.upsert({
-      where  : { userId_name: { userId: user.id, name: instName } },
-      update : {},
-      create : { userId: user.id, name: instName },
+    const instRow = await prisma.financialInstrument.upsert({
+      where: { userId_name: { userId: user.id, name: instName } },
+      update: {},
+      create: { userId: user.id, name: instName },
     });
 
     /* 8 — gain fields */
@@ -122,8 +122,8 @@ router.post('/', async (req, res) => {
 
     const trade = await prisma.trade.create({
       data: {
-        tradeType : 'FX',
-        accountId : account.id,
+        tradeType: 'FX',
+        accountId: account.id,
         instrumentId: instRow.id,
         tradeDirection: volume >= 0 ? 'LONG' : 'SHORT',
         fees: feeSanitised,
@@ -132,7 +132,7 @@ router.post('/', async (req, res) => {
         status: 'CLOSED',
         fxTrade: {
           create: {
-            lots          : Math.abs(volume),
+            lots: Math.abs(volume),
             entryPrice,
             exitPrice,
             stopLossPips,

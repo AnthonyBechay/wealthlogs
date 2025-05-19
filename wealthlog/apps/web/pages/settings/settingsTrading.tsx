@@ -8,7 +8,7 @@ let TrashIcon: React.FC<{ size?: number }> = () => <span>🗑</span>;
 try {
   // eslint-disable-next-line @typescript-eslint/no-var-requires
   TrashIcon = require('react-icons/fa').FaTrash ?? TrashIcon;
-} catch {}
+} catch { }
 
 interface TradingSettingsData {
   instruments: string[];
@@ -95,18 +95,18 @@ export default function SettingsTrading() {
       <Card>
         <Title>Instruments</Title>
         {data.instruments.length ? (
-          <ul className="space-y-1">{data.instruments.map((i)=>(<li key={i} className="flex justify-between items-center"><span>{i}</span><DeleteBtn onClick={()=>del('instrument', i)} /></li>))}</ul>
+          <ul className="space-y-1">{data.instruments.map((i) => (<li key={i} className="flex justify-between items-center"><span>{i}</span><DeleteBtn onClick={() => del('instrument', i)} /></li>))}</ul>
         ) : <p>No instruments</p>}
-        <div className="flex gap-2 mt-3"><input className="flex-1 p-2 border rounded dark:bg-[var(--background-2)]" value={newInstrument} onChange={(e)=>setNewInstrument(e.target.value)} placeholder="Add instrument" /><button onClick={()=>add('instrument')} className="px-4 py-2 bg-[var(--primary)] text-white rounded">Add</button></div>
+        <div className="flex gap-2 mt-3"><input className="flex-1 p-2 border rounded dark:bg-[var(--background-2)]" value={newInstrument} onChange={(e) => setNewInstrument(e.target.value)} placeholder="Add instrument" /><button onClick={() => add('instrument')} className="px-4 py-2 bg-[var(--primary)] text-white rounded">Add</button></div>
       </Card>
 
       {/* Patterns */}
       <Card>
         <Title>Patterns</Title>
         {data.patterns.length ? (
-          <ul className="space-y-1">{data.patterns.map((p)=>(<li key={p} className="flex justify-between items-center"><span>{p}</span><DeleteBtn onClick={()=>del('pattern', p)} /></li>))}</ul>
+          <ul className="space-y-1">{data.patterns.map((p) => (<li key={p} className="flex justify-between items-center"><span>{p}</span><DeleteBtn onClick={() => del('pattern', p)} /></li>))}</ul>
         ) : <p>No patterns</p>}
-        <div className="flex gap-2 mt-3"><input className="flex-1 p-2 border rounded dark:bg-[var(--background-2)]" value={newPattern} onChange={(e)=>setNewPattern(e.target.value)} placeholder="Add pattern" /><button onClick={()=>add('pattern')} className="px-4 py-2 bg-[var(--primary)] text-white rounded">Add</button></div>
+        <div className="flex gap-2 mt-3"><input className="flex-1 p-2 border rounded dark:bg-[var(--background-2)]" value={newPattern} onChange={(e) => setNewPattern(e.target.value)} placeholder="Add pattern" /><button onClick={() => add('pattern')} className="px-4 py-2 bg-[var(--primary)] text-white rounded">Add</button></div>
       </Card>
 
       {/* Media Tags */}
@@ -122,8 +122,8 @@ export default function SettingsTrading() {
       <Card>
         <Title>Break‑Even Range</Title>
         <div className="flex items-end gap-4 flex-wrap">
-          <div><label className="block text-sm">beMin</label><input type="number" step="any" className="p-2 border rounded w-28 dark:bg-[var(--background-2)]" value={tempBeMin} onChange={(e)=>setTempBeMin(e.target.value)} /></div>
-          <div><label className="block text-sm">beMax</label><input type="number" step="any" className="p-2 border rounded w-28 dark:bg-[var(--background-2)]" value={tempBeMax} onChange={(e)=>setTempBeMax(e.target.value)} /></div>
+          <div><label className="block text-sm">beMin</label><input type="number" step="any" className="p-2 border rounded w-28 dark:bg-[var(--background-2)]" value={tempBeMin} onChange={(e) => setTempBeMin(e.target.value)} /></div>
+          <div><label className="block text-sm">beMax</label><input type="number" step="any" className="p-2 border rounded w-28 dark:bg-[var(--background-2)]" value={tempBeMax} onChange={(e) => setTempBeMax(e.target.value)} /></div>
           <button onClick={updateBeRange} className="px-4 py-2 bg-green-600 text-white rounded h-10">Save</button>
         </div>
         <p className="text-sm mt-2">Current: {data.beMin} – {data.beMax}</p>

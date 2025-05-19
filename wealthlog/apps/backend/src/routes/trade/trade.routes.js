@@ -44,9 +44,9 @@ router.post('/', authenticate, async (req, res) => {
       accountId,
       instrument,      // name-string that must already exist
       pattern,         // optional name-string that must exist if provided
-      status      = 'CLOSED',
-      direction   = 'LONG',
-      fees        = 0,
+      status = 'CLOSED',
+      direction = 'LONG',
+      fees = 0,
       entryDate,
       exitDate,
       fx = {}, bond = {}, stock = {}, crypto = {}, etf = {},
@@ -54,8 +54,8 @@ router.post('/', authenticate, async (req, res) => {
     } = req.body;
 
     /* mandatory */
-    if (!tradeType)  return res.status(400).json({ error: 'tradeType required' });
-    if (!accountId)  return res.status(400).json({ error: 'accountId required' });
+    if (!tradeType) return res.status(400).json({ error: 'tradeType required' });
+    if (!accountId) return res.status(400).json({ error: 'accountId required' });
     if (!instrument) return res.status(400).json({ error: 'instrument required' });
 
     /* ownership */
@@ -79,7 +79,7 @@ router.post('/', authenticate, async (req, res) => {
     }
 
     const entryDt = entryDate ? new Date(entryDate) : new Date();
-    const exitDt  = exitDate  ? new Date(exitDate)  : null;
+    const exitDt = exitDate ? new Date(exitDate) : null;
 
     const newTrade = await prisma.trade.create({
       data: {
@@ -91,16 +91,16 @@ router.post('/', authenticate, async (req, res) => {
         tradeDirection: direction.toUpperCase() === 'SHORT' ? 'SHORT' : 'LONG',
         fees,
         entryDate: entryDt,
-        exitDate : exitDt,
-        notes    : notes ?? `session: ${detectSession(entryDt)}`,
+        exitDate: exitDt,
+        notes: notes ?? `session: ${detectSession(entryDt)}`,
       },
     });
 
     /* sub-type helpers unchanged */
     switch (tradeType) {
-      case 'FX':    await createFx(newTrade.id, fx);    break;
+      case 'FX': await createFx(newTrade.id, fx); break;
       case 'STOCK': await createStock(newTrade.id, stock); break;
-      case 'BOND':  await createBond(newTrade.id, bond); break;
+      case 'BOND': await createBond(newTrade.id, bond); break;
       /* CRYPTO / ETF TODO */
       default: break;
     }
@@ -121,30 +121,34 @@ async function createFx(tradeId, d) {
     data: {
       tradeId,
       ...rest,
-      amountGain     : amountGain != null && percentageGain == null ? amountGain : null,
-      percentageGain : percentageGain ?? null
+      amountGain: amountGain != null && percentageGain == null ? amountGain : null,
+      percentageGain: percentageGain ?? null
     }
   });
-  
+
 }
 
 async function createStock(tradeId, d) {
   return prisma.stocksTrade.create({
-    data: { tradeId,
-            entryPrice : d.entryPrice ?? 0,
-            exitPrice  : d.exitPrice  ?? 0,
-            quantity   : d.quantity   ?? 0 }
+    data: {
+      tradeId,
+      entryPrice: d.entryPrice ?? 0,
+      exitPrice: d.exitPrice ?? 0,
+      quantity: d.quantity ?? 0
+    }
   });
 }
 
 async function createBond(tradeId, d) {
   return prisma.bondTrade.create({
-    data: { tradeId,
-            entryPrice   : d.entryPrice   ?? 0,
-            exitPrice    : d.exitPrice    ?? 0,
-            quantity     : d.quantity     ?? 0,
-            couponRate   : d.couponRate   ?? 0,
-            maturityDate : d.maturityDate ? new Date(d.maturityDate) : null }
+    data: {
+      tradeId,
+      entryPrice: d.entryPrice ?? 0,
+      exitPrice: d.exitPrice ?? 0,
+      quantity: d.quantity ?? 0,
+      couponRate: d.couponRate ?? 0,
+      maturityDate: d.maturityDate ? new Date(d.maturityDate) : null
+    }
   });
 }
 
@@ -155,7 +159,7 @@ async function createBond(tradeId, d) {
 router.get('/', authenticate, async (req, res) => {
   try {
     const accountId = req.query.accountId ? parseInt(req.query.accountId, 10) : null;
-    const tType     = req.query.tradeType || null;
+    const tType = req.query.tradeType || null;
 
     const userAccounts = await prisma.financialAccount.findMany({
       where: { userId: req.user.userId },
@@ -175,12 +179,12 @@ router.get('/', authenticate, async (req, res) => {
       where,
       orderBy: { entryDate: 'desc' },
       include: {
-        fxTrade    : true,
-        bondTrade  : true,
+        fxTrade: true,
+        bondTrade: true,
         stocksTrade: true,
-        instrument : true,
-        pattern    : true,
-        media      : { include: { label: true } },
+        instrument: true,
+        pattern: true,
+        media: { include: { label: true } },
       },
     });
 
@@ -188,7 +192,7 @@ router.get('/', authenticate, async (req, res) => {
     const flat = trades.map((t) => ({
       ...t,
       instrument: t.instrument?.name || null,
-      pattern   : t.pattern?.name || null,
+      pattern: t.pattern?.name || null,
     }));
 
     res.json(flat);
@@ -205,9 +209,9 @@ router.get('/', authenticate, async (req, res) => {
 /* ========================================================== */
 router.put('/:id', authenticate, async (req, res) => {
   try {
-    const tradeId  = Number(req.params.id);
+    const tradeId = Number(req.params.id);
     const existing = await prisma.trade.findUnique({
-      where  : { id: tradeId },
+      where: { id: tradeId },
       include: { fxTrade: true, bondTrade: true, stocksTrade: true },
     });
     if (!existing) return res.status(404).json({ error: 'Trade not found' });
@@ -249,12 +253,12 @@ router.put('/:id', authenticate, async (req, res) => {
     /* update main trade */
     await prisma.trade.update({
       where: { id: tradeId },
-      data : {
-        instrumentId   : instRow.id,
+      data: {
+        instrumentId: instRow.id,
         patternId,
-        tradeDirection : direction === 'Short' ? 'SHORT' : 'LONG',
-        fees           : Math.abs(fees || 0),
-        entryDate      : newEntry,
+        tradeDirection: direction === 'Short' ? 'SHORT' : 'LONG',
+        fees: Math.abs(fees || 0),
+        entryDate: newEntry,
       },
     });
 
@@ -262,15 +266,15 @@ router.put('/:id', authenticate, async (req, res) => {
     if (existing.tradeType === 'FX' && existing.fxTrade) {
       await prisma.fxTrade.update({
         where: { tradeId },
-        data : {
+        data: {
           lots: fx.lots ?? existing.fxTrade.lots,
           entryPrice: fx.entryPrice ?? existing.fxTrade.entryPrice,
-          exitPrice : fx.exitPrice  ?? existing.fxTrade.exitPrice,
+          exitPrice: fx.exitPrice ?? existing.fxTrade.exitPrice,
           stopLossPips: fx.stopLossPips ?? existing.fxTrade.stopLossPips,
-          pipsGain    : fx.pipsGain     ?? existing.fxTrade.pipsGain,
-          amountGain     : fx.amountGain     ?? null,
-          percentageGain : fx.percentageGain ?? null,
-          source         : fx.source ?? existing.fxTrade.source,
+          pipsGain: fx.pipsGain ?? existing.fxTrade.pipsGain,
+          amountGain: fx.amountGain ?? null,
+          percentageGain: fx.percentageGain ?? null,
+          source: fx.source ?? existing.fxTrade.source,
         },
       });
     }
@@ -278,10 +282,10 @@ router.put('/:id', authenticate, async (req, res) => {
     if (existing.tradeType === 'STOCK' && existing.stocksTrade) {
       await prisma.stocksTrade.update({
         where: { tradeId },
-        data : {
+        data: {
           entryPrice: stock.entryPrice ?? existing.stocksTrade.entryPrice,
-          exitPrice : stock.exitPrice  ?? existing.stocksTrade.exitPrice,
-          quantity  : stock.quantity   ?? existing.stocksTrade.quantity,
+          exitPrice: stock.exitPrice ?? existing.stocksTrade.exitPrice,
+          quantity: stock.quantity ?? existing.stocksTrade.quantity,
         },
       });
     }
@@ -289,11 +293,11 @@ router.put('/:id', authenticate, async (req, res) => {
     if (existing.tradeType === 'BOND' && existing.bondTrade) {
       await prisma.bondTrade.update({
         where: { tradeId },
-        data : {
-          entryPrice  : bond.entryPrice  ?? existing.bondTrade.entryPrice,
-          exitPrice   : bond.exitPrice   ?? existing.bondTrade.exitPrice,
-          quantity    : bond.quantity    ?? existing.bondTrade.quantity,
-          couponRate  : bond.couponRate  ?? existing.bondTrade.couponRate,
+        data: {
+          entryPrice: bond.entryPrice ?? existing.bondTrade.entryPrice,
+          exitPrice: bond.exitPrice ?? existing.bondTrade.exitPrice,
+          quantity: bond.quantity ?? existing.bondTrade.quantity,
+          couponRate: bond.couponRate ?? existing.bondTrade.couponRate,
           maturityDate: bond.maturityDate ? new Date(bond.maturityDate) : existing.bondTrade.maturityDate,
         },
       });

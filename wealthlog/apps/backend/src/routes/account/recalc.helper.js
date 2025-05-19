@@ -14,12 +14,12 @@ async function recalcAccountBalance(accountId, { afterDate = null } = {}) {
   return prisma.$transaction(async (tx) => {
     /* 1 ── fetch account */
 
-      if (afterDate) {
-     // remove every snapshot we’re about to rebuild
-     await tx.balanceHistory.deleteMany({
-       where: { accountId, date: { gte: afterDate } }
-     });
-   }
+    if (afterDate) {
+      // remove every snapshot we’re about to rebuild
+      await tx.balanceHistory.deleteMany({
+        where: { accountId, date: { gte: afterDate } }
+      });
+    }
     const account = await tx.financialAccount.findUnique({ where: { id: accountId } });
     if (!account) throw new Error(`Account ${accountId} not found`);
 
@@ -45,11 +45,11 @@ async function recalcAccountBalance(accountId, { afterDate = null } = {}) {
     const events = [
       ...transactions.map((t) => ({ kind: 'transaction', date: t.dateTime, data: t })),
       ...trades.map((t) => ({ kind: 'trade', date: t.entryDate, data: t })),
-   ].sort((a, b) => {
-  if (a.date.getTime() !== b.date.getTime()) return a.date - b.date;
-  // tie-break by database id so order is always deterministic
-  return a.data.id - b.data.id;
-});
+    ].sort((a, b) => {
+      if (a.date.getTime() !== b.date.getTime()) return a.date - b.date;
+      // tie-break by database id so order is always deterministic
+      return a.data.id - b.data.id;
+    });
 
     if (!events.length) return account.balance;
 
@@ -89,13 +89,13 @@ async function recalcAccountBalance(accountId, { afterDate = null } = {}) {
       }
 
       /* balance snapshot */
-     jobs.push(
-   tx.balanceHistory.upsert({
-     where: { accountId_date: { accountId, date: ev.date } },
-     update: { balance: running },
-     create: { accountId, date: ev.date, balance: running }
-   })
- );
+      jobs.push(
+        tx.balanceHistory.upsert({
+          where: { accountId_date: { accountId, date: ev.date } },
+          update: { balance: running },
+          create: { accountId, date: ev.date, balance: running }
+        })
+      );
     }
 
     /* 5 ── headline balance */

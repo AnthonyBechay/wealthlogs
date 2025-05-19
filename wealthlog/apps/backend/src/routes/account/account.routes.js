@@ -86,8 +86,8 @@ router.delete("/:id", authenticate, async (req, res) => {
     const trades = await prisma.trade.findMany({ where: { accountId: id } });
 
     for (const t of trades) {
-      if (t.tradeType === "FX")    await prisma.fxTrade.deleteMany({ where: { tradeId: t.id } });
-      if (t.tradeType === "BOND")  await prisma.bondTrade.deleteMany({ where: { tradeId: t.id } });
+      if (t.tradeType === "FX") await prisma.fxTrade.deleteMany({ where: { tradeId: t.id } });
+      if (t.tradeType === "BOND") await prisma.bondTrade.deleteMany({ where: { tradeId: t.id } });
       if (t.tradeType === "STOCK") await prisma.stocksTrade.deleteMany({ where: { tradeId: t.id } });
       await prisma.tradeMedia.deleteMany({ where: { tradeId: t.id } });
     }
