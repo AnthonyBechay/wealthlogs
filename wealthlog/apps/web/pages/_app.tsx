@@ -1,3 +1,4 @@
+// pages/_app.tsx
 import '../styles/globals.css';
 import '../styles/theme.css';
 
