@@ -93,7 +93,7 @@ export default function Login() {
         setAccessToken(response.data.token);
 
         // Redirect with query params if present
-        const redirectTo = router.query.redirect as string || "/landing";
+        const redirectTo = router.query.redirect as string || "/landing/landing";
         await router.push(redirectTo);
       } else {
         throw new Error("Missing token in response");

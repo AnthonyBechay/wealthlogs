@@ -57,7 +57,7 @@ const tradeRouter = require("./routes/trade/trade.routes.js");
 const tradeFilterRouter = require("./routes/trade/filter.routes.js");
 
 const mt5syncRouter = require('./routes/trade/mt5sync.routes.js');
-const dashboardRouter = require('./routes/dashboard.js');
+const dashboardRouter = require('./routes/landing/dashboard.js');
 
 // Attach routers
 app.use('/auth', authRouter);

@@ -32,7 +32,7 @@ export default function Layout({ children, onLogout }: LayoutProps) {
 
         {/* navigation */}
         <nav className="flex-1 px-2 space-y-1 mt-4 text-sm">
-  <NavLink href="/landing"    label={t('Dashboard')} />
+  <NavLink href="/landing/landing"    label={t('Dashboard')} />
   <NavLink href="/accounts"   label={t('AccountAndBalances')} />
   <NavLink href="/trading"    label={t('TradingInvestments')} />
   <NavLink href="/realEstate" label={t('RealEstate')} />

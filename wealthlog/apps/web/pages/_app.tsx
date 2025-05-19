@@ -29,7 +29,7 @@ interface NavigationItem {
 // Constants
 
 const NAVIGATION_ITEMS: NavigationItem[] = [
-  { href: '/landing', label: 'Dashboard', icon: '🏠' },
+  { href: '/landing/landing', label: 'Dashboard', icon: '🏠' },
   { href: '/accounts', label: 'Accounts', icon: '💼' },
   { href: '/trading/trading', label: 'Trading', icon: '📈' },
   { href: '/comingSoon', label: 'Real Estate', icon: '🏘️' },
@@ -176,7 +176,7 @@ function MyApp({ Component, pageProps }: AppProps) {
   };
 
   const handleLogoClick = () => {
-    router.push('/landing');
+    router.push('/landing/landing');
     setIsDrawerOpen(false);
   };
 
