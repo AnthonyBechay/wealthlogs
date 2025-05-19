@@ -1,7 +1,8 @@
-// pages/accounts.tsx
+//pages/accounts.tsx
 import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import { api } from "@wealthlog/common"; // your shared axios instance
+//interfaced
 
 interface FinancialAccount {
   id: number;
