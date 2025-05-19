@@ -27,7 +27,6 @@ interface NavigationItem {
 }
 
 // Constants
-const PUBLIC_PATHS = ['/', '/login', '/register', '/forgot-password'];
 
 const NAVIGATION_ITEMS: NavigationItem[] = [
   { href: '/landing', label: 'Dashboard', icon: '🏠' },
