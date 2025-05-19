@@ -1,33 +1,29 @@
 // src/routes/trade/filter.routes.js
-const express      = require("express");
-const router       = express.Router();
-const { prisma }   = require("../../lib/prisma");
-const { authenticate } = require("../../lib/auth");   // <- add this
+const express = require("express");
+const router  = express.Router();
+const { prisma } = require("../../lib/prisma");              // ✔ same as other routes
+const { authenticate } = require("../../middleware/authenticate"); // ✔ fixed path
 
 /**
- * Build a Prisma-style `where` clause that always limits results
- * to trades whose *parent account* belongs to the logged-in user.
+ * Build a Prisma `where` clause that is ALWAYS scoped to the
+ * logged-in user (via the account relation) plus any optional filters.
  */
 function buildWhere(q, userId) {
   const w = {
     tradeType: "FX",
     status:    "CLOSED",
-
-    // ←–– hard stop: only accounts owned by this user
-    account: { is: { userId } },
+    account:   { is: { userId } },          // ← user-scope
   };
 
-  /* optional filters coming from query-string … */
+  /* ── optional query-string filters ───────────────────── */
   if (q.accountId) w.accountId = Number(q.accountId);
 
   if (q.instr) {
-    w.instrument = {
-      is: { name: { contains: String(q.instr), mode: "insensitive" } },
-    };
+    w.instrument = { is: { name: { contains: q.instr, mode: "insensitive" } } };
   }
 
   if (q.pattern) {
-    w.pattern = { is: { name: String(q.pattern) } };
+    w.pattern = { is: { name: q.pattern } };
   }
 
   if (q.dir) w.tradeDirection = q.dir.toUpperCase() === "SHORT" ? "SHORT" : "LONG";
@@ -40,34 +36,28 @@ function buildWhere(q, userId) {
 
   /* FX-specific numeric filters */
   const fxAND = [];
-  if (q.minLots && !isNaN(+q.minLots)) fxAND.push({ lots: { gte: +q.minLots } });
-  if (q.maxLots && !isNaN(+q.maxLots)) fxAND.push({ lots: { lte: +q.maxLots } });
-  if (q.minPct  && !isNaN(+q.minPct))  fxAND.push({ percentageGain: { gte: +q.minPct / 100 } });
-  if (q.maxPct  && !isNaN(+q.maxPct))  fxAND.push({ percentageGain: { lte: +q.maxPct / 100 } });
+  if (+q.minLots) fxAND.push({ lots: { gte: +q.minLots } });
+  if (+q.maxLots) fxAND.push({ lots: { lte: +q.maxLots } });
+  if (+q.minPct)  fxAND.push({ percentageGain: { gte: +q.minPct / 100 } });
+  if (+q.maxPct)  fxAND.push({ percentageGain: { lte: +q.maxPct / 100 } });
   if (fxAND.length) w.fxTrade = { is: { AND: fxAND } };
 
   return w;
 }
 
 /**
- * GET /trade/filter
- * Requires Bearer-token auth and returns ONLY the caller’s trades.
- * Query params: page, size, groupBy, instr, pattern, dir,
- *               from, to, minLots, maxLots, minPct, maxPct
+ * GET /trade/filter   – returns ONLY the caller’s trades
  */
 router.get("/", authenticate, async (req, res) => {
   try {
-    const userId = req.user.userId;        // ← now guaranteed to exist
+    const userId = req.user.userId;                    // set by authenticate()
     const where  = buildWhere(req.query, userId);
 
     const { page = "1", size = "10", groupBy } = req.query;
-    const p = Math.max(1, parseInt(page, 10));
-    const s = Math.max(1, parseInt(size, 10));
+    const p = Math.max(1, +page);
+    const s = Math.max(1, +size);
 
-    /* total rows */
-    const total = await prisma.trade.count({ where });
-
-    /* paginated fetch */
+    const total  = await prisma.trade.count({ where });
     const trades = await prisma.trade.findMany({
       where,
       include: { fxTrade: true, instrument: true, pattern: true },
@@ -76,27 +66,26 @@ router.get("/", authenticate, async (req, res) => {
       take: s,
     });
 
-    /* map to frontend shape … (unchanged) */
     const rows = trades.map(t => ({
       id:             t.id,
-      instrument:     t.instrument?.name         || "",
+      instrument:     t.instrument?.name ?? "",
       entryDate:      t.entryDate.toISOString(),
       tradeDirection: t.tradeDirection,
-      lots:           t.fxTrade?.lots            ?? null,
-      entryPrice:     t.fxTrade?.entryPrice      ?? null,
-      exitPrice:      t.fxTrade?.exitPrice       ?? null,
-      stopLossPips:   t.fxTrade?.stopLossPips    ?? null,
-      pipsGain:       t.fxTrade?.pipsGain        ?? null,
-      amountGain:     t.fxTrade?.amountGain      ?? null,
-      percentageGain: t.fxTrade?.percentageGain  ?? null,
+      lots:           t.fxTrade?.lots ?? null,
+      entryPrice:     t.fxTrade?.entryPrice ?? null,
+      exitPrice:      t.fxTrade?.exitPrice ?? null,
+      stopLossPips:   t.fxTrade?.stopLossPips ?? null,
+      pipsGain:       t.fxTrade?.pipsGain ?? null,
+      amountGain:     t.fxTrade?.amountGain ?? null,
+      percentageGain: t.fxTrade?.percentageGain ?? null,
       fees:           t.fees,
     }));
 
-    /* bucket aggregation … (unchanged) */
+    /* simple bucket aggregation */
     const keyFn = r =>
-      groupBy === "month"     ? r.entryDate.slice(0, 7)
-    : groupBy === "direction" ? r.tradeDirection
-    :                          r.instrument;
+      groupBy === "month"     ? r.entryDate.slice(0, 7) :
+      groupBy === "direction" ? r.tradeDirection        :
+                                r.instrument;
 
     const buckets = Object.values(
       rows.reduce((acc, r) => {
@@ -122,8 +111,8 @@ router.get("/", authenticate, async (req, res) => {
       rows,
       buckets,
       total,
-      page:       p,
-      size:       s,
+      page: p,
+      size: s,
       totalPages: Math.ceil(total / s),
     });
   } catch (err) {

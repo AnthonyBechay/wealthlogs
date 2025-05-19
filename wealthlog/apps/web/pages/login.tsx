@@ -53,7 +53,7 @@ export default function Login() {
     if (error.response?.status === 429) {
       return "Too many login attempts. Please try again later.";
     }
-    if (error.response?.status >= 500) {
+    if (error.response?.status === 500) {
       return "Server error. Please try again later.";
     }
     if (error.response?.data?.message) {
