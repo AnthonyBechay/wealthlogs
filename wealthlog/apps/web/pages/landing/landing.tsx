@@ -347,14 +347,14 @@ export default function Landing() {
                     dataKey="date" 
                     axisLine={false}
                     tickLine={false}
-                    tick={{ fontSize: 12, fill: "var(--text-muted)" }}
+                    tick={{ fontSize: 12, fill: "var(--text)=" }}
                     interval="preserveStartEnd"
                   />
                   {/* Y-axis configuration with value formatting */}
                   <YAxis 
                     axisLine={false}
                     tickLine={false}
-                    tick={{ fontSize: 12, fill: "var(--text-muted)" }}
+                    tick={{ fontSize: 12, fill: "var(--text)" }}
                     tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
                   />
                   {/* Custom tooltip with adaptive styling */}
