@@ -36,8 +36,8 @@ const NAVIGATION_ITEMS: NavigationItem[] = [
   { href: '/expenses', label: 'Expenses', icon: '💳' },
   { href: '/loans', label: 'Loans', icon: '💰' },
   { href: '/forecasting', label: 'Forecasting', icon: '📊' },
-  { href: '/settings/general', label: 'General Settings', icon: '⚙️' },
-  { href: '/settings/trading', label: 'Trading Settings', icon: '🛠️' },
+  { href: '/settingsGeneral', label: 'General Settings', icon: '⚙️' },
+  { href: '/settingsTrading', label: 'Trading Settings', icon: '🛠️' },
 ];
 
 // Utilities
