@@ -108,7 +108,7 @@ export default function Register() {
     return "Registration failed. Please try again.";
   };
 
-  // Standard password validation (only length)
+  // Standard password validation (only length) horse
   const validatePassword = (password: string): string[] => {
     const errors = [];
     if (password.length < PASSWORD_REQUIREMENTS.minLength) {
