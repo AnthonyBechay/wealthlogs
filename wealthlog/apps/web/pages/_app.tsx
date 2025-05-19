@@ -11,8 +11,13 @@ import { api, setAccessToken } from '@wealthlog/common';
 import { appWithTranslation } from 'next-i18next';
 import nextI18NextConfig from '../next-i18next.config';
 
-// Types
+
+/* Public routes requiring no auth */
+const PUBLIC_PATHS = ['/', '/login', '/register','/forgot-password'];
+const isPublic = (p: string) => PUBLIC_PATHS.includes(p);
+
 type ThemeMode = 'light' | 'dark' | 'system';
+
 
 interface NavigationItem {
   href: string;
