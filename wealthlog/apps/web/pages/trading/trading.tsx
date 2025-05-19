@@ -69,13 +69,13 @@ export default function TradingPage() {
   const [error, setError] = useState("");
 
 
-// util – convert an ISO/DB string → yyyy-MM-ddTHH:mm for local pickers
-const toLocalInputValue = (isoDate: string) => {
-  const d = new Date(isoDate);
-  return new Date(d.getTime() - d.getTimezoneOffset() * 60000)
-           .toISOString()
-           .slice(0, 16);               // "YYYY-MM-DDTHH:mm"
-};
+  // util – convert an ISO/DB string → yyyy-MM-ddTHH:mm for local pickers
+  const toLocalInputValue = (isoDate: string) => {
+    const d = new Date(isoDate);
+    return new Date(d.getTime() - d.getTimezoneOffset() * 60000)
+      .toISOString()
+      .slice(0, 16);               // "YYYY-MM-DDTHH:mm"
+  };
 
 
 
@@ -474,8 +474,8 @@ const toLocalInputValue = (isoDate: string) => {
                   key={ac.id}
                   onClick={() => setSelectedAccountId(ac.id)}
                   className={`p-3 border rounded-lg text-left ${ac.id === selectedAccountId
-                      ? "bg-[var(--primary)] text-white"
-                      : "bg-[var(--background-2)] hover:bg-[var(--background)]"
+                    ? "bg-[var(--primary)] text-white"
+                    : "bg-[var(--background-2)] hover:bg-[var(--background)]"
                     }`}
                 >
                   <div className="font-medium">{ac.name}</div>
@@ -520,24 +520,24 @@ const toLocalInputValue = (isoDate: string) => {
                   <form onSubmit={handleCreateTrade} className="space-y-4">
                     {/* instrument / direction */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-  <div>
-    <label className="block font-medium text-sm mb-1">Instrument</label>
-    <select
-      className="border p-2 rounded w-full bg-[var(--background)] text-[var(--text)]"
-      value={formInstrument}               // <-- use formInstrument
-      onChange={(e) => setFormInstrument(e.target.value)}  // <-- update it
-      required
-    >
-      <option value="">Select instrument</option>
-      {instruments.map((inst) => (
-        <option key={inst} value={inst}>
-          {inst}
-        </option>
-      ))}
-    </select>
-  </div>
-  
-  <div>
+                      <div>
+                        <label className="block font-medium text-sm mb-1">Instrument</label>
+                        <select
+                          className="border p-2 rounded w-full bg-[var(--background)] text-[var(--text)]"
+                          value={formInstrument}               // <-- use formInstrument
+                          onChange={(e) => setFormInstrument(e.target.value)}  // <-- update it
+                          required
+                        >
+                          <option value="">Select instrument</option>
+                          {instruments.map((inst) => (
+                            <option key={inst} value={inst}>
+                              {inst}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div>
                         <label className="block font-medium text-sm mb-1">Direction</label>
                         <select
                           className="border p-2 rounded w-full bg-[var(--background)]"
@@ -719,16 +719,6 @@ const toLocalInputValue = (isoDate: string) => {
 
 
 
-
-
-
-
-
-
-
-
-
-
       {/*──────── Edit modal ─────────*/}
       {showEditModal && editTrade.id && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -738,25 +728,25 @@ const toLocalInputValue = (isoDate: string) => {
 
               <form onSubmit={handleEditTradeSubmit} className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* ✅ replace with this in your edit modal */}
-<div>
-  <label className="block font-medium text-sm mb-1">Instrument</label>
-  <select
-    className="border p-2 rounded w-full bg-[var(--background)] text-[var(--text)]"
-    value={editTrade.instrument || ""}
-    onChange={(e) =>
-      setEditTrade(prev => ({ ...prev, instrument: e.target.value }))
-    }
-    required
-  >
-    <option value="">Select instrument</option>
-    {instruments.map(inst => (
-      <option key={inst} value={inst}>
-        {inst}
-      </option>
-    ))}
-  </select>
-</div>
+                  {/* ✅ replace with this in your edit modal */}
+                  <div>
+                    <label className="block font-medium text-sm mb-1">Instrument</label>
+                    <select
+                      className="border p-2 rounded w-full bg-[var(--background)] text-[var(--text)]"
+                      value={editTrade.instrument || ""}
+                      onChange={(e) =>
+                        setEditTrade(prev => ({ ...prev, instrument: e.target.value }))
+                      }
+                      required
+                    >
+                      <option value="">Select instrument</option>
+                      {instruments.map(inst => (
+                        <option key={inst} value={inst}>
+                          {inst}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
 
                   <div>
                     <label className="block font-medium text-sm mb-1">Direction</label>
@@ -797,7 +787,7 @@ const toLocalInputValue = (isoDate: string) => {
                       type="datetime-local"
                       className="border p-2 rounded w-full bg-[var(--background)] text-[var(--text)]"
                       value={
-                          editTrade.entryDate ? toLocalInputValue(editTrade.entryDate) : ""
+                        editTrade.entryDate ? toLocalInputValue(editTrade.entryDate) : ""
                       }
                       onChange={(e) =>
                         setEditTrade((prev) => ({ ...prev, entryDate: e.target.value }))

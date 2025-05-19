@@ -136,7 +136,7 @@ export default function AdvFilter() {
     <div className="min-h-screen p-4 bg-[var(--background)] text-[var(--text)]">
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-2xl font-bold">Advanced FX Filter</h1>
-        <button onClick={() => router.push("/trading")} className="text-sm underline">
+        <button onClick={() => router.push("/trading/trading")} className="text-sm underline">
           ← back
         </button>
       </div>

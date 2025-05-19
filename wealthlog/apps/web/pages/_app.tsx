@@ -31,13 +31,13 @@ interface NavigationItem {
 const NAVIGATION_ITEMS: NavigationItem[] = [
   { href: '/landing', label: 'Dashboard', icon: '🏠' },
   { href: '/accounts', label: 'Accounts', icon: '💼' },
-  { href: '/trading', label: 'Trading', icon: '📈' },
-  { href: '/real-estate', label: 'Real Estate', icon: '🏘️' },
-  { href: '/expenses', label: 'Expenses', icon: '💳' },
-  { href: '/loans', label: 'Loans', icon: '💰' },
-  { href: '/forecasting', label: 'Forecasting', icon: '📊' },
-  { href: '/settingsGeneral', label: 'General Settings', icon: '⚙️' },
-  { href: '/settingsTrading', label: 'Trading Settings', icon: '🛠️' },
+  { href: '/trading/trading', label: 'Trading', icon: '📈' },
+  { href: '/comingSoon', label: 'Real Estate', icon: '🏘️' },
+  { href: '/comingSoon', label: 'Expenses', icon: '💳' },
+  { href: '/comingSoon', label: 'Loans', icon: '💰' },
+  { href: '/comingSoon', label: 'Forecasting', icon: '📊' },
+  { href: '/settings/settingsGeneral', label: 'General Settings', icon: '⚙️' },
+  { href: '/settings/settingsTrading', label: 'Trading Settings', icon: '🛠️' },
 ];
 
 // Utilities
