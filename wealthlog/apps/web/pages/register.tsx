@@ -151,7 +151,7 @@ export default function Register() {
     }
 
     if (step === 3) {
-      // Personal info validation
+      // Personal info validation  hello
       if (!formData.firstName.trim()) newErrors.firstName = "First name is required";
       if (!formData.lastName.trim()) newErrors.lastName = "Last name is required";
     }
