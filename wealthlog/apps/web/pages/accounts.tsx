@@ -1,4 +1,4 @@
-// test90000 pages/accounts.tsx
+// test9000 pages/accounts.tsx
 import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import { api } from "@wealthlog/common"; // your shared axios instance
