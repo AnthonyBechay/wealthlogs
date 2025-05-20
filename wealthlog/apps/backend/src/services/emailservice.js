@@ -10,7 +10,7 @@ class EmailService {
     this.apiKey = process.env.RESEND_API_KEY;
     this.fromEmail = process.env.FROM_EMAIL || 'noreply@wealthlog.com';
     this.resendUrl = 'https://api.resend.com/emails';
-    this.frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    this.frontendUrl = process.env.ALLOWED_ORIGIN || 'http://localhost:3000';
     
     // Validation des configurations essentielles
     if (!this.apiKey && process.env.NODE_ENV === 'production') {
