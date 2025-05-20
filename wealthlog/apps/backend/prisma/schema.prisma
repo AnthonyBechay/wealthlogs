@@ -115,7 +115,7 @@ model User {
   subscriptions Subscription[]
 
   // Financial
-  accounts          FinancialAccount[]
+  accounts          FinancialAccount[]  // PAS statusHistory ici !
   loans             Loan[]
   expenses          Expense[]
   recurringEntries  RecurringEntry[]
@@ -224,7 +224,7 @@ model FinancialAccount {
   currency    String               @default("USD")
   isLiquid    Boolean              @default(false)
   identifier  String?
-  active      Boolean              @default(true)
+  active      Boolean              @default(true)  // ✅ Déjà présent
   createdAt   DateTime             @default(now())
   updatedAt   DateTime             @default(now())
 
@@ -249,7 +249,9 @@ model FinancialAccount {
   realEstateInvestments RealEstateInvestment[]
   tags                  Tag[]                  @relation("AccountTags")
   balanceHistory        BalanceHistory[]
+  statusHistory         StatusHistory[]      
 }
+
 
 model Trade {
   id             Int                  @id @default(autoincrement())
@@ -751,4 +753,20 @@ model TradeMedia {
   description String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @default(now())
+}
+
+model StatusHistory {
+  id             Int      @id @default(autoincrement())
+  accountId      Int
+  previousStatus Boolean
+  newStatus      Boolean
+  reason         String?
+  comment        String?
+  changedAt      DateTime @default(now())
+  changedBy      String?
+
+  // Relation
+  account FinancialAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@map("status_history")
 }
