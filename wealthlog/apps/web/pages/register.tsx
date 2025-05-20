@@ -5,7 +5,7 @@ import { useRouter } from "next/router";
 import { api } from "@wealthlog/common";
 import Link from "next/link";
 
-// Types for better type safety (parce que ton code original avait 10 useState éparpillés jai failli pleurer)
+// Types for better type safety
 interface RegisterForm {
   username: string;
   email: string;
@@ -44,6 +44,8 @@ const PASSWORD_REQUIREMENTS = {
 export default function Register() {
   const router = useRouter();
   const [currentStep, setCurrentStep] = useState(1);
+  const [registrationComplete, setRegistrationComplete] = useState(false);
+  const [userEmail, setUserEmail] = useState("");
   const [formData, setFormData] = useState<RegisterForm>({
     username: "",
     email: "",
@@ -60,10 +62,11 @@ export default function Register() {
   const [error, setError] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
+  const [isResending, setIsResending] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  // Centralized input change handler (fini les 10 setUsername setEmail, setPassword je comprend pas pk taime faire ca)
+  // Centralized input change handler
   const handleInputChange = (field: keyof RegisterForm) => (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
@@ -95,9 +98,7 @@ export default function Register() {
     if (error.response?.status === 429) {
       return "Too many registration attempts. Please try again later.";
     }
-    if (error.response?.status >= 500) {
-      return "Server error. Please try again later.";
-    }
+
     if (error.response?.data?.message) {
       return error.response.data.message;
     }
@@ -108,7 +109,7 @@ export default function Register() {
     return "Registration failed. Please try again.";
   };
 
-  // Standard password validation (only length) horse
+  // Password validation
   const validatePassword = (password: string): string[] => {
     const errors = [];
     if (password.length < PASSWORD_REQUIREMENTS.minLength) {
@@ -151,7 +152,7 @@ export default function Register() {
     }
 
     if (step === 3) {
-      // Personal info validation  hello
+      // Personal info validation
       if (!formData.firstName.trim()) newErrors.firstName = "First name is required";
       if (!formData.lastName.trim()) newErrors.lastName = "Last name is required";
     }
@@ -170,9 +171,11 @@ export default function Register() {
     setCurrentStep(currentStep - 1);
   };
 
-  const handleRegister = async (e: React.FormEvent) => {
+  // Registration function
+  const handleRegister = (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setErrors({});
 
     if (!validateStep(3)) {
       return;
@@ -180,32 +183,81 @@ export default function Register() {
 
     setIsLoading(true);
 
-    try {
-      // Remove confirmPassword from the data sent to the API
-      const { confirmPassword, ...registrationData } = formData;
-      
-      // Clean up empty optional fields
-      const cleanData = Object.fromEntries(
-        Object.entries(registrationData).filter(([_, value]) => value !== "")
-      );
+    // Remove confirmPassword from the data sent to the API
+    const { confirmPassword, ...registrationData } = formData;
+    
+    // Clean up empty optional fields
+    const cleanData = Object.fromEntries(
+      Object.entries(registrationData).filter(([_, value]) => value !== "")
+    );
 
-      await api.post("/auth/register", cleanData);
-      
-      // Redirect to login with success message
-      router.push("/login?message=Registration successful! Please log in.");
-    } catch (err) {
-      console.error("Registration error:", err);
-      
-      // Handle field-specific errors from API
-      const apiError = err as ApiError;
-      if (apiError.response?.data?.errors) {
-        setErrors(apiError.response.data.errors);
-      } else {
-        setError(getErrorMessage(err));
-      }
-    } finally {
-      setIsLoading(false);
-    }
+    console.log("Starting registration with:", cleanData);
+
+    // Use Promise-based approach instead of async/await
+    api.post("/auth/register", cleanData)
+      .then((response) => {
+        console.log("✓ Registration successful:", response);
+        setUserEmail(formData.email);
+        setRegistrationComplete(true);
+      })
+      .catch((err) => {
+        console.log("✗ Registration failed:");
+        console.log("Error object:", err);
+        console.log("Error response:", err?.response);
+        console.log("Error status:", err?.response?.status);
+        console.log("Error data:", err?.response?.data);
+
+        // Handle 409 conflict specifically
+        if (err?.response?.status === 409) {
+          console.log("→ Handling 409 conflict");
+          const responseData = err.response.data || {};
+          const message = responseData.message || "";
+
+          // Check if we have field-specific errors
+          if (responseData.errors) {
+            const fieldErrors: Record<string, string> = {};
+            Object.entries(responseData.errors).forEach(([field, value]: [string, any]) => {
+              if (Array.isArray(value)) {
+                fieldErrors[field] = value[0];
+              } else {
+                fieldErrors[field] = value;
+              }
+            });
+            setErrors(fieldErrors);
+            setCurrentStep(1);
+          } else {
+            // Determine field based on message
+            if (message.toLowerCase().includes('email')) {
+              setErrors({ email: "This email address is already registered" });
+            } else if (message.toLowerCase().includes('username')) {
+              setErrors({ username: "This username is already taken" });
+            } else {
+              setError("Username or email already exists. Please use different values.");
+            }
+            setCurrentStep(1);
+          }
+        } else {
+          // Handle other errors
+          setError(getErrorMessage(err));
+        }
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
+  };
+
+  const handleResendVerification = () => {
+    setIsResending(true);
+    api.post("/auth/resend-verification", { email: userEmail })
+      .then(() => {
+        alert("Verification email sent successfully!");
+      })
+      .catch(() => {
+        alert("Failed to resend verification email. Please try again.");
+      })
+      .finally(() => {
+        setIsResending(false);
+      });
   };
 
   const togglePasswordVisibility = (field: 'password' | 'confirmPassword') => {
@@ -216,7 +268,7 @@ export default function Register() {
     }
   };
 
-  // Get password strength indicator (simplified)
+  // Get password strength indicator
   const getPasswordStrength = (password: string): { strength: number; label: string; color: string } => {
     if (!password) return { strength: 0, label: "Enter password", color: "gray" };
     
@@ -231,15 +283,73 @@ export default function Register() {
 
   const passwordStrength = getPasswordStrength(formData.password);
 
+  // Email Confirmation Success Screen
+  if (registrationComplete) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[var(--background)] text-[var(--text)] px-4">
+        <div className="max-w-md w-full bg-[var(--background-2)] rounded-lg shadow-lg p-8">
+          <div className="text-center">
+            {/* Success Icon */}
+            <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-6">
+              <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+
+            <h2 className="text-2xl font-bold text-[var(--text)] mb-4">
+              Account Created Successfully!
+            </h2>
+            
+            <p className="text-[var(--text)] mb-2">We've sent a verification email to:</p>
+            <p className="font-semibold text-[var(--primary)] mb-6">{userEmail}</p>
+            
+            {/* Instructions */}
+            <div className="bg-[var(--background)] rounded-lg p-4 mb-6 text-left">
+              <h3 className="font-semibold text-[var(--text)] mb-2">Next steps:</h3>
+              <ol className="text-sm text-[var(--text)] space-y-1 list-decimal list-inside">
+                <li>Check your email inbox</li>
+                <li>Click the verification link</li>
+                <li>Return here and log in</li>
+              </ol>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="space-y-3">
+              <button
+                onClick={handleResendVerification}
+                disabled={isResending}
+                className="w-full px-4 py-2 border border-[var(--primary)] text-[var(--primary)] rounded-lg hover:bg-[var(--primary)] hover:text-white disabled:opacity-50 disabled:cursor-not-allowed transition"
+              >
+                {isResending ? "Sending..." : "Resend verification email"}
+              </button>
+              
+              <Link
+                href="/login"
+                className="block w-full px-4 py-2 bg-[var(--primary)] text-white rounded-lg hover:opacity-90 transition text-center"
+              >
+                Go to login
+              </Link>
+            </div>
+
+            <p className="text-sm text-[var(--text)] mt-6">
+              Didn't receive the email? Check your spam folder or click "Resend" above.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Registration Form
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[var(--background-2)] bg-[var(--background)] text-[var(--text)] py-8">
-      <div className="w-full max-w-lg bg-[var(--background-2)] rounded-lg shadow p-6">
+    <div className="min-h-screen flex items-center justify-center bg-[var(--background)] text-[var(--text)] py-8 px-4">
+      <div className="w-full max-w-lg bg-[var(--background-2)] rounded-lg shadow-lg p-6">
         {/* Header */}
         <div className="text-center mb-6">
-          <h2 className="text-3xl font-extrabold text-center text-[var(--text)]">
+          <h2 className="text-3xl font-bold text-[var(--text)]">
             Create an Account
           </h2>
-          <p className="text-center text-[var(--text)] mt-1">
+          <p className="text-[var(--text)] mt-1">
             Get started with your WealthLog!
           </p>
           
@@ -265,7 +375,7 @@ export default function Register() {
 
         {error && (
           <div 
-            className="text-red-600 bg-red-50 p-2 rounded mt-4 text-center"
+            className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6"
             role="alert"
             aria-live="polite"
           >
@@ -273,7 +383,7 @@ export default function Register() {
           </div>
         )}
 
-        <form onSubmit={currentStep === 3 ? handleRegister : (e) => e.preventDefault()} className="mt-6 space-y-4" noValidate>
+        <form onSubmit={currentStep === 3 ? handleRegister : (e) => e.preventDefault()} className="space-y-4" noValidate>
           {/* Step 1: Basic Information */}
           {currentStep === 1 && (
             <>
@@ -281,7 +391,7 @@ export default function Register() {
               
               {/* Username */}
               <div>
-                <label htmlFor="username" className="block font-semibold text-[var(--text)]">
+                <label htmlFor="username" className="block text-sm font-medium text-[var(--text)] mb-1">
                   Username <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -289,9 +399,10 @@ export default function Register() {
                   name="username"
                   type="text"
                   autoComplete="username"
-                  className="mt-1 p-2 w-full border rounded focus:outline-none focus:ring focus:ring-blue-300"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[var(--primary)] focus:border-[var(--primary)] outline-none bg-[var(--background)] text-[var(--text)]"
                   value={formData.username}
                   onChange={handleInputChange("username")}
+                  placeholder="Enter username"
                   required
                   aria-describedby={errors.username ? "username-error" : undefined}
                 />
@@ -302,7 +413,7 @@ export default function Register() {
 
               {/* Email */}
               <div>
-                <label htmlFor="email" className="block font-semibold text-[var(--text)]">
+                <label htmlFor="email" className="block text-sm font-medium text-[var(--text)] mb-1">
                   Email <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -310,9 +421,10 @@ export default function Register() {
                   name="email"
                   type="email"
                   autoComplete="email"
-                  className="mt-1 p-2 w-full border rounded focus:outline-none focus:ring focus:ring-blue-300"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[var(--primary)] focus:border-[var(--primary)] outline-none bg-[var(--background)] text-[var(--text)]"
                   value={formData.email}
                   onChange={handleInputChange("email")}
+                  placeholder="Enter email address"
                   required
                   aria-describedby={errors.email ? "email-error" : undefined}
                 />
@@ -329,16 +441,16 @@ export default function Register() {
               <h3 className="text-lg font-semibold text-[var(--text)] mb-4">Password Security</h3>
               
               {/* Password Requirements Info */}
-              <div className="bg-blue-50 border border-blue-200 rounded p-3 mb-4">
-                <h4 className="font-medium text-blue-800 mb-2">Password Requirements:</h4>
-                <ul className="text-sm text-blue-700 space-y-1">
+              <div className="bg-[var(--background)] border border-gray-300 rounded-lg p-3 mb-4">
+                <h4 className="font-medium text-[var(--text)] mb-2">Password Requirements:</h4>
+                <ul className="text-sm text-[var(--text)] space-y-1">
                   <li>• At least {PASSWORD_REQUIREMENTS.minLength} characters long</li>
                 </ul>
               </div>
 
               {/* Password */}
               <div>
-                <label htmlFor="password" className="block font-semibold text-[var(--text)]">
+                <label htmlFor="password" className="block text-sm font-medium text-[var(--text)] mb-1">
                   Password <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
@@ -347,15 +459,16 @@ export default function Register() {
                     name="password"
                     type={showPassword ? "text" : "password"}
                     autoComplete="new-password"
-                    className="mt-1 p-2 w-full pr-10 border rounded focus:outline-none focus:ring focus:ring-blue-300"
+                    className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[var(--primary)] focus:border-[var(--primary)] outline-none bg-[var(--background)] text-[var(--text)]"
                     value={formData.password}
                     onChange={handleInputChange("password")}
+                    placeholder="Minimum 8 characters"
                     required
                     aria-describedby={errors.password ? "password-error" : undefined}
                   />
                   <button
                     type="button"
-                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-500 hover:text-gray-700"
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-[var(--text)]"
                     onClick={() => togglePasswordVisibility('password')}
                     aria-label={showPassword ? "Hide password" : "Show password"}
                   >
@@ -415,7 +528,7 @@ export default function Register() {
 
               {/* Confirm Password */}
               <div>
-                <label htmlFor="confirmPassword" className="block font-semibold text-[var(--text)]">
+                <label htmlFor="confirmPassword" className="block text-sm font-medium text-[var(--text)] mb-1">
                   Confirm Password <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
@@ -424,15 +537,16 @@ export default function Register() {
                     name="confirmPassword"
                     type={showConfirmPassword ? "text" : "password"}
                     autoComplete="new-password"
-                    className="mt-1 p-2 w-full pr-10 border rounded focus:outline-none focus:ring focus:ring-blue-300"
+                    className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[var(--primary)] focus:border-[var(--primary)] outline-none bg-[var(--background)] text-[var(--text)]"
                     value={formData.confirmPassword}
                     onChange={handleInputChange("confirmPassword")}
+                    placeholder="Confirm your password"
                     required
                     aria-describedby={errors.confirmPassword ? "confirm-password-error" : undefined}
                   />
                   <button
                     type="button"
-                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-500 hover:text-gray-700"
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-[var(--text)]"
                     onClick={() => togglePasswordVisibility('confirmPassword')}
                     aria-label={showConfirmPassword ? "Hide password" : "Show password"}
                   >
@@ -464,9 +578,9 @@ export default function Register() {
               <h3 className="text-lg font-semibold text-[var(--text)] mb-4">Personal Information</h3>
               
               {/* First & Last Name */}
-              <div className="flex gap-2">
-                <div className="flex-1">
-                  <label htmlFor="firstName" className="block font-semibold text-[var(--text)]">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="firstName" className="block text-sm font-medium text-[var(--text)] mb-1">
                     First Name <span className="text-red-500">*</span>
                   </label>
                   <input
@@ -474,9 +588,10 @@ export default function Register() {
                     name="firstName"
                     type="text"
                     autoComplete="given-name"
-                    className="mt-1 p-2 w-full border rounded focus:outline-none focus:ring focus:ring-blue-300"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[var(--primary)] focus:border-[var(--primary)] outline-none bg-[var(--background)] text-[var(--text)]"
                     value={formData.firstName}
                     onChange={handleInputChange("firstName")}
+                    placeholder="First name"
                     required
                     aria-describedby={errors.firstName ? "first-name-error" : undefined}
                   />
@@ -484,8 +599,8 @@ export default function Register() {
                     <p id="first-name-error" className="mt-1 text-sm text-red-600">{errors.firstName}</p>
                   )}
                 </div>
-                <div className="flex-1">
-                  <label htmlFor="lastName" className="block font-semibold text-[var(--text)]">
+                <div>
+                  <label htmlFor="lastName" className="block text-sm font-medium text-[var(--text)] mb-1">
                     Last Name <span className="text-red-500">*</span>
                   </label>
                   <input
@@ -493,9 +608,10 @@ export default function Register() {
                     name="lastName"
                     type="text"
                     autoComplete="family-name"
-                    className="mt-1 p-2 w-full border rounded focus:outline-none focus:ring focus:ring-blue-300"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[var(--primary)] focus:border-[var(--primary)] outline-none bg-[var(--background)] text-[var(--text)]"
                     value={formData.lastName}
                     onChange={handleInputChange("lastName")}
+                    placeholder="Last name"
                     required
                     aria-describedby={errors.lastName ? "last-name-error" : undefined}
                   />
@@ -507,7 +623,7 @@ export default function Register() {
 
               {/* Phone */}
               <div>
-                <label htmlFor="phone" className="block font-semibold text-[var(--text)]">
+                <label htmlFor="phone" className="block text-sm font-medium text-[var(--text)] mb-1">
                   Phone (Optional)
                 </label>
                 <input
@@ -515,7 +631,7 @@ export default function Register() {
                   name="phone"
                   type="tel"
                   autoComplete="tel"
-                  className="mt-1 p-2 w-full border rounded focus:outline-none focus:ring focus:ring-blue-300"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[var(--primary)] focus:border-[var(--primary)] outline-none bg-[var(--background)] text-[var(--text)]"
                   value={formData.phone}
                   onChange={handleInputChange("phone")}
                   placeholder="(555) 123-4567"
@@ -524,7 +640,7 @@ export default function Register() {
 
               {/* Date of Birth */}
               <div>
-                <label htmlFor="dateOfBirth" className="block font-semibold text-[var(--text)]">
+                <label htmlFor="dateOfBirth" className="block text-sm font-medium text-[var(--text)] mb-1">
                   Date of Birth (Optional)
                 </label>
                 <input
@@ -532,7 +648,7 @@ export default function Register() {
                   name="dateOfBirth"
                   type="date"
                   autoComplete="bday"
-                  className="mt-1 p-2 w-full border rounded focus:outline-none focus:ring focus:ring-blue-300"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[var(--primary)] focus:border-[var(--primary)] outline-none bg-[var(--background)] text-[var(--text)]"
                   value={formData.dateOfBirth}
                   onChange={handleInputChange("dateOfBirth")}
                 />
@@ -540,41 +656,37 @@ export default function Register() {
 
               {/* Security Question */}
               <div>
-                <label htmlFor="securityQuestion" className="block font-semibold text-[var(--text)]">
+                <label htmlFor="securityQuestion" className="block text-sm font-medium text-[var(--text)] mb-1">
                   Security Question (Optional)
                 </label>
                 <input
                   id="securityQuestion"
                   name="securityQuestion"
                   type="text"
-                  className="mt-1 p-2 w-full border rounded focus:outline-none focus:ring focus:ring-blue-300"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[var(--primary)] focus:border-[var(--primary)] outline-none bg-[var(--background)] text-[var(--text)]"
                   value={formData.securityQuestion}
                   onChange={handleInputChange("securityQuestion")}
                   placeholder="e.g., What was your first pet's name?"
-                  aria-describedby={errors.securityQuestion ? "security-question-error" : undefined}
+
                 />
-                {errors.securityQuestion && (
-                  <p id="security-question-error" className="mt-1 text-sm text-red-600">{errors.securityQuestion}</p>
-                )}
+
               </div>
 
               {/* Security Answer */}
               <div>
-                <label htmlFor="securityAnswer" className="block font-semibold text-[var(--text)]">
+                <label htmlFor="securityAnswer" className="block text-sm font-medium text-[var(--text)] mb-1">
                   Security Answer (Optional)
                 </label>
                 <input
                   id="securityAnswer"
                   name="securityAnswer"
                   type="text"
-                  className="mt-1 p-2 w-full border rounded focus:outline-none focus:ring focus:ring-blue-300"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[var(--primary)] focus:border-[var(--primary)] outline-none bg-[var(--background)] text-[var(--text)]"
                   value={formData.securityAnswer}
                   onChange={handleInputChange("securityAnswer")}
-                  aria-describedby={errors.securityAnswer ? "security-answer-error" : undefined}
+                  placeholder="Your answer"
                 />
-                {errors.securityAnswer && (
-                  <p id="security-answer-error" className="mt-1 text-sm text-red-600">{errors.securityAnswer}</p>
-                )}
+                
               </div>
             </>
           )}
@@ -585,7 +697,7 @@ export default function Register() {
               <button
                 type="button"
                 onClick={handlePrevious}
-                className="flex-1 py-2 px-4 border border-gray-300 rounded font-semibold text-[var(--text)] hover:bg-gray-50 transition"
+                className="flex-1 py-2 px-4 border border-gray-300 rounded-lg text-[var(--text)] font-medium hover:bg-[var(--background)] transition"
               >
                 Previous
               </button>
@@ -595,7 +707,7 @@ export default function Register() {
               <button
                 type="button"
                 onClick={handleNext}
-                className="flex-1 py-2 px-4 bg-[var(--primary)] text-white font-semibold rounded hover:bg-[var(--primary)] transition"
+                className="flex-1 py-2 px-4 bg-[var(--primary)] text-white font-medium rounded-lg hover:opacity-90 transition"
               >
                 Next
               </button>
@@ -603,7 +715,7 @@ export default function Register() {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="flex-1 py-2 px-4 bg-green-600 text-white font-bold rounded hover:bg-green-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+                className="flex-1 py-2 px-4 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
               >
                 {isLoading ? (
                   <>
@@ -622,13 +734,14 @@ export default function Register() {
           </div>
         </form>
 
-        <p className="mt-4 text-center text-[var(--text)]">
+        <p className="text-center text-[var(--text)] mt-6">
           Already have an account?{" "}
-          <Link href="/login" className="text-blue-600 hover:text-blue-700 font-semibold">
-            Login
+          <Link href="/login" className="text-[var(--primary)] hover:opacity-80 font-medium">
+            Sign in
           </Link>
         </p>
       </div>
     </div>
   );
 }
+                
