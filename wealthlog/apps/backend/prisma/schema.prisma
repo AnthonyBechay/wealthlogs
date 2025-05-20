@@ -1,3 +1,4 @@
+
 generator client {
   provider = "prisma-client-js"
 }
@@ -85,7 +86,7 @@ enum RecurringEntryType {
 model User {
   id               Int       @id @default(autoincrement())
   username         String    @unique
-  email            String?   @unique
+  email            String    @unique 
   password         String
   firstName        String
   lastName         String
@@ -95,6 +96,18 @@ model User {
   securityAnswer   String?
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
+
+  //EMAIL VERIFICATION FIELDS (corrected names)
+  emailVerified            Boolean   @default(false)
+  emailVerificationToken   String?   @unique
+  emailVerificationExpires DateTime?
+  
+  // PASSWORD RESET FIELDS (corrected names)
+  passwordResetToken       String?   @unique
+  passwordResetExpires     DateTime?
+  
+  // TRACKING FIELD (corrected name)
+  lastLoginAt              DateTime?
 
   // Roles & Permissions
   roles         Role[]         @relation("UserRoles")
