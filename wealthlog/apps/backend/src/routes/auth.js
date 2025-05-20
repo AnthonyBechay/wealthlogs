@@ -125,12 +125,12 @@ router.post('/login', async (req, res) => {
     }
 
     // Vérifier si l'email est vérifié (optionnel, selon votre logique métier)
-    if (!user.emailVerified) {
-      return res.status(403).json({ 
-        error: 'Email not verified',
-        message: 'Please verify your email before logging in.'
-      });
-    }
+    // if (!user.emailVerified) {
+    //   return res.status(403).json({ 
+    //     error: 'Email not verified',
+    //     message: 'Please verify your email before logging in.'
+    //   });
+    // }
 
     // Mettre à jour la date de dernière connexion
     await prisma.user.update({
