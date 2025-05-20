@@ -1,4 +1,4 @@
-// apps/web/pages/reset-password.tsx
+//  apps/web/pages/reset-password.tsx
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { api } from '@wealthlog/common';
@@ -8,7 +8,6 @@ interface ResetPasswordForm {
   password: string;
   passwordConfirm: string;
 }
-
 export default function ResetPassword() {
   const router = useRouter();
   const { token } = router.query;
