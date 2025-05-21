@@ -3,10 +3,14 @@
   "version": "1.0.0",
   "main": "src/index.js",
   "scripts": {
-    "dev": "node src/index.js",
+    "dev": "node --watch src --exec 'node src/index.js'",
     "start": "node src/index.js",
+    "build": "echo 'No build step for backend'",
     "prisma:generate": "prisma generate",
-    "prisma:migrate": "prisma migrate deploy"
+    "prisma:migrate": "prisma migrate deploy",
+    "prisma:studio": "prisma studio",
+    "lint": "eslint . --ext .js",
+    "clean": "rm -rf node_modules"
   },
   "keywords": [],
   "author": "",
@@ -21,7 +25,11 @@
     "express-rate-limit": "^6.7.0",
     "helmet": "^6.0.1",
     "jsonwebtoken": "^9.0.2",
-    "multer": "^1.4.5-lts.2",
+    "multer": "^1.4.5-lts.2"
+  },
+  "devDependencies": {
+    "eslint": "^8.56.0",
+    "nodemon": "^3.0.3",
     "prisma": "^6.3.1"
   }
 }
