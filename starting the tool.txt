@@ -1,12 +1,13 @@
-start DB
-User@DESKTOP-MH6NR76 MINGW64 ~/Desktop/wealthlog/wealthlog/apps/backend (master)
-$ npx prisma generate
+# Action directly at the root
 
+# Generate Prisma types (Creates TypeScript types from your database schema)
+npm run prisma:generate
 
+# Start development (Runs all projects in development mode with auto-reload)
+npm run dev
 
-User@DESKTOP-MH6NR76 MINGW64 ~/Desktop/wealthlog/wealthlog (master)
-$ npx turbo run dev
+# Build the application (Compiles all projects for production deployment)
+npm run build
 
-
-update prisma from backend folder
-npx prisma migrate dev --name "add_stoplosspip"
+# Apply migrations (Updates your database schema with pending migrations)
+npm run prisma:migrate
