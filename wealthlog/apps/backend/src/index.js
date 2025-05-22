@@ -106,7 +106,6 @@ const realEstateRouter = require('./routes/realEstate');
 
 // API versioning - tous les endpoints sous /api/v1
 const apiRouter = express.Router();
-
 // Attach routers to API
 apiRouter.use('/auth', authRouter);
 apiRouter.use('/admin', adminRouter);
@@ -124,7 +123,6 @@ apiRouter.use('/real-estate', realEstateRouter);
 
 // Mount the API router
 app.use('/api/v1', apiRouter);
-
 // Support for legacy endpoints (non-versioned)
 app.use('/auth', authRouter);
 app.use('/admin', adminRouter);
