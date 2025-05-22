@@ -1,5 +1,5 @@
 // =============================================
-// apps/web/pages/landing.tsx  (FIXED with optimizations)
+// apps/web/pages/landing.tsx
 // =============================================
 import { useMemo, useState, useCallback } from "react";
 import { useRouter } from "next/router";
