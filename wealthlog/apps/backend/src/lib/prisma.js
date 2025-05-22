@@ -1,4 +1,4 @@
-// apps/backend/src/lib/prisma.js      ← common‑js export
+// apps/backend/src/lib/prisma.js
 const { PrismaClient } = require('@prisma/client')
 
 const globalForPrisma = global   // reuse in dev / turbo
