@@ -5,7 +5,7 @@
 
   "scripts": {
     "dev": "nodemon src/index.js",          
-    "start": "node dist/index.js",          
+    "start": "node src/index.js",          
     "build": "echo \"no build step for JS backend\"",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate deploy"
