@@ -7,24 +7,24 @@ const { authenticate } = require('../../middleware/authenticate');
 // GET all accounts for the authenticated user - MISE À JOUR
 router.get('/', authenticate, async (req, res) => {
   try {
-    const accounts = await prisma.financialAccount.findMany({
-      where: { userId: req.user.userId },
-      include: {
-        statusHistory: {
-          orderBy: { changedAt: 'desc' },
-          take: 1 // Prendre seulement le dernier changement
-        }
-      },
-      orderBy: { createdAt: 'asc' },
-    });
+   const accounts = await prisma.financialAccount.findMany({
+  where: { userId: req.user.userId },
+  include: {
+    statusHistory: {
+      orderBy: { changedAt: 'desc' },
+      take: 1,
+    },
+  },
+  orderBy: { createdAt: 'asc' },
+});
 
-    // Ajouter le dernier changement de statut à chaque compte
-    const accountsWithHistory = accounts.map(account => ({
-      ...account,
-      lastStatusChange: account.statusHistory[0]?.changedAt || null
-    }));
+const accountsWithHistory = accounts.map(acc => ({
+  ...acc,
+  lastStatusChange: acc.statusHistory?.[0]?.changedAt ?? null,  // safe chaining
+}));
 
-    res.json(accountsWithHistory);
+res.json(accountsWithHistory);
+
   } catch (error) {
     console.error("Error fetching accounts:", error);
     res.status(500).json({ error: "Failed to fetch accounts" });
