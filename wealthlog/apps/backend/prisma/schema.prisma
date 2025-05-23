@@ -340,7 +340,7 @@ model Trade {
   pattern        TradingPattern?      @relation(fields: [patternId], references: [id])
   tradeType      TradeType
   tradeDirection TradeDirection?      @default(LONG)
-  status         TradeStatus          @default(OPEN)
+  status         TradeStatus          @default(CLOSED)
   fees           Float                @default(0)
   entryDate      DateTime?            @default(now())
   exitDate       DateTime?

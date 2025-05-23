@@ -1,39 +1,674 @@
-/* apps/web/styles/theme.css
-   CSS custom properties mapped to the tokens from COLOR_THEMES.
-   Any plain‑CSS element backgrounds now reference the variables,
-   while the existing Tailwind classes still apply for utility‑based UI. */
+/* styles/theme  */
+
 :root {
-  --background: #d8dae7e1;
-  --background-2: #FFFFFF;
-  --text: #000000;
-  --primary: #3B82F6;
-  --danger: #ff6868;
-  --success: #10B981;
+  /* Couleurs principales - Thème Financier Luxe */
+  --background: #fafbfc;
+  --background-2: #ffffff;
+  --background-3: #f5f7fa;
+  --background-hover: #f0f2f5;
+  --background-accent: #f8fafc;
+  
+  /* Texte */
+  --text: #1a202c;
+  --text-secondary: #4a5568;
+  --text-muted: #718096;
+  --text-light: #a0aec0;
+  
+  /* Couleurs financières - Gris/Or premium */
+  --primary: #64748b;        /* Gris slate premium */
+  --primary-hover: #475569;
+  --primary-light: #f1f5f9;
+  --primary-dark: #334155;
+  
+  --accent: #f59e0b;         /* Or financier */
+  --accent-hover: #d97706;
+  --accent-light: #fef3c7;
+  
+  --secondary: #6b7280;      /* Gris moderne */
+  --secondary-hover: #4b5563;
+  --secondary-light: #f9fafb;
+  
+  /* Navigation - Dégradé premium */
+  --nav-bg-start: #1e293b;   /* Slate foncé */
+  --nav-bg-end: #0f172a;     /* Slate très foncé */
+  --nav-border: rgba(148, 163, 184, 0.1);
+  --nav-accent: #6b7280;
+  
+  /* États financiers */
+  --success: #059669;        /* Vert gains */
+  --success-light: #d1fae5;
+  --success-hover: #047857;
+  
+  --danger: #dc2626;         /* Rouge pertes */
+  --danger-light: #fee2e2;
+  --danger-hover: #b91c1c;
+  
+  --warning: #d97706;        /* Orange attention */
+  --warning-light: #fed7aa;
+  --warning-hover: #b45309;
+  
+  --info: #0284c7;           /* Bleu info */
+  --info-light: #bae6fd;
+  --info-hover: #0369a1;
+  
+  /* Bordures et séparateurs */
+  --border: #e2e8f0;
+  --border-light: #f1f5f9;
+  --border-accent: #cbd5e1;
+  
+  /* Ombres premium */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  --shadow-2xl: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  
+  /* Glassmorphism */
+  --glass-bg: rgba(255, 255, 255, 0.25);
+  --glass-border: rgba(255, 255, 255, 0.18);
+  --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
 }
 
+/* Mode sombre - Thème Financier Dark Premium */
 .dark {
-  --background: #1E1E1E;
-  --background-2: #2A2A2A;
-  --text: #FFFFFF;
-  --primary: #2563EB;
-  --danger: #F87171;
-  --success: #34D399;
+  --background: #1c1f24;
+  --background-2: #20242a;
+  --background-3: #2a2f35;
+  --background-hover: #0a0b0b;
+  --background-accent: #1e293b;
+  
+  --text: #f8fafc;
+  --text-secondary: #cbd5e1;
+  --text-muted: #94a3b8;
+  --text-light: #64748b;
+  
+  --primary: #6b7280;
+  --primary-hover: #4b5563;
+  --primary-light: rgba(107, 114, 128, 0.1);
+  --primary-dark: #374151;
+  
+  --accent: #fbbf24;
+  --accent-hover: #f59e0b;
+  --accent-light: rgba(251, 191, 36, 0.1);
+  
+  --secondary: #71717a;
+  --secondary-hover: #52525b;
+  --secondary-light: rgba(113, 113, 122, 0.1);
+  
+  /* Navigation mode sombre */
+  --nav-bg-start: #020617;
+  --nav-bg-end: #0c1220;
+  --nav-border: rgba(148, 163, 184, 0.1);
+  --nav-accent: #71717a;
+  
+  --success: #10b981;
+  --success-light: rgba(16, 185, 129, 0.1);
+  --success-hover: #059669;
+  
+  --danger: #f87171;
+  --danger-light: rgba(248, 113, 113, 0.1);
+  --danger-hover: #ef4444;
+  
+  --warning: #fbbf24;
+  --warning-light: rgba(251, 191, 36, 0.1);
+  --warning-hover: #f59e0b;
+  
+  --info: #38bdf8;
+  --info-light: rgba(56, 189, 248, 0.1);
+  --info-hover: #0ea5e9;
+  
+  --border: #334155;
+  --border-light: #1e293b;
+  --border-accent: #475569;
+  
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+  --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.4), 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -2px rgba(0, 0, 0, 0.3);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.4), 0 10px 10px -5px rgba(0, 0, 0, 0.2);
+  --shadow-2xl: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
+  
+  --glass-bg: rgba(30, 41, 59, 0.4);
+  --glass-border: rgba(148, 163, 184, 0.1);
+  --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
 }
 
-/* Provide some sensible defaults that reference the vars */
-body {
-  background-color: var(--background);
+/* Override des classes Tailwind - TOUS LES BACKGROUNDS CORRIGÉS */
+
+/* Navigation - Override complet */
+.bg-gradient-to-b.from-blue-600.to-blue-700 {
+  background: linear-gradient(to bottom, var(--nav-bg-start), var(--nav-bg-end)) !important;
+}
+
+.border-blue-500\/20 {
+  border-color: var(--nav-border) !important;
+}
+
+/* OVERRIDE COMPLET DES BACKGROUNDS BLEUS */
+.bg-blue-600,
+.from-blue-600,
+.to-blue-700,
+.bg-gradient-to-b {
+  background: linear-gradient(to bottom, var(--nav-bg-start), var(--nav-bg-end)) !important;
+}
+
+/* Backgrounds - MODE CLAIR */
+:root .bg-gray-50 {
+  background-color: var(--background) !important;
+}
+
+:root .bg-white {
+  background-color: var(--background-2) !important;
+}
+
+/* Mode sombre */
+.dark .bg-gray-900 {
+  background-color: var(--background) !important;
+}
+
+.dark .bg-gray-800 {
+  background-color: var(--background-2) !important;
+}
+
+/* Text colors */
+:root .text-gray-900 {
   color: var(--text);
 }
 
-.bg-primary {
-  background-color: var(--primary);
+:root .text-gray-600 {
+  color: var(--text-secondary);
 }
 
-.text-primary {
+.dark .text-white {
+  color: var(--text);
+}
+
+.dark .text-gray-300 {
+  color: var(--text-secondary);
+}
+
+/* Borders */
+:root .border-gray-200 {
+  border-color: var(--border);
+}
+
+.dark .border-gray-700 {
+  border-color: var(--border);
+}
+
+/* Hover states */
+:root .hover\:bg-gray-100:hover {
+  background-color: var(--background-hover);
+}
+
+.dark .hover\:bg-gray-700:hover {
+  background-color: var(--background-hover);
+}
+
+/* Styles de base */
+body {
+  background-color: var(--background);
+  color: var(--text);
+  font-family: 'Inter', 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+  line-height: 1.6;
+  transition: all 0.2s ease;
+  font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+}
+
+/* Boutons Premium - Style Financier */
+.btn-primary {
+  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+  color: white;
+  border: none;
+  border-radius: 12px;
+  padding: 0.875rem 1.75rem;
+  font-weight: 600;
+  font-size: 0.925rem;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  box-shadow: var(--shadow-md);
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-primary::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.5s;
+}
+
+.btn-primary:hover::before {
+  left: 100%;
+}
+
+.btn-primary:hover {
+  background: linear-gradient(135deg, var(--primary-hover), var(--primary));
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+}
+
+.btn-primary:active {
+  transform: translateY(0px);
+  box-shadow: var(--shadow);
+}
+
+/* Bouton Accent - Or financier */
+.btn-accent {
+  background: linear-gradient(135deg, var(--accent), var(--accent-hover));
+  color: white;
+  border: none;
+  border-radius: 12px;
+  padding: 0.875rem 1.75rem;
+  font-weight: 600;
+  font-size: 0.925rem;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  box-shadow: var(--shadow-md);
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-accent:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+}
+
+/* Bouton Success - Gains */
+.btn-success {
+  background: linear-gradient(135deg, var(--success), var(--success-hover));
+  color: white;
+  border: none;
+  border-radius: 12px;
+  padding: 0.875rem 1.75rem;
+  font-weight: 600;
+  font-size: 0.925rem;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  box-shadow: var(--shadow-md);
+}
+
+.btn-success:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+}
+
+/* Bouton Danger - Pertes */
+.btn-danger {
+  background: linear-gradient(135deg, var(--danger), var(--danger-hover));
+  color: white;
+  border: none;
+  border-radius: 12px;
+  padding: 0.875rem 1.75rem;
+  font-weight: 600;
+  font-size: 0.925rem;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  box-shadow: var(--shadow-md);
+}
+
+.btn-danger:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+}
+
+/* Bouton Secondaire - Outline */
+.btn-secondary {
+  background: var(--background-2);
   color: var(--primary);
+  border: 2px solid var(--primary);
+  border-radius: 12px;
+  padding: 0.75rem 1.625rem;
+  font-weight: 600;
+  font-size: 0.925rem;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  position: relative;
+  overflow: hidden;
 }
 
-.bg-background-2 {
-  background-color: var(--background-2);
+.btn-secondary::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: var(--primary);
+  transition: left 0.3s ease;
+  z-index: -1;
+}
+
+.btn-secondary:hover::before {
+  left: 0;
+}
+
+.btn-secondary:hover {
+  color: white;
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+/* Bouton Ghost */
+.btn-ghost {
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 0.875rem 1.75rem;
+  font-weight: 500;
+  font-size: 0.925rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.btn-ghost:hover {
+  background: var(--background-hover);
+  color: var(--text);
+  border-color: var(--border-accent);
+}
+
+/* Cards Premium */
+.card {
+  background: var(--background-2);
+  border: 1px solid var(--border-light);
+  border-radius: 16px;
+  padding: 1.5rem;
+  box-shadow: var(--shadow-sm);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--primary), var(--accent), var(--secondary));
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.card:hover::before {
+  opacity: 1;
+}
+
+.card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-xl);
+  border-color: var(--border-accent);
+}
+
+/* Card Premium avec Glassmorphism */
+.card-glass {
+  background: var(--glass-bg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--glass-border);
+  border-radius: 20px;
+  padding: 2rem;
+  box-shadow: var(--glass-shadow);
+  transition: all 0.3s ease;
+}
+
+.card-glass:hover {
+  transform: translateY(-8px);
+  box-shadow: var(--shadow-2xl);
+}
+
+/* Input Fields Premium */
+.input-field {
+  background: var(--background-2);
+  border: 2px solid var(--border);
+  border-radius: 12px;
+  padding: 1rem 1.25rem;
+  color: var(--text);
+  font-size: 0.95rem;
+  font-weight: 500;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  width: 100%;
+  position: relative;
+}
+
+.input-field:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 4px rgba(107, 114, 128, 0.1);
+  transform: translateY(-1px);
+}
+
+.input-field::placeholder {
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+/* Navigation Premium */
+.nav-sidebar {
+  background: linear-gradient(180deg, var(--nav-bg-start), var(--nav-bg-end));
+  border-right: 1px solid var(--nav-border);
+  position: relative;
+}
+
+.nav-sidebar::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 1px;
+  height: 100%;
+  background: linear-gradient(180deg, var(--nav-accent), transparent, var(--nav-accent));
+  opacity: 0.5;
+}
+
+.nav-link {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.nav-link::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  width: 4px;
+  background: var(--nav-accent);
+  transform: scaleY(0);
+  transition: transform 0.3s ease;
+}
+
+.nav-link:hover::before {
+  transform: scaleY(1);
+}
+
+.nav-link:hover {
+  background: rgba(255, 255, 255, 0.1);
+  transform: translateX(4px);
+}
+
+.nav-link.active {
+  background: rgba(255, 255, 255, 0.15);
+  font-weight: 700;
+  position: relative;
+}
+
+.nav-link.active::before {
+  transform: scaleY(1);
+}
+
+/* Badges et Indicators */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.375rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.badge-success {
+  background: var(--success-light);
+  color: var(--success);
+}
+
+.badge-danger {
+  background: var(--danger-light);
+  color: var(--danger);
+}
+
+.badge-warning {
+  background: var(--warning-light);
+  color: var(--warning);
+}
+
+.badge-info {
+  background: var(--info-light);
+  color: var(--info);
+}
+
+/* Stats Cards */
+.stat-card {
+  background: linear-gradient(135deg, var(--background-2), var(--background-3));
+  border: 1px solid var(--border-light);
+  border-radius: 20px;
+  padding: 2rem;
+  box-shadow: var(--shadow-md);
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.stat-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, var(--success), var(--accent));
+}
+
+.stat-card:hover {
+  transform: translateY(-8px) scale(1.02);
+  box-shadow: var(--shadow-2xl);
+}
+
+/* Scrollbar Premium */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--background-3);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, var(--primary), var(--accent));
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, var(--primary-hover), var(--accent-hover));
+}
+
+/* Animations Premium */
+.fade-in {
+  animation: fadeInUp 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.slide-in {
+  animation: slideInRight 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Loading States */
+.loading {
+  position: relative;
+  overflow: hidden;
+}
+
+.loading::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+  0% { left: -100%; }
+  100% { left: 100%; }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .card {
+    padding: 1.25rem;
+    border-radius: 12px;
+  }
+  
+  .btn-primary,
+  .btn-secondary,
+  .btn-accent {
+    padding: 0.75rem 1.25rem;
+    font-size: 0.9rem;
+  }
+  
+  .stat-card {
+    padding: 1.5rem;
+  }
 }
