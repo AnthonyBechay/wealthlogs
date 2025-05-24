@@ -1,5 +1,5 @@
 // =============================================
-// apps/web/pages/settingsGeneral.tsx  (FULL FILE – v5)
+// apps/web/pages/settingsGeneral.tsx  
 // =============================================
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
