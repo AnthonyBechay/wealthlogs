@@ -1,5 +1,5 @@
 // =============================================
-// apps/web/pages/settingsGeneral.tsx  
+// apps/web/pages/settingsGeneral.tsx zizi
 // =============================================
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
