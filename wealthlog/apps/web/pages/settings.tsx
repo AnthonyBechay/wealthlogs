@@ -1,4 +1,4 @@
-// apps/web/pages/settings.tsx - Version Finale
+// apps/web/pages/settings.tsx - Version Finale avec gestion URL tab
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import { useTheme } from 'next-themes';
@@ -323,6 +323,31 @@ export default function Settings() {
   }, []);
 
   // =============================================
+  //              TAB MANAGEMENT
+  // =============================================
+  
+  // ✅ NOUVEAU: Gérer l'onglet depuis l'URL
+  useEffect(() => {
+    const { tab } = router.query;
+    if (tab && typeof tab === 'string') {
+      const validTabs: TabType[] = ['general', 'trading', 'notifications', 'profile', 'security', 'privacy', 'accounts'];
+      if (validTabs.includes(tab as TabType)) {
+        setActiveTab(tab as TabType);
+      }
+    } else {
+      // ✅ Si aucun paramètre tab, ouvrir sur 'general' par défaut
+      setActiveTab('general');
+    }
+  }, [router.query]);
+
+  // ✅ NOUVEAU: Fonction pour changer d'onglet avec mise à jour URL
+  const handleTabChange = useCallback((newTab: TabType) => {
+    setActiveTab(newTab);
+    // Mettre à jour l'URL sans reload de la page
+    router.push(`/settings?tab=${newTab}`, undefined, { shallow: true });
+  }, [router]);
+
+  // =============================================
   //              API FUNCTIONS
   // =============================================
   const loadData = useCallback(async () => {
@@ -537,7 +562,7 @@ export default function Settings() {
           <TabButton
             key={tab.id}
             active={activeTab === tab.id}
-            onClick={() => setActiveTab(tab.id)}
+            onClick={() => handleTabChange(tab.id)} // ✅ Utilise la nouvelle fonction
           >
             {tab.label}
           </TabButton>
@@ -560,8 +585,7 @@ export default function Settings() {
                 options={[
                   { value: 'light', label: 'Light' },
                   { value: 'dark', label: 'Dark' },
-
-                  // ajoute apres si ta envie{ value: 'system', label: 'System' }
+                  { value: 'system', label: 'System' }
                 ]}
               />
             </Card>
