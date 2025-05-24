@@ -1,2 +1,5 @@
+# .gitignore
 node_modules/
-.turbo
+.turbo/
+apps/*/package-lock.json
+packages/*/package-lock.json
