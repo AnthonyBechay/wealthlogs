@@ -28,7 +28,7 @@ interface NavigationItem {
   isActive?: boolean;
 }
 
-// Constants - NAVIGATION MISE À JOUR
+// Constants - NAVIGATION MISE À JOUR AVEC TRADING SETTINGS
 const NAVIGATION_ITEMS: NavigationItem[] = [
   { href: '/landing/landing', label: 'Dashboard', icon: '🏠' },
   { href: '/accounts', label: 'Accounts', icon: '💼' },
@@ -37,7 +37,8 @@ const NAVIGATION_ITEMS: NavigationItem[] = [
   { href: '/comingSoon', label: 'Expenses', icon: '💳' },
   { href: '/comingSoon', label: 'Loans', icon: '💰' },
   { href: '/comingSoon', label: 'Forecasting', icon: '📊' },
-  { href: '/settings', label: 'Settings', icon: '⚙️' }, // ✅ Unifié en une seule page
+  { href: '/settings?tab=trading', label: 'Trading Settings', icon: '⚙️' }, // ✅ Nouveau lien direct
+  { href: '/settings', label: 'Settings', icon: '⚙️' }, // ✅ Lien général
 ];
 
 // Utilities
@@ -59,9 +60,29 @@ interface NavigationLinkProps {
 
 const NavigationLink = ({ item, isCollapsed = false, onNavigate }: NavigationLinkProps) => {
   const router = useRouter();
-  // ✅ Amélioration: inclure les sous-routes de settings
-  const isActive = router.pathname === item.href || 
-    (item.href === '/settings' && router.pathname.startsWith('/settings'));
+  
+  // ✅ Amélioration pour gérer les paramètres URL
+  const isActive = () => {
+    if (item.href.includes('?')) {
+      // Pour les liens avec paramètres (ex: /settings?tab=trading)
+      const [path, params] = item.href.split('?');
+      if (router.pathname === path) {
+        const urlParams = new URLSearchParams(router.asPath.split('?')[1] || '');
+        const itemParams = new URLSearchParams(params);
+        
+        // Vérifier si tous les paramètres correspondent
+        for (const [key, value] of itemParams.entries()) {
+          if (urlParams.get(key) !== value) return false;
+        }
+        return true;
+      }
+      return false;
+    }
+    
+    // Logique normale pour les autres liens
+    return router.pathname === item.href || 
+      (item.href === '/settings' && router.pathname.startsWith('/settings') && !router.asPath.includes('?tab='));
+  };
 
   return (
     <Link href={item.href} legacyBehavior>
@@ -70,7 +91,7 @@ const NavigationLink = ({ item, isCollapsed = false, onNavigate }: NavigationLin
         className={`
           group flex items-center gap-3 px-4 py-3 rounded-lg
           transition-all duration-200 ease-in-out
-          ${isActive
+          ${isActive()
             ? 'bg-white/20 text-white font-semibold'
             : 'text-white/80 hover:bg-white/10 hover:text-white'
           }
