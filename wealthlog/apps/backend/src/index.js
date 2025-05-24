@@ -1,4 +1,4 @@
-// src/index.js - Simple Professional Optimization
+// src/index.js
 require('dotenv').config(); // Load environment variables from .env
 
 const express = require('express');
@@ -56,7 +56,6 @@ const uploadDir = path.join(process.cwd(), "uploads", "tradeImages");
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
-
 // IMPROVED: Serve static files with caching headers for better performance
 app.use("/uploads", express.static(path.join(__dirname, "uploads"), {
   maxAge: '1d', // Cache for 1 day
@@ -80,8 +79,7 @@ const communityRouter = require('./routes/community');
 const coachingRouter = require('./routes/coaching');
 const accountRoutes = require('./routes/account/account.routes.js');
 const transactionsRoutes = require('./routes/account/transactions.routes.js');
-const generalSettingsRouter = require('./routes/settings/generalSettings.routes.js');
-const tradingSettingsRouter = require('./routes/settings/tradingSettings.routes.js');
+const settingsRouter = require('./routes/settings.js');
 
 const tradeRouter = require("./routes/trade/trade.routes.js");
 const tradeFilterRouter = require("./routes/trade/filter.routes.js");
@@ -98,8 +96,7 @@ app.use('/community', communityRouter);
 app.use('/coaching', coachingRouter);
 app.use('/account', accountRoutes);
 app.use('/transactions', transactionsRoutes);
-app.use('/generalSettings', generalSettingsRouter);
-app.use('/tradingSettings', tradingSettingsRouter);
+app.use('/', settingsRouter);
 app.use('/mt5sync', mt5syncRouter);
 app.use('/dashboard', dashboardRouter);
 
@@ -132,5 +129,3 @@ app.use((err, req, res, next) => {
     timestamp: new Date().toISOString()
   });
 });
-
-module.exports = app;
