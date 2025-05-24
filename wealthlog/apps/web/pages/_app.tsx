@@ -35,7 +35,7 @@ const NAVIGATION_ITEMS: NavigationItem[] = [
   { href: '/RealEstate', label: 'Real Estate', icon: '🏘️' },
   { href: '/comingSoon', label: 'Expenses', icon: '💳' },
   { href: '/comingSoon', label: 'Loans', icon: '💰' },
-  { href: '/comingSoon', label: 'Forecasting', icon: '📊' },
+  { href: '/trading/crypto/binance', label: 'Forecasting', icon: '📊' },
   { href: '/settings/settingsGeneral', label: 'General Settings', icon: '⚙️' },
   { href: '/settings/settingsTrading', label: 'Trading Settings', icon: '🛠️' },
 ];

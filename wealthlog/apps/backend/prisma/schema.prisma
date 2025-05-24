@@ -277,6 +277,7 @@ model Trade {
   fxTrade        FxTrade?
   stocksTrade    StocksTrade?
   bondTrade      BondTrade?
+  cryptoTrade    CryptoTrade?
   tradeLabels    TradeLabel[]
   media          TradeMedia[]
 
@@ -336,6 +337,25 @@ model BondTrade {
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @default(now())
 }
+
+
+/// apps/backend/prisma/schema.prisma
+model CryptoTrade {
+  id              Int      @id @default(autoincrement())
+  tradeId         Int      @unique
+  trade           Trade    @relation(fields: [tradeId], references: [id])
+
+  asset           String   // e.g. 'BTC'
+  quantity        Float
+  entryPrice      Float
+  exitPrice       Float?
+  amountGain      Float?   @default(0)  // in quote (USDT)
+  percentageGain  Float?   @default(0)
+  source          String?  // 'Binance', 'ByBit', etc.
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @default(now())
+}
+
 
 model Transaction {
   id Int @id @default(autoincrement())

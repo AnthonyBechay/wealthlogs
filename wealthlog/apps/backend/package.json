@@ -1,17 +1,16 @@
 {
-  "name": "@wealthlog/backend",            
+  "name": "@wealthlog/backend",
   "version": "1.0.0",
   "main": "src/index.js",
-
   "scripts": {
-    "dev": "nodemon src/index.js",          
-    "start": "node src/index.js",          
+    "dev": "nodemon src/index.js",
+    "start": "node src/index.js",
     "build": "echo \"no build step for JS backend\"",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate deploy"
   },
-
   "dependencies": {
+    "@binance/connector": "^3.6.1",
     "@prisma/client": "^6.3.1",
     "bcrypt": "^5.1.1",
     "cors": "^2.8.5",

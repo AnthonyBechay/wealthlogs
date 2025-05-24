@@ -58,6 +58,8 @@ const tradeFilterRouter = require("./routes/trade/filter.routes.js");
 
 const mt5syncRouter = require('./routes/trade/mt5sync.routes.js');
 const dashboardRouter = require('./routes/landing/dashboard.js');
+const binance = require("./routes/trade/binance.routes.js");
+
 
 // Attach routers
 app.use('/auth', authRouter);
@@ -72,6 +74,9 @@ app.use('/generalSettings', generalSettingsRouter);
 app.use('/tradingSettings', tradingSettingsRouter);
 app.use('/mt5sync', mt5syncRouter);
 app.use('/dashboard', dashboardRouter);
+app.use("/binance", binance);
+
+
 
 // Start the server
 app.listen(PORT, () => {
