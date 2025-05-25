@@ -51,11 +51,22 @@ app.use(express.json({
   strict: true
 }));
 
-// Ensure "uploads/tradeImages" folder exists
-const uploadDir = path.join(process.cwd(), "uploads", "tradeImages");
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
-}
+// Ensure upload folders exist
+const uploadDirs = [
+  "uploads/tradeImages",
+  "uploads/realEstate",
+  "uploads/documents", 
+  "uploads/profileImages",
+  "uploads/temp"
+];
+
+uploadDirs.forEach(dir => {
+  const uploadDir = path.join(process.cwd(), dir);
+  if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir, { recursive: true });
+  }
+});
+
 // IMPROVED: Serve static files with caching headers for better performance
 app.use("/uploads", express.static(path.join(__dirname, "uploads"), {
   maxAge: '1d', // Cache for 1 day
@@ -85,6 +96,10 @@ const tradeRouter = require("./routes/trade/trade.routes.js");
 const tradeFilterRouter = require("./routes/trade/filter.routes.js");
 
 const mt5syncRouter = require('./routes/trade/mt5sync.routes.js');
+
+// Real Estate routes
+const realEstateRouter = require('./routes/realestate/realestate.routes.js');
+
 const dashboardRouter = require('./routes/landing/dashboard.js');
 
 // Attach routers
@@ -96,8 +111,15 @@ app.use('/community', communityRouter);
 app.use('/coaching', coachingRouter);
 app.use('/account', accountRoutes);
 app.use('/transactions', transactionsRoutes);
-app.use('/', settingsRouter);
+
+// ✅ CORRIGÉ: Settings avec préfixe au lieu de '/'
+app.use('/settings', settingsRouter);
+
 app.use('/mt5sync', mt5syncRouter);
+
+// Real Estate endpoints
+app.use('/real-estate', realEstateRouter);
+
 app.use('/dashboard', dashboardRouter);
 
 // Start the server
@@ -106,6 +128,8 @@ app.listen(PORT, () => {
   console.log(`⚡ Compression: Enabled (up to 70% faster responses)`);
   console.log(`🛡️  Security: Helmet & Rate limiting active`);
   console.log(`📊 Monitoring: Health check available at /health`);
+  console.log(`🏠 Real Estate: Endpoints available at /real-estate/*`);
+  console.log(`⚙️  Settings: Endpoints available at /settings/*`);
 });
 
 // IMPROVED: Better 404 handler with more info

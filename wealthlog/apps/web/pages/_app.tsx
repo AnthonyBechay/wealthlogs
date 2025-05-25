@@ -4,7 +4,7 @@ import '../styles/globals.css';
 import '../styles/theme.css';
 
 import type { AppProps } from 'next/app';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { ThemeProvider } from 'next-themes';
@@ -13,13 +13,11 @@ import { api, setAccessToken } from '@wealthlog/common';
 import { appWithTranslation } from 'next-i18next';
 import nextI18NextConfig from '../next-i18next.config';
 
-
 /* Public routes requiring no auth */
 const PUBLIC_PATHS = ['/', '/login', '/register', '/forgot-password'];
 const isPublic = (p: string) => PUBLIC_PATHS.includes(p);
 
 type ThemeMode = 'light' | 'dark' | 'system';
-
 
 interface NavigationItem {
   href: string;
@@ -37,9 +35,92 @@ const NAVIGATION_ITEMS: NavigationItem[] = [
   { href: '/comingSoon', label: 'Expenses', icon: '💳' },
   { href: '/comingSoon', label: 'Loans', icon: '💰' },
   { href: '/comingSoon', label: 'Forecasting', icon: '📊' },
-  { href: '/settings?tab=trading', label: 'Trading Settings', icon: '⚙️' }, // ✅ Nouveau lien direct
-  { href: '/settings', label: 'Settings', icon: '⚙️' }, // ✅ Lien général
+  { href: '/settings?tab=trading', label: 'Trading Settings', icon: '⚙️' },
+  { href: '/settings', label: 'Settings', icon: '🔧' },
 ];
+
+// =============================================
+//              INSTANT UPDATES HOOKS
+// =============================================
+
+// ✅ Hook pour empêcher les transitions au chargement initial
+const usePreventInitialTransitions = () => {
+  useEffect(() => {
+    // Ajouter classe preload au chargement
+    document.body.classList.add('preload');
+    
+    // Retirer après un court délai
+    const timer = setTimeout(() => {
+      document.body.classList.remove('preload');
+    }, 100);
+    
+    return () => clearTimeout(timer);
+  }, []);
+};
+
+// ✅ Hook pour écouter les changements de thème système
+const useSystemThemeListener = () => {
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    
+    const handleChange = (e: MediaQueryListEvent) => {
+      const currentTheme = localStorage.getItem('displayMode');
+      
+      // Si l'utilisateur utilise le mode système, appliquer automatiquement
+      if (currentTheme === 'system') {
+        const root = document.documentElement;
+        
+        if (e.matches) {
+          root.classList.add('dark');
+          root.classList.remove('light');
+        } else {
+          root.classList.add('light');
+          root.classList.remove('dark');
+        }
+        
+        console.log(`🌟 System theme changed to: ${e.matches ? 'dark' : 'light'}`);
+      }
+    };
+    
+    mediaQuery.addEventListener('change', handleChange);
+    
+    return () => mediaQuery.removeEventListener('change', handleChange);
+  }, []);
+};
+
+// ✅ Hook pour appliquer le thème initial immédiatement
+const useInitialThemeApplication = (themeMode: ThemeMode) => {
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    
+    const root = document.documentElement;
+    
+    // Appliquer le thème immédiatement
+    if (themeMode === 'dark') {
+      root.classList.add('dark');
+      root.classList.remove('light');
+    } else if (themeMode === 'light') {
+      root.classList.add('light');
+      root.classList.remove('dark');
+    } else {
+      // System mode - détecter la préférence système
+      const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      if (systemPrefersDark) {
+        root.classList.add('dark');
+        root.classList.remove('light');
+      } else {
+        root.classList.add('light');
+        root.classList.remove('dark');
+      }
+    }
+  }, [themeMode]);
+};
+
+// =============================================
+//              UTILITIES
+// =============================================
 
 // Utilities
 const isPublicRoute = (pathname: string): boolean => {
@@ -50,6 +131,10 @@ const getStoredTheme = (): ThemeMode => {
   if (typeof window === 'undefined') return 'system';
   return (localStorage.getItem('displayMode') as ThemeMode) || 'system';
 };
+
+// =============================================
+//              COMPONENTS
+// =============================================
 
 // Components
 interface NavigationLinkProps {
@@ -92,7 +177,7 @@ const NavigationLink = ({ item, isCollapsed = false, onNavigate }: NavigationLin
           group flex items-center gap-3 px-4 py-3 rounded-lg
           transition-all duration-200 ease-in-out
           ${isActive()
-            ? 'bg-white/20 text-white font-semibold'
+            ? 'bg-white/20 text-white font-semibold shadow-lg'
             : 'text-white/80 hover:bg-white/10 hover:text-white'
           }
           ${isCollapsed ? 'justify-center' : ''}
@@ -111,15 +196,18 @@ const NavigationLink = ({ item, isCollapsed = false, onNavigate }: NavigationLin
 };
 
 const LoadingScreen = () => (
-  <div className="flex items-center justify-center min-h-screen bg-gray-50">
+  <div className="flex items-center justify-center min-h-screen bg-gray-50 dark:bg-gray-900 transition-all duration-300">
     <div className="flex flex-col items-center space-y-4">
       <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      <p className="text-gray-600 font-medium">Loading WealthLog...</p>
+      <p className="text-gray-600 dark:text-gray-300 font-medium">Loading WealthLog...</p>
     </div>
   </div>
 );
 
-// Main App Component
+// =============================================
+//              MAIN APP COMPONENT
+// =============================================
+
 function MyApp({ Component, pageProps }: AppProps) {
   const router = useRouter();
 
@@ -130,36 +218,47 @@ function MyApp({ Component, pageProps }: AppProps) {
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
+  // ✅ Hooks pour changements instantanés
+  usePreventInitialTransitions();
+  useSystemThemeListener();
+  useInitialThemeApplication(themeMode);
+
   // Initialize theme from localStorage
   useEffect(() => {
-    setThemeMode(getStoredTheme());
+    const storedTheme = getStoredTheme();
+    setThemeMode(storedTheme);
+    console.log(`🎨 Initial theme loaded: ${storedTheme}`);
   }, []);
 
   // Persist theme changes
   useEffect(() => {
     if (typeof window !== 'undefined') {
       localStorage.setItem('displayMode', themeMode);
+      console.log(`💾 Theme saved to localStorage: ${themeMode}`);
     }
   }, [themeMode]);
 
-  // Fetch user settings - ✅ ENDPOINT CORRIGÉ
+  // ✅ Fetch user settings avec endpoint corrigé et gestion d'erreur améliorée
   useEffect(() => {
     const fetchUserSettings = async () => {
+      if (!isAuthenticated) return;
+      
       try {
-        const { data } = await api.get('/generalSettings'); // ✅ Changé de '/settings' à '/generalSettings'
-        if (data?.displayMode) {
+        console.log('🔄 Fetching user settings...');
+        const { data } = await api.get('/settings/generalSettings');
+        
+        if (data?.displayMode && data.displayMode !== themeMode) {
+          console.log(`🔄 Updating theme from server: ${data.displayMode}`);
           setThemeMode(data.displayMode as ThemeMode);
         }
       } catch (error) {
-        console.warn('Failed to fetch user settings:', error);
+        console.warn('⚠️ Failed to fetch user settings:', error);
+        // Continuer avec le thème local si le serveur échoue
       }
     };
 
-    // ✅ Seulement fetch si l'utilisateur est authentifié
-    if (isAuthenticated) {
-      fetchUserSettings();
-    }
-  }, [isAuthenticated]);
+    fetchUserSettings();
+  }, [isAuthenticated, themeMode]);
 
   // Authentication check
   useEffect(() => {
@@ -172,7 +271,9 @@ function MyApp({ Component, pageProps }: AppProps) {
       try {
         await api.get('/auth/me');
         setIsAuthenticated(true);
+        console.log('✅ User authenticated');
       } catch (error) {
+        console.log('❌ Authentication failed');
         setIsAuthenticated(false);
         router.replace('/login');
       } finally {
@@ -188,10 +289,14 @@ function MyApp({ Component, pageProps }: AppProps) {
     setIsDrawerOpen(false);
   }, [router.pathname]);
 
-  // Handlers
-  const handleLogout = async () => {
+  // =============================================
+  //              HANDLERS
+  // =============================================
+
+  const handleLogout = useCallback(async () => {
     try {
       await api.post('/auth/logout');
+      console.log('👋 User logged out');
     } catch (error) {
       console.error('Logout error:', error);
     } finally {
@@ -199,12 +304,52 @@ function MyApp({ Component, pageProps }: AppProps) {
       setIsAuthenticated(false);
       router.push('/login');
     }
-  };
+  }, [router]);
 
-  const handleLogoClick = () => {
+  const handleLogoClick = useCallback(() => {
     router.push('/landing/landing');
     setIsDrawerOpen(false);
-  };
+  }, [router]);
+
+  // ✅ Handler pour changement de thème instantané
+  const handleThemeChange = useCallback((newTheme: ThemeMode) => {
+    console.log(`🎨 Theme changing to: ${newTheme}`);
+    setThemeMode(newTheme);
+    
+    // Appliquer immédiatement
+    if (typeof window !== 'undefined') {
+      const root = document.documentElement;
+      
+      // Animation de transition
+      root.style.transition = 'all 0.3s ease';
+      
+      if (newTheme === 'dark') {
+        root.classList.add('dark');
+        root.classList.remove('light');
+      } else if (newTheme === 'light') {
+        root.classList.add('light');
+        root.classList.remove('dark');
+      } else {
+        const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        if (systemPrefersDark) {
+          root.classList.add('dark');
+          root.classList.remove('light');
+        } else {
+          root.classList.add('light');
+          root.classList.remove('dark');
+        }
+      }
+      
+      // Retirer la transition après application
+      setTimeout(() => {
+        root.style.transition = '';
+      }, 300);
+    }
+  }, []);
+
+  // =============================================
+  //              RENDER CONDITIONS
+  // =============================================
 
   // Render conditions
   if (isCheckingAuth) {
@@ -213,6 +358,7 @@ function MyApp({ Component, pageProps }: AppProps) {
         attribute="class"
         defaultTheme="system"
         forcedTheme={themeMode === 'system' ? undefined : themeMode}
+        enableSystem={true}
       >
         <LoadingScreen />
       </ThemeProvider>
@@ -225,6 +371,7 @@ function MyApp({ Component, pageProps }: AppProps) {
         attribute="class"
         defaultTheme="system"
         forcedTheme={themeMode === 'system' ? undefined : themeMode}
+        enableSystem={true}
       >
         <Component {...pageProps} />
       </ThemeProvider>
@@ -235,14 +382,18 @@ function MyApp({ Component, pageProps }: AppProps) {
     return null;
   }
 
-  // Main layout
+  // =============================================
+  //              MAIN LAYOUT
+  // =============================================
+
   return (
     <ThemeProvider
       attribute="class"
       defaultTheme="system"
       forcedTheme={themeMode === 'system' ? undefined : themeMode}
+      enableSystem={true}
     >
-      <div className="flex min-h-screen bg-gray-50 dark:bg-gray-900">
+      <div className="flex min-h-screen bg-gray-50 dark:bg-gray-900 transition-all duration-300">
 
         {/* Desktop Sidebar */}
         <aside
@@ -250,14 +401,14 @@ function MyApp({ Component, pageProps }: AppProps) {
             hidden md:flex flex-col h-screen
             transition-all duration-300 ease-in-out
             ${isSidebarCollapsed ? 'w-20' : 'w-64'}
-            bg-gradient-to-b from-blue-600 to-blue-700
+            bg-gradient-to-b from-blue-600 to-blue-700 dark:from-blue-800 dark:to-blue-900
             border-r border-blue-500/20
             shadow-xl
           `}
         >
           {/* Header */}
           <header
-            className="flex items-center gap-3 p-6 cursor-pointer hover:bg-white/5 transition-colors"
+            className="flex items-center gap-3 p-6 cursor-pointer hover:bg-white/5 transition-colors duration-200"
             onClick={handleLogoClick}
           >
             <img
@@ -309,7 +460,7 @@ function MyApp({ Component, pageProps }: AppProps) {
                 className="
                   w-full py-3 rounded-lg
                   bg-white text-blue-600
-                  hover:bg-gray-100
+                  hover:bg-gray-100 dark:hover:bg-gray-200
                   font-semibold text-sm
                   transition-all duration-200
                   shadow-md hover:shadow-lg
@@ -336,7 +487,7 @@ function MyApp({ Component, pageProps }: AppProps) {
         <aside
           className={`
             fixed inset-y-0 left-0 z-50 w-72
-            bg-gradient-to-b from-blue-600 to-blue-700
+            bg-gradient-to-b from-blue-600 to-blue-700 dark:from-blue-800 dark:to-blue-900
             transform transition-transform duration-300 ease-in-out
             ${isDrawerOpen ? 'translate-x-0' : '-translate-x-full'}
             shadow-2xl
@@ -344,7 +495,7 @@ function MyApp({ Component, pageProps }: AppProps) {
         >
           {/* Mobile header */}
           <header
-            className="flex items-center gap-3 p-6 border-b border-white/10"
+            className="flex items-center gap-3 p-6 border-b border-white/10 cursor-pointer"
             onClick={handleLogoClick}
           >
             <img
@@ -389,7 +540,7 @@ function MyApp({ Component, pageProps }: AppProps) {
         {/* Main content */}
         <div className="flex-1 flex flex-col">
           {/* Mobile top bar */}
-          <header className="md:hidden bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-sm">
+          <header className="md:hidden bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-sm transition-all duration-300">
             <div className="flex items-center justify-between px-4 py-3">
               <button
                 onClick={() => setIsDrawerOpen(true)}
@@ -407,7 +558,7 @@ function MyApp({ Component, pageProps }: AppProps) {
               </button>
 
               <h1
-                className="text-lg font-bold text-gray-900 dark:text-white cursor-pointer"
+                className="text-lg font-bold text-gray-900 dark:text-white cursor-pointer transition-colors duration-200"
                 onClick={handleLogoClick}
               >
                 WealthLog
@@ -418,7 +569,7 @@ function MyApp({ Component, pageProps }: AppProps) {
           </header>
 
           {/* Page content */}
-          <main className="flex-1 overflow-y-auto bg-white dark:bg-gray-900">
+          <main className="flex-1 overflow-y-auto bg-white dark:bg-gray-900 transition-all duration-300">
             <Component {...pageProps} />
           </main>
         </div>

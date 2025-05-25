@@ -1,4 +1,4 @@
-// apps/web/pages/settings.tsx - Version Finale avec gestion URL tab
+// apps/web/pages/settings.tsx - Version Finale avec gestion exclusive des onglets
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import { useTheme } from 'next-themes';
@@ -157,23 +157,6 @@ const Title = ({ children, tooltip }: { children: React.ReactNode; tooltip?: str
   </h2>
 );
 
-const TabButton = ({ active, onClick, children }: { 
-  active: boolean; 
-  onClick: () => void; 
-  children: React.ReactNode 
-}) => (
-  <button
-    onClick={onClick}
-    className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-      active
-        ? 'bg-[var(--primary)] text-white'
-        : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'
-    }`}
-  >
-    {children}
-  </button>
-);
-
 const Input = ({ label, error, className = '', ...props }: any) => (
   <div className="mb-4">
     <label className="block text-sm font-medium mb-1">{label}</label>
@@ -241,6 +224,7 @@ export default function Settings() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [activeTab, setActiveTab] = useState<TabType>('general');
+  const [isTabChanging, setIsTabChanging] = useState(false); // ✅ Protection contre clics multiples
   const [accounts, setAccounts] = useState<Account[]>([]);
   
   const [settings, setSettings] = useState<Settings>({
@@ -323,29 +307,74 @@ export default function Settings() {
   }, []);
 
   // =============================================
-  //              TAB MANAGEMENT
+  //              TAB MANAGEMENT (CORRIGÉ)
   // =============================================
   
-  // ✅ NOUVEAU: Gérer l'onglet depuis l'URL
+  // ✅ Fonction de changement d'onglet avec sélection exclusive
+  const handleTabChange = useCallback((newTab: TabType) => {
+    // Empêcher les changements multiples rapides ou re-sélection du même onglet
+    if (isTabChanging || activeTab === newTab) {
+      console.log(`🚫 Tab change blocked: changing=${isTabChanging}, same=${activeTab === newTab}`);
+      return;
+    }
+    
+    console.log(`🔄 Tab change: ${activeTab} → ${newTab}`);
+    setIsTabChanging(true);
+    
+    // Changer l'onglet immédiatement
+    setActiveTab(newTab);
+    
+    // Mettre à jour l'URL
+    router.push(`/settings?tab=${newTab}`, undefined, { shallow: true });
+    
+    // Débloquer après un court délai
+    setTimeout(() => {
+      setIsTabChanging(false);
+      console.log(`✅ Tab change completed: ${newTab}`);
+    }, 300);
+  }, [router, activeTab, isTabChanging]);
+
+  // ✅ Synchronisation avec l'URL (version simplifiée et robuste)
   useEffect(() => {
     const { tab } = router.query;
+    
     if (tab && typeof tab === 'string') {
       const validTabs: TabType[] = ['general', 'trading', 'notifications', 'profile', 'security', 'privacy', 'accounts'];
-      if (validTabs.includes(tab as TabType)) {
+      
+      if (validTabs.includes(tab as TabType) && tab !== activeTab && !isTabChanging) {
+        console.log(`🔗 URL sync: ${activeTab} → ${tab}`);
         setActiveTab(tab as TabType);
       }
-    } else {
-      // ✅ Si aucun paramètre tab, ouvrir sur 'general' par défaut
+    } else if (!tab && activeTab !== 'general' && !isTabChanging) {
+      // Pas de tab dans l'URL, utiliser general par défaut
+      console.log(`🏠 Default to general tab`);
       setActiveTab('general');
+      router.replace('/settings?tab=general', undefined, { shallow: true });
     }
-  }, [router.query]);
+  }, [router.query, router, activeTab, isTabChanging]);
 
-  // ✅ NOUVEAU: Fonction pour changer d'onglet avec mise à jour URL
-  const handleTabChange = useCallback((newTab: TabType) => {
-    setActiveTab(newTab);
-    // Mettre à jour l'URL sans reload de la page
-    router.push(`/settings?tab=${newTab}`, undefined, { shallow: true });
-  }, [router]);
+  // ✅ Composant TabButton avec protection et feedback visuel
+  const TabButton = ({ active, onClick, children }: { 
+    active: boolean; 
+    onClick: () => void; 
+    children: React.ReactNode 
+  }) => (
+    <button
+      onClick={onClick}
+      disabled={isTabChanging} // ✅ Empêcher clics pendant transition
+      className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 transform ${
+        active && !isTabChanging
+          ? 'bg-[var(--primary)] text-white shadow-lg ring-2 ring-blue-300 scale-105' // ✅ Feedback visuel fort
+          : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 hover:scale-105'
+      } ${
+        isTabChanging 
+          ? 'opacity-50 cursor-not-allowed' 
+          : 'cursor-pointer'
+      }`}
+    >
+      {children}
+    </button>
+  );
 
   // =============================================
   //              API FUNCTIONS
@@ -356,10 +385,10 @@ export default function Settings() {
       await api.get('/auth/me');
       
       const [generalRes, tradingRes, profileRes, accountsRes] = await Promise.all([
-        api.get('/generalSettings').catch(() => ({ data: {} })),
-        api.get('/tradingSettings').catch(() => ({ data: {} })),
-        api.get('/profile').catch(() => ({ data: {} })),
-        api.get('/accounts').catch(() => ({ data: [] })),
+        api.get('/settings/generalSettings').catch(() => ({ data: {} })),
+        api.get('/settings/tradingSettings').catch(() => ({ data: {} })),
+        api.get('/settings/profile').catch(() => ({ data: {} })),
+        api.get('/settings/accounts').catch(() => ({ data: [] })),
       ]);
 
       setSettings(prev => ({
@@ -406,7 +435,7 @@ export default function Settings() {
     localUpdate?: () => void
   ) => {
     try {
-      await api.post(endpoint, data);
+      await api.post(`/settings${endpoint}`, data);
       if (localUpdate) localUpdate();
       showMessage('Settings updated successfully');
     } catch (err) {
@@ -449,7 +478,7 @@ export default function Settings() {
     }
 
     try {
-      await api.post(`/tradingSettings/${type}/add`, { name: value });
+      await api.post(`/settings/tradingSettings/${type}/add`, { name: value });
       setSettings(s => ({ ...s, [type]: [...s[type], value] }));
       setNewItems(prev => ({ ...prev, [key]: '' }));
       showMessage(`${type.slice(0, -1)} added successfully`);
@@ -460,7 +489,7 @@ export default function Settings() {
 
   const handleDeleteItem = useCallback(async (type: 'instruments' | 'patterns' | 'mediaTags', name: string) => {
     try {
-      await api.post(`/tradingSettings/${type}/delete`, { name });
+      await api.post(`/settings/tradingSettings/${type}/delete`, { name });
       setSettings(s => ({ ...s, [type]: s[type].filter(item => item !== name) }));
       showMessage(`${type.slice(0, -1)} deleted successfully`);
     } catch (err) {
@@ -479,7 +508,7 @@ export default function Settings() {
     const max = parseFloat(beRange.max);
 
     try {
-      await api.post('/tradingSettings/beRange/update', { beMin: min, beMax: max });
+      await api.post('/settings/tradingSettings/beRange/update', { beMin: min, beMax: max });
       setSettings(s => ({ ...s, beMin: min, beMax: max }));
       showMessage('Break-even range updated successfully');
     } catch (err) {
@@ -507,7 +536,7 @@ export default function Settings() {
     }
 
     try {
-      await api.post('/auth/change-password', { currentPassword, newPassword });
+      await api.post('/settings/auth/change-password', { currentPassword, newPassword });
       setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
       showMessage('Password changed successfully');
     } catch (err) {
@@ -556,18 +585,28 @@ export default function Settings() {
       {error && <MessageAlert type="error" message={error} />}
       {success && <MessageAlert type="success" message={success} />}
 
-      {/* Navigation */}
+      {/* Navigation avec sélection exclusive */}
       <div className="flex flex-wrap gap-2 mb-6">
         {TABS.map((tab) => (
           <TabButton
             key={tab.id}
-            active={activeTab === tab.id}
-            onClick={() => handleTabChange(tab.id)} // ✅ Utilise la nouvelle fonction
+            active={activeTab === tab.id && !isTabChanging} // ✅ Condition stricte
+            onClick={() => handleTabChange(tab.id)}
           >
             {tab.label}
           </TabButton>
         ))}
       </div>
+
+      {/* Indicateur de changement d'onglet */}
+      {isTabChanging && (
+        <div className="text-center py-2">
+          <div className="inline-flex items-center gap-2 text-blue-600">
+            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+            <span className="text-sm">Switching tabs...</span>
+          </div>
+        </div>
+      )}
 
       {/* Content */}
       <div className="space-y-6">
