@@ -238,26 +238,57 @@ function MyApp({ Component, pageProps }: AppProps) {
     }
   }, [themeMode]);
 
-  // ✅ Fetch user settings avec endpoint corrigé et gestion d'erreur améliorée
+  // ✅ CORRIGÉ: Fetch user settings avec gestion d'erreur robuste
   useEffect(() => {
     const fetchUserSettings = async () => {
       if (!isAuthenticated) return;
       
       try {
-        console.log('🔄 Fetching user settings...');
-        const { data } = await api.get('/settings/generalSettings');
+        console.log('🔄 Fetching user settings from /settings/generalSettings...');
         
-        if (data?.displayMode && data.displayMode !== themeMode) {
-          console.log(`🔄 Updating theme from server: ${data.displayMode}`);
+        // ✅ Endpoint corrigé avec la nouvelle structure de routes
+        const response = await api.get('/settings/generalSettings');
+        
+        // ✅ Validation de la réponse
+        if (!response || !response.data) {
+          console.warn('⚠️ Empty response from settings API');
+          return;
+        }
+        
+        const { data } = response;
+        console.log('📦 Settings data received:', { displayMode: data.displayMode });
+        
+        // ✅ Validation et mise à jour du thème si différent
+        if (data.displayMode && 
+            ['light', 'dark', 'system'].includes(data.displayMode) && 
+            data.displayMode !== themeMode) {
+          console.log(`🔄 Updating theme from server: ${themeMode} → ${data.displayMode}`);
           setThemeMode(data.displayMode as ThemeMode);
         }
-      } catch (error) {
-        console.warn('⚠️ Failed to fetch user settings:', error);
-        // Continuer avec le thème local si le serveur échoue
+        
+      } catch (error: any) {
+        // ✅ Gestion d'erreur détaillée
+        if (error?.response?.status === 404) {
+          console.warn('⚠️ Settings endpoint not found (404) - using local theme');
+        } else if (error?.response?.status === 401) {
+          console.warn('⚠️ Unauthorized access to settings - user may need to re-login');
+          // Ne pas forcer la déconnexion ici, laisser l'auth check principal s'en charger
+        } else if (error?.response?.status >= 500) {
+          console.error('❌ Server error fetching settings:', error.response.status);
+        } else if (error?.code === 'ECONNREFUSED' || error?.code === 'NETWORK_ERROR') {
+          console.error('🌐 Network error fetching settings - server may be down');
+        } else {
+          console.error('❌ Unexpected error fetching settings:', error);
+        }
+        
+        // ✅ Fallback: continuer avec le thème local
+        console.log('🔄 Continuing with local theme:', themeMode);
       }
     };
 
-    fetchUserSettings();
+    // ✅ Délai pour éviter les appels simultanés lors du chargement initial
+    const timer = setTimeout(fetchUserSettings, 500);
+    return () => clearTimeout(timer);
   }, [isAuthenticated, themeMode]);
 
   // Authentication check
