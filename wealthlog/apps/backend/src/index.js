@@ -4,7 +4,7 @@ require('dotenv').config(); // Load environment variables from .env
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
-const compression = require('compression'); // ADD: Gzip compression for 70% faster responses
+const compression = require('compression'); // Optimized compression
 const rateLimit = require('express-rate-limit');
 const fs = require("fs");
 const path = require("path");
@@ -20,10 +20,37 @@ const allowedOrigins = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(',').map(origin => origin.trim())
   : ['http://localhost:3000'];
 
-// ADD: Gzip compression - reduces response size by 70%
+// ✅ OPTIMIZED: Smart compression - filter out small packages to save CPU
 app.use(compression({
   level: 6, // Good balance between speed and compression
-  threshold: 1024 // Only compress responses larger than 1KB
+  threshold: 2048, // ✅ INCREASED: Only compress responses larger than 2KB (was 1KB)
+  filter: (req, res) => {
+    // ✅ ADDED: Smart filtering to avoid compressing small/already compressed content
+    if (req.headers['x-no-compression']) {
+      return false; // Don't compress if client requests no compression
+    }
+    
+    // Get content type
+    const contentType = res.getHeader('content-type') || '';
+    
+    // ✅ SKIP compression for already compressed formats (saves CPU)
+    if (contentType.includes('image/') || 
+        contentType.includes('video/') || 
+        contentType.includes('audio/') ||
+        contentType.includes('application/zip') ||
+        contentType.includes('application/gzip') ||
+        contentType.includes('application/x-rar') ||
+        contentType.includes('application/pdf')) {
+      return false;
+    }
+    
+    // ✅ ONLY compress text-based content that benefits from compression
+    return contentType.includes('text/') || 
+           contentType.includes('application/json') || 
+           contentType.includes('application/javascript') ||
+           contentType.includes('application/xml') ||
+           contentType.includes('text/css');
+  }
 }));
 
 // Basic cors
@@ -102,7 +129,7 @@ const realEstateRouter = require('./routes/realestate/realestate.routes.js');
 
 const dashboardRouter = require('./routes/landing/dashboard.js');
 
-// Attach routers
+// ✅ ATTACH ROUTERS WITH PROPER PREFIXES
 app.use('/auth', authRouter);
 app.use('/admin', adminRouter);
 app.use("/trade", tradeRouter);
@@ -112,7 +139,7 @@ app.use('/coaching', coachingRouter);
 app.use('/account', accountRoutes);
 app.use('/transactions', transactionsRoutes);
 
-// ✅ CORRIGÉ: Settings avec préfixe au lieu de '/'
+// ✅ FIXED: Settings router with proper prefix (not root)
 app.use('/settings', settingsRouter);
 
 app.use('/mt5sync', mt5syncRouter);
@@ -125,7 +152,7 @@ app.use('/dashboard', dashboardRouter);
 // Start the server
 app.listen(PORT, () => {
   console.log(`🚀 WealthLog API running on port ${PORT}`);
-  console.log(`⚡ Compression: Enabled (up to 70% faster responses)`);
+  console.log(`⚡ Compression: Smart filtering enabled (2KB+ threshold)`);
   console.log(`🛡️  Security: Helmet & Rate limiting active`);
   console.log(`📊 Monitoring: Health check available at /health`);
   console.log(`🏠 Real Estate: Endpoints available at /real-estate/*`);
