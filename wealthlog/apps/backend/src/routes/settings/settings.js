@@ -1,9 +1,9 @@
-// apps/backend/src/routes/settings.js
+// apps/backend/src/routes/settings/settings.js
 const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcrypt');
-const { prisma } = require('../lib/prisma');
-const { authenticate } = require('../middleware/authenticate');
+const { prisma } = require('../../lib/prisma');
+const { authenticate } = require('../../middleware/authenticate');
 
 // =============================================
 //              HELPERS
@@ -467,21 +467,8 @@ router.post('/tradingSettings/beRange/update', authenticate, async (req, res) =>
 });
 
 // =============================================
-//              ACCOUNTS & DATA
+//              DATA MANAGEMENT
 // =============================================
-router.get('/accounts', authenticate, async (req, res) => {
-  try {
-    const accounts = await prisma.financialAccount.findMany({
-      where: { userId: req.user.userId, active: true },
-      select: { id: true, name: true, accountType: true, balance: true, currency: true },
-      orderBy: { name: 'asc' },
-    });
-    res.json(accounts);
-  } catch (error) {
-    console.error('GET /accounts error:', error);
-    res.status(500).json({ error: 'Failed to fetch accounts' });
-  }
-});
 
 // Data management placeholders
 router.get('/data/export', authenticate, (req, res) => {
