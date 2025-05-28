@@ -117,7 +117,7 @@ const communityRouter = require('./routes/community');
 const coachingRouter = require('./routes/coaching');
 const accountRoutes = require('./routes/account/account.routes.js');
 const transactionsRoutes = require('./routes/account/transactions.routes.js');
-const settingsRouter = require('./routes/settings.js');
+const settingsRouter = require('./routes/settings/settings.js');
 
 const tradeRouter = require("./routes/trade/trade.routes.js");
 const tradeFilterRouter = require("./routes/trade/filter.routes.js");
