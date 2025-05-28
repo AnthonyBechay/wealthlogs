@@ -484,5 +484,53 @@ router.post('/data/delete-request', authenticate, (req, res) => {
     requestedAt: new Date().toISOString(),
   });
 });
+// =============================================
+//              SYSTEM CONSTANTS ROUTE (AJOUTER ÇA!)
+// =============================================
+router.get('/constants', async (req, res) => {
+  try {
+    console.log('📦 Loading system constants...');
+    
+    // ✅ Données hardcodées pour l'instant (sans DB)
+    const constants = {
+      timezones: [
+        { value: 'UTC', label: 'UTC', offset: '+00:00' },
+        { value: 'America/New_York', label: 'New York', offset: '-05:00' },
+        { value: 'America/Los_Angeles', label: 'Los Angeles', offset: '-08:00' },
+        { value: 'Europe/London', label: 'London', offset: '+00:00' },
+        { value: 'Europe/Paris', label: 'Paris', offset: '+01:00' },
+        { value: 'Asia/Dubai', label: 'Dubai', offset: '+04:00' },
+        { value: 'Asia/Tokyo', label: 'Tokyo', offset: '+09:00' },
+        { value: 'America/Montreal', label: 'Montreal', offset: '-05:00' },
+        { value: 'America/Toronto', label: 'Toronto', offset: '-05:00' },
+      ],
+      currencies: [
+        { code: 'USD', name: 'US Dollar', symbol: '$' },
+        { code: 'EUR', name: 'Euro', symbol: '€' },
+        { code: 'CAD', name: 'Canadian Dollar', symbol: 'C$' },
+        { code: 'GBP', name: 'British Pound', symbol: '£' },
+        { code: 'JPY', name: 'Japanese Yen', symbol: '¥' },
+        { code: 'AUD', name: 'Australian Dollar', symbol: 'A$' },
+        { code: 'CHF', name: 'Swiss Franc', symbol: 'CHF' },
+        { code: 'CNY', name: 'Chinese Yuan', symbol: '¥' },
+        { code: 'AED', name: 'UAE Dirham', symbol: 'د.إ' },
+        { code: 'SAR', name: 'Saudi Riyal', symbol: 'ر.س' },
+      ],
+      languages: [
+        { value: 'en', label: 'English', nativeName: 'English' },
+        { value: 'fr', label: 'French', nativeName: 'Français' },
+        { value: 'ar', label: 'Arabic', nativeName: 'العربية' },
+        { value: 'es', label: 'Spanish', nativeName: 'Español' },
+        { value: 'de', label: 'German', nativeName: 'Deutsch' },
+      ]
+    };
 
+    console.log('✅ Constants loaded successfully');
+    res.json(constants);
+    
+  } catch (error) {
+    console.error('❌ GET /constants error:', error);
+    res.status(500).json({ error: 'Failed to fetch system constants' });
+  }
+});
 module.exports = router;
