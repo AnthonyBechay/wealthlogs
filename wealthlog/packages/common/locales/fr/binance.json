@@ -1,0 +1,14 @@
+{
+  "title": "Binance Portfolio",
+  "loading": "Loading…",
+  "error": "Could not load Binance balances",
+  "total": "Total Account Value",
+  "noAssets": "No assets here",
+  "tab": {
+    "all": "All Assets",
+    "spot": "Spot",
+    "earn": "Earn",
+    "funding": "Funding",
+    "futures": "Futures"
+  }
+}

@@ -1,152 +1,105 @@
-/* apps/web/pages/binance.tsx */
-import { useMemo } from "react";
+import { useState, useMemo } from "react";
 import useSWR from "swr";
-import { api } from "@wealthlog/common";
 import Head from "next/head";
-import { useTranslation } from "next-i18next";
-import { serverSideTranslations } from "next-i18next/serverSideTranslations";
+import { api } from "@wealthlog/common";
 
-/*────────────────── helpers ──────────────────*/
-interface Asset {
-  asset: string;
-  qty: number;
-  price: number;
-  value: number;
-  pct24h: number;
-}
-interface ApiResp {
-  totals: { valueUsd: number; valueBtc: number };
-  assets: Asset[];
-}
+interface A { asset:string; qty:number; price:number; value:number; pct24h:number }
+interface W { assets:A[]; totals:{ valueUsd:number; valueBtc:number } }
+interface R { all:W; spot:W; earn:W; funding:W; futures:W }
 
-const fetcher = (url: string) => api.get<ApiResp>(url).then((r) => r.data);
+const fetcher = (u:string)=>api.get<R>(u).then(r=>r.data);
+const TABS    = ["all","spot","earn","funding","futures"] as const;
 
-/*────────────────── component ──────────────────*/
 export default function BinancePage() {
-  const { t } = useTranslation();
-  const { data, error, isLoading } = useSWR("/binance/assets", fetcher, {
-    refreshInterval: 60_000, // auto-refresh every minute
-  });
+  const { data, error } = useSWR("/binance/balances", fetcher, { refreshInterval:60000 });
+  const [tab, setTab] = useState<(typeof TABS)[number]>("all");
+  const [q, setQ]     = useState("");
 
-  const totalUsd = data?.totals.valueUsd ?? 0;
-  const totalBtc = data?.totals.valueBtc ?? 0;
+  /* ensure hooks count always identical */
+  const wallet : W = data ? data[tab]
+                          : { assets:[], totals:{ valueUsd:0, valueBtc:0 } };
 
-  const positive = totalUsd >= 0;
+  const list = useMemo(() => wallet.assets
+      .filter(a => a.asset.toLowerCase().includes(q.toLowerCase()))
+      .sort((a,b) => b.value - a.value), [wallet, q]);
 
-  /* derived stats */
-  const dayChange = useMemo(() => {
-    if (!data) return 0;
-    const yesterday = data.assets.reduce(
-      (s, a) => s + a.value / (1 + a.pct24h / 100),
-      0
-    );
-    return ((totalUsd - yesterday) / yesterday) * 100;
-  }, [data, totalUsd]);
-
+  /* ─── render ───────────────────────── */
   return (
     <>
-      <Head>
-        <title>{t("binance:title", "Binance Portfolio")}</title>
-      </Head>
+      <Head><title>Binance Portfolio</title></Head>
 
-      <main className="max-w-4xl mx-auto p-4">
-        {/* TOTALS */}
-        <section
-          className="rounded-2xl shadow-md p-6 mb-6 bg-white dark:bg-zinc-800
-                     flex flex-col md:flex-row md:items-center md:justify-between"
-        >
-          <div>
-            <h1 className="text-2xl font-semibold mb-1">
-              {t("binance:totalValue", "Total value")}
-            </h1>
-            <div className="text-3xl font-bold tracking-tight">
-              ${totalUsd.toLocaleString(undefined, { maximumFractionDigits: 2 })}
-            </div>
-            <div className="text-sm text-gray-500">
-              ≈ {totalBtc.toFixed(4)} BTC
-            </div>
-          </div>
+      {/* error / loading banners – shown above dashboard */}
+      {error && <p className="p-4 text-center text-red-600 bg-red-50">Failed to load Binance balances</p>}
+      {!data && !error && <p className="p-4 text-center">Loading&nbsp;…</p>}
 
-          <div
-            className={`mt-4 md:mt-0 text-lg font-medium ${
-              positive ? "text-green-600" : "text-red-500"
-            }`}
-          >
-            {dayChange >= 0 && "+"}
-            {dayChange.toFixed(2)}%
-            <span className="ml-1 text-sm text-gray-500">
-              {t("binance:change24h", "past 24 h")}
-            </span>
-          </div>
-        </section>
-
-        {/* ASSET GRID */}
-        {isLoading && (
-          <p className="text-center">{t("common:loading", "Loading…")}</p>
-        )}
-        {error && (
-          <p className="text-center text-red-500">
-            {t("common:error", "Something went wrong")}
+      <div className="min-h-screen p-4" style={{ background:"var(--background)", color:"var(--text)" }}>
+        <header className="max-w-6xl mx-auto mb-6">
+          <h1 className="text-2xl font-semibold">Total Value</h1>
+          <p className="text-4xl font-bold">
+            ${data ? data.all.totals.valueUsd.toLocaleString() : 0}
+            {data && (
+              <span className="ml-2 text-base opacity-70">
+                ≈ {data.all.totals.valueBtc.toFixed(4)} BTC
+              </span>
+            )}
           </p>
-        )}
+        </header>
 
-        {data && (
-          <section
-            className="grid gap-4
-                       sm:grid-cols-2
-                       md:grid-cols-3
-                       lg:grid-cols-4"
-          >
-            {data.assets
-              .sort((a, b) => b.value - a.value)
-              .map((a) => (
-                <article
-                  key={a.asset}
-                  className="rounded-xl shadow-sm p-4 bg-white dark:bg-zinc-900
-                             flex flex-col justify-between"
-                >
-                  <header className="flex items-center justify-between mb-2">
-                    <h2 className="font-semibold">{a.asset}</h2>
-                    <span
-                      className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-                        a.pct24h >= 0
-                          ? "bg-green-100 text-green-700"
-                          : "bg-red-100 text-red-700"
-                      }`}
-                      style={{ minWidth: "3.5rem", textAlign: "center" }}
-                    >
-                      {a.pct24h >= 0 && "+"}
-                      {a.pct24h.toFixed(1)}%
-                    </span>
-                  </header>
+        {/* tabs */}
+        <nav className="max-w-6xl mx-auto flex gap-2 mb-3">
+          {TABS.map(x => (
+            <button key={x} onClick={()=>setTab(x)}
+              className={`px-4 py-1.5 rounded-full text-sm ${tab===x?"text-white":"opacity-70"}`}
+              style={{ background: tab===x ? "var(--primary)" : "var(--background-2)" }}>
+              {x.charAt(0).toUpperCase()+x.slice(1)}
+            </button>
+          ))}
+        </nav>
 
-                  <div className="flex flex-col gap-0.5">
-                    <span className="text-lg font-bold tracking-tight">
-                      ${a.value.toLocaleString(undefined, {
-                        maximumFractionDigits: 2,
-                      })}
-                    </span>
-                    <span className="text-xs text-gray-500">
-                      {a.qty.toLocaleString()} {a.asset} × $
-                      {a.price.toLocaleString(undefined, {
-                        maximumFractionDigits: 2,
-                      })}
+        {/* filter */}
+        <div className="max-w-6xl mx-auto mb-4">
+          <input aria-label="Filter assets"
+            placeholder="Filter assets…"
+            className="w-full p-2 rounded border"
+            style={{ background:"var(--background-2)", borderColor:"var(--background-2)" }}
+            value={q} onChange={e=>setQ(e.target.value)} />
+        </div>
+
+        {/* bucket total card */}
+<div className="max-w-6xl mx-auto mb-4 p-3 rounded-xl shadow flex justify-between"
+     style={{ background: "var(--background-2)" }}>
+  <span className="font-medium">{tab.toUpperCase()}</span>
+  <span>
+    ${wallet.totals.valueUsd.toLocaleString()} &nbsp;
+    <span className="opacity-70 text-xs">
+      (≈ {wallet.totals.valueBtc.toFixed(4)} BTC)
+    </span>
+  </span>
+</div>
+
+
+        {/* grid */}
+        <section className="max-w-6xl mx-auto grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {list.length === 0
+            ? <p className="opacity-60 col-span-full text-center">No assets here</p>
+            : list.map(a => (
+                <div key={a.asset} className="p-4 rounded-xl shadow flex flex-col gap-1"
+                     style={{ background:"var(--background-2)" }}>
+                  <div className="flex justify-between">
+                    <span>{a.asset}</span>
+                    <span className="text-xs px-1 rounded text-white"
+                          style={{ background: a.pct24h >= 0 ? "var(--success)" : "var(--danger)" }}>
+                      {a.pct24h >= 0 ? "+" : ""}{a.pct24h.toFixed(1)}%
                     </span>
                   </div>
-                </article>
+                  <span className="text-lg font-semibold">${a.value.toLocaleString()}</span>
+                  <span className="text-xs opacity-70">
+                    {a.qty.toLocaleString()} × ${a.price.toLocaleString(undefined,{ maximumFractionDigits:2 })}
+                  </span>
+                </div>
               ))}
-          </section>
-        )}
-      </main>
+        </section>
+      </div>
     </>
   );
-}
-
-/*─────────── i18n SSR ───────────*/
-export async function getStaticProps({ locale }: { locale: string }) {
-  return {
-    props: {
-      ...(await serverSideTranslations(locale, ["common"])),
-    },
-  };
 }
