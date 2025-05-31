@@ -118,18 +118,13 @@ const coachingRouter = require('./routes/coaching');
 const accountRoutes = require('./routes/account/account.routes.js');
 const transactionsRoutes = require('./routes/account/transactions.routes.js');
 const settingsRouter = require('./routes/settings/settings.js');
-
 const tradeRouter = require("./routes/trade/trade.routes.js");
 const tradeFilterRouter = require("./routes/trade/filter.routes.js");
-
 const mt5syncRouter = require('./routes/trade/mt5sync.routes.js');
-
-// Real Estate routes
 const realEstateRouter = require('./routes/realestate/realestate.routes.js');
-
 const dashboardRouter = require('./routes/landing/dashboard.js');
 
-// ✅ ATTACH ROUTERS WITH PROPER PREFIXES
+
 app.use('/auth', authRouter);
 app.use('/admin', adminRouter);
 app.use("/trade", tradeRouter);
@@ -138,10 +133,7 @@ app.use('/community', communityRouter);
 app.use('/coaching', coachingRouter);
 app.use('/account', accountRoutes);
 app.use('/transactions', transactionsRoutes);
-
-// ✅ FIXED: Settings router with proper prefix (not root)
 app.use('/settings', settingsRouter);
-
 app.use('/mt5sync', mt5syncRouter);
 
 // Real Estate endpoints
