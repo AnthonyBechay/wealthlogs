@@ -447,18 +447,6 @@ const renderTradeRows = trades.slice(0, pageSize).map((t) => {
   );
 });
 
-
-// Helper to format currency
-    const formatCurrency = (value: number | null | undefined) => {
-      if (value == null) return "$ -";
-      return `${value < 0 ? "-" : ""}$${Math.abs(value).toFixed(2)}`;
-    };
-
-    // Helper to format percentage
-    const formatPercentage = (value: number | null | undefined, decimals = 1) => {
-      if (value == null) return "- %";
-      return `${value.toFixed(decimals)}%`;
-    };
   /*────────────────── JSX ─────────────────*/
   return (
     <div className="p-4 min-h-screen bg-[var(--background)] text-[var(--text)]">
