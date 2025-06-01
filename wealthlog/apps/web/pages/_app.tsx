@@ -123,7 +123,7 @@ function MyApp({ Component, pageProps }: AppProps) {
   useEffect(() => {
     const fetchUserSettings = async () => {
       try {
-        const { data } = await api.get('/settings');
+        const { data } = await api.get('/generalSettings');
         if (data?.displayMode) {
           setThemeMode(data.displayMode as ThemeMode);
         }
