@@ -401,45 +401,59 @@ export default function TradingPage() {
   }
 
   /*────────────────── Helper: render trades table rows ─────────────────*/
-  const renderTradeRows = trades.slice(0, pageSize).map((t) => {
-    const amountGain = t.realizedPL ?? 0;
-    const percentGain =
-      t.openingBalance && t.realizedPL != null ? (t.realizedPL / t.openingBalance) * 100 : 0;
+ // trading.tsx - renderTradeRows function
+const renderTradeRows = trades.slice(0, pageSize).map((t) => {
+  const realizedPL = t.realizedPL ?? 0; // [cite: 33]
+  const openingBal = t.openingBalance; // [cite: 33]
+  const percentGain = openingBal && openingBal !== 0 && t.realizedPL != null 
+                    ? (t.realizedPL / openingBal) * 100 
+                    : null; // Use null for cleaner display if not applicable
 
-    return (
-      <tr key={t.id} className="hover:bg-[var(--background-2)]">
-        <td className="border p-2 text-sm">{new Date(t.entryDate).toLocaleString()}</td>
-        <td className="border p-2 text-sm">{t.instrument}</td>
-        <td className="border p-2 text-sm">{t.tradeDirection === "LONG" ? "Long" : "Short"}</td>
-        <td className="border p-2 text-sm">{t.fees.toFixed(2)}</td>
-        <td className="border p-2 text-sm">
-          {percentGain.toFixed(2)}% / ${amountGain.toFixed(2)}
-        </td>
-        <td className="border p-2 text-sm">
-          {t.openingBalance != null ? t.openingBalance.toFixed(2) : "N/A"}
-        </td>
-        <td className="border p-2 text-sm">
-          {t.closingBalance != null ? t.closingBalance.toFixed(2) : "N/A"}
-        </td>
-        <td className="border p-2 text-sm">
-          <div className="flex gap-1">
-            <button
-              onClick={() => openEditModal(t)}
-              className="px-2 py-1 bg-yellow-400 text-gray-800 rounded text-xs"
-            >
-              Edit
-            </button>
-            <button
-              onClick={() => handleDeleteTrade(t.id)}
-              className="px-2 py-1 bg-red-500 text-white rounded text-xs"
-            >
-              Del
-            </button>
-          </div>
-        </td>
-      </tr>
-    );
-  });
+  const pnlClass = realizedPL > 0 ? "text-green-500" : realizedPL < 0 ? "text-red-500" : "text-[var(--text-muted)]";
+
+  return (
+    <tr key={t.id} className="hover:bg-[var(--background-2)] border-b border-[var(--border)]">
+      <td className="p-3 text-sm">{new Date(t.entryDate).toLocaleString()}</td>
+      <td className="p-3 text-sm">{t.instrument}</td>
+      <td className="p-3 text-sm">{t.tradeDirection === "LONG" ? "Long" : "Short"}</td>
+      <td className="p-3 text-sm text-right">{t.fees.toFixed(2)}</td>
+      <td className={`p-3 text-sm text-right font-medium ${pnlClass}`}>
+        {percentGain != null ? `${percentGain.toFixed(2)}%` : ""}
+        <span className="text-xs text-[var(--text-muted)] opacity-80"> ({formatCurrency(realizedPL)})</span>
+      </td>
+      <td className="p-3 text-sm text-right">
+        {t.openingBalance != null ? t.openingBalance.toFixed(2) : "N/A"}
+      </td>
+      <td className="p-3 text-sm text-right">
+        {t.closingBalance != null ? t.closingBalance.toFixed(2) : "N/A"}
+      </td>
+      <td className="p-3 text-sm">
+        <div className="flex gap-2"> {/* Increased gap */}
+          <button
+            onClick={() => openEditModal(t)}
+            className="px-3 py-1 bg-yellow-400 hover:bg-yellow-500 text-gray-800 rounded text-xs font-medium"
+          >
+            Edit
+          </button>
+          <button
+            onClick={() => handleDeleteTrade(t.id)}
+            className="px-3 py-1 bg-red-500 hover:bg-red-600 text-white rounded text-xs font-medium"
+          >
+            Del
+          </button>
+        </div>
+      </td>
+    </tr>
+  );
+});
+
+
+
+    // Helper to format percentage
+    const formatPercentage = (value: number | null | undefined, decimals = 1) => {
+      if (value == null) return "- %";
+      return `${value.toFixed(decimals)}%`;
+    };
 
   /*────────────────── JSX ─────────────────*/
   return (
@@ -458,6 +472,11 @@ export default function TradingPage() {
           </button>
         </div>
 
+
+
+
+
+  
         {/*──────── Account selector────────*/}
         <div className="bg-[var(--background-2)] p-4 rounded-lg shadow mb-6">
           <div className="flex justify-between items-center mb-4">
@@ -468,23 +487,41 @@ export default function TradingPage() {
           {accounts.length === 0 ? (
             <p className="text-sm">No FX accounts found.</p>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
-              {accounts.map((ac) => (
-                <button
-                  key={ac.id}
-                  onClick={() => setSelectedAccountId(ac.id)}
-                  className={`p-3 border rounded-lg text-left ${ac.id === selectedAccountId
-                    ? "bg-[var(--primary)] text-white"
-                    : "bg-[var(--background-2)] hover:bg-[var(--background)]"
+           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"> {/* Increased gap */}
+  {accounts.map((ac) => {
+    // Calculate some basic stats for this account if trades are loaded for it
+    // This is a simplified example; you might want more specific stats
+    // or fetch them separately.
+    const accountTrades = selectedAccountId === ac.id ? trades : [];
+    const totalPLThisAccount = accountTrades.reduce((sum, trade) => sum + (trade.realizedPL ?? 0), 0);
+
+    return (
+      <button
+        key={ac.id}
+        onClick={() => setSelectedAccountId(ac.id)}
+        className={`p-4 border rounded-xl text-left transition-all duration-200 ease-in-out transform hover:scale-105
+                    ${ac.id === selectedAccountId
+                      ? "bg-[var(--primary)] text-white shadow-lg ring-2 ring-offset-2 ring-[var(--primary-focus)]"
+                      : "bg-[var(--background)] hover:bg-[var(--background-hover)] shadow-md"
                     }`}
-                >
-                  <div className="font-medium">{ac.name}</div>
-                  <div className="text-sm">
-                    {ac.balance.toFixed(2)} {ac.currency}
-                  </div>
-                </button>
-              ))}
-            </div>
+      >
+        <div className="flex justify-between items-center">
+          <div className="font-semibold text-lg">{ac.name}</div>
+          {ac.id === selectedAccountId && <span className="text-xs bg-white/20 px-2 py-1 rounded-full">Selected</span>}
+        </div>
+        <div className="text-sm mt-1 opacity-90">
+          {ac.balance.toFixed(2)} {ac.currency}
+        </div>
+        {selectedAccountId === ac.id && accountTrades.length > 0 && (
+          <div className="mt-2 text-xs opacity-80">
+            <p>Loaded Trades: {accountTrades.length}</p>
+            <p>P&L (Loaded): <span className={totalPLThisAccount >=0 ? 'font-semibold' : 'font-semibold'}>{totalPLThisAccount.toFixed(2)}</span></p>
+          </div>
+        )}
+      </button>
+    );
+  })}
+</div>
           )}
         </div>
 
@@ -686,6 +723,16 @@ export default function TradingPage() {
                   </form>
                 </div>
               )}
+
+{selectedAccountId && trades.length > 0 && !initialLoading && (
+    <div className="my-4 p-3 bg-[var(--background)] rounded-lg shadow">
+        <h3 className="text-md font-semibold mb-2">Summary for Loaded Trades</h3>
+        <div className="flex space-x-4 text-sm">
+            <p>Total P&L: <span className={trades.reduce((s, tr) => s + (tr.realizedPL ?? 0), 0) >= 0 ? 'text-green-500' : 'text-red-500'}>{formatCurrency(trades.reduce((s, tr) => s + (tr.realizedPL ?? 0), 0))}</span></p>
+            <p>Win Rate: {formatPercentage( (trades.filter(tr => (tr.realizedPL ?? 0) > 0).length / trades.length) * 100 )}</p>
+        </div>
+    </div>
+)}
 
               {/*──────── Trades table────────*/}
               {trades.length === 0 ? (

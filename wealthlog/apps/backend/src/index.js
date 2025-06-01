@@ -120,10 +120,11 @@ const transactionsRoutes = require('./routes/account/transactions.routes.js');
 const tradeRouter = require("./routes/trade/trade.routes.js");
 const tradeFilterRouter = require("./routes/trade/filter.routes.js");
 const mt5syncRouter = require('./routes/trade/mt5sync.routes.js');
-//const realEstateRouter = require('./routes/realestate/realestate.routes.js');
 const dashboardRouter = require('./routes/landing/dashboard.js');
 const generalSettingsRouter = require('./routes/settings/generalSettings.routes.js');
 const tradingSettingsRouter = require('./routes/settings/tradingSettings.routes.js');
+const tradingInsightsRouter = require('./routes/settings/tradingSettings.routes.js');
+
 
 app.use('/auth', authRouter);
 app.use('/admin', adminRouter);
@@ -134,10 +135,10 @@ app.use('/coaching', coachingRouter);
 app.use('/account', accountRoutes);
 app.use('/transactions', transactionsRoutes);
 app.use('/mt5sync', mt5syncRouter);
-//app.use('/real-estate', realEstateRouter);
 app.use('/dashboard', dashboardRouter);
 app.use('/generalSettings', generalSettingsRouter);
 app.use('/tradingSettings', tradingSettingsRouter);
+app.use("/trade/insights", tradingInsightsRouter);
 
 // Start the server
 app.listen(PORT, () => {
