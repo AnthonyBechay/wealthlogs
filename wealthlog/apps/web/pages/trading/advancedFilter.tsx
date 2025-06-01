@@ -12,6 +12,7 @@ const startOfMonthISO = () => {
   return d.toISOString().slice(0, 10);
 };
 
+
 /*── result types (match route) ──────────────────────────────*/
 interface FXRow {
   id: number;
@@ -23,22 +24,36 @@ interface FXRow {
   exitPrice: number | null;
   stopLossPips: number | null;
   pipsGain: number | null;
-  amountGain: number | null;
-  percentageGain: number | null;
+  realizedPL: number | null; // Primary P&L
+  tradeSpecificPercentageGain: number | null; // From FxTrade.percentageGain
+  openingBalance: number | null; // For individual row %RoB calc
   fees: number;
 }
+
 interface Bucket {
   key: string;
   count: number;
-  grossPL: number;
-  avgPct: number;
+  grossPL: number; // Sum of realizedPL
+  avgReturnOnBalance: number; // (Total realizedPL / Total openingBalance for these trades) * 100
+  avgTradeSpecificPercentageGain: number; // Average of FxTrade.percentageGain values
   winRate: number;
 }
+
+interface GlobalStats {
+  totalTrades: number;
+  totalRealizedPL: number;
+  winRate: number;
+  avgReturnOnBalance: number;
+  totalFees: number;
+}
+
+
 
 export default function AdvFilter() {
   const router = useRouter();
   const [rows, setRows] = useState<FXRow[]>([]);
   const [bks, setBks] = useState<Bucket[]>([]);
+  const [globalStats, setGlobalStats] = useState<GlobalStats | null>(null);
   const [err, setErr] = useState("");
   const [load, setLoad] = useState(false);
 
@@ -83,7 +98,7 @@ export default function AdvFilter() {
   /*── query runner ─────────────────────────────────────────*/
   async function run(e?: React.FormEvent) {
     e?.preventDefault();
-    setLoad(true);
+   // setLoad(true);
     setErr("");
     try {
       const qs = new URLSearchParams({
@@ -95,17 +110,21 @@ export default function AdvFilter() {
         pattern,
         minLots,
         maxLots,
-        minPct,
-        maxPct,
-        instr,         // we’ll use “instr” param to filter by instrument name
+        minPct, // This filters on FxTrade.percentageGain
+        maxPct,  // This filters on FxTrade.percentageGain
+        instr,
+        // Add page and size if you want to control pagination from frontend,
+        // otherwise backend defaults will be used. For now, let's assume backend handles it.
       });
-      const { data } = await api.get(`/tradeFilter?${qs.toString()}`);
+      const { data } = await api.get(`/tradeFilter?${qs.toString()}`); // Ensure this matches your API route
       setRows(data.rows);
       setBks(data.buckets);
+      setGlobalStats(data.globalStats); // New state for dashboard
     } catch (e: any) {
       setErr(e?.response?.data?.error || "failed");
+      setGlobalStats(null); // Clear stats on error
     } finally {
-      setLoad(false);
+      //setLoad(false);
     }
   }
 
@@ -132,6 +151,18 @@ export default function AdvFilter() {
     URL.revokeObjectURL(url);
   };
 
+// Helper to format currency
+    const formatCurrency = (value: number | null | undefined) => {
+      if (value == null) return "$ -";
+      return `${value < 0 ? "-" : ""}$${Math.abs(value).toFixed(2)}`;
+    };
+
+    // Helper to format percentage
+    const formatPercentage = (value: number | null | undefined, decimals = 1) => {
+      if (value == null) return "- %";
+      return `${value.toFixed(decimals)}%`;
+    };
+
   return (
     <div className="min-h-screen p-4 bg-[var(--background)] text-[var(--text)]">
       <div className="flex items-center justify-between mb-4">
@@ -140,6 +171,76 @@ export default function AdvFilter() {
           ← back
         </button>
       </div>
+
+{globalStats && !load && (
+  <div className="mb-6 p-4 bg-[var(--background-2)] rounded-lg shadow">
+    <h2 className="text-xl font-semibold mb-4 text-[var(--text-accent)]">Overall Performance Snapshot</h2>
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      {/* Card 1: Total P&L */}
+      <div className="bg-[var(--background)] p-4 rounded-md shadow-sm">
+        <h3 className="text-sm font-medium text-[var(--text-muted)]">Total Net P&L</h3>
+        <p className={`text-2xl font-bold ${globalStats.totalRealizedPL >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+          {formatCurrency(globalStats.totalRealizedPL)}
+        </p>
+      </div>
+
+      {/* Card 2: Win Rate & Trades */}
+      <div className="bg-[var(--background)] p-4 rounded-md shadow-sm">
+        <h3 className="text-sm font-medium text-[var(--text-muted)]">Win Rate / Total Trades</h3>
+        <p className="text-2xl font-bold text-[var(--primary)]">{formatPercentage(globalStats.winRate)}
+          <span className="text-base font-normal text-[var(--text-muted)]"> ({globalStats.totalTrades} trades)</span>
+        </p>
+      </div>
+
+      {/* Card 3: Avg Return on Balance */}
+      <div className="bg-[var(--background)] p-4 rounded-md shadow-sm">
+        <h3 className="text-sm font-medium text-[var(--text-muted)]">Avg. Return on Balance</h3>
+        <p className={`text-2xl font-bold ${globalStats.avgReturnOnBalance >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+          {formatPercentage(globalStats.avgReturnOnBalance)}
+        </p>
+      </div>
+      
+      {/* Card 4: Total Fees */}
+      <div className="bg-[var(--background)] p-4 rounded-md shadow-sm">
+        <h3 className="text-sm font-medium text-[var(--text-muted)]">Total Fees</h3>
+        <p className="text-xl font-semibold text-[var(--text-muted)]">
+            {formatCurrency(globalStats.totalFees)}
+        </p>
+      </div>
+
+      {/* Add more cards as needed - e.g., top instrument by P&L (from bks), etc. */}
+      {bks.length > 0 && (() => {
+        const sortedByPL = [...bks].sort((a, b) => b.grossPL - a.grossPL);
+        const topInstrumentByPL = sortedByPL[0];
+        const topInstrumentByWinRate = [...bks].sort((a,b) => b.winRate - a.winRate)[0];
+
+        return (
+          <>
+            {topInstrumentByPL && groupBy === 'instrument' && (
+              <div className="bg-[var(--background)] p-4 rounded-md shadow-sm">
+                <h3 className="text-sm font-medium text-[var(--text-muted)]">Most Profitable Instrument</h3>
+                <p className="text-xl font-bold text-[var(--primary)]">
+                  {topInstrumentByPL.key} ({formatCurrency(topInstrumentByPL.grossPL)})
+                </p>
+              </div>
+            )}
+            {topInstrumentByWinRate && groupBy === 'instrument' && (
+                 <div className="bg-[var(--background)] p-4 rounded-md shadow-sm">
+                   <h3 className="text-sm font-medium text-[var(--text-muted)]">Highest Win Rate Instrument</h3>
+                   <p className="text-xl font-bold text-[var(--primary)]">
+                     {topInstrumentByWinRate.key} ({formatPercentage(topInstrumentByWinRate.winRate)})
+                   </p>
+                 </div>
+            )}
+          </>
+        );
+      })()}
+    </div>
+  </div>
+)}
+{load && <p className="text-center my-4"></p>}
+
+
 
       <form
         onSubmit={run}
@@ -294,76 +395,80 @@ export default function AdvFilter() {
           </div>
 
           {/* bucket table */}
-          <div className="overflow-x-auto mb-6">
-            <table className="w-full border-collapse text-sm">
-              <thead>
-                <tr>
-                  {["Key", "Trades", "Gross $", "Avg %", "Win %"].map((h) => (
-                    <th key={h} className="th">
-                      {h}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {bks.map((b) => (
-                  <tr key={b.key}>
-                    <td className="td">{b.key}</td>
-                    <td className="td">{b.count}</td>
-                    <td className="td">{b.grossPL.toFixed(2)}</td>
-                    <td className="td">{b.avgPct.toFixed(2)}</td>
-                    <td className="td">{b.winRate.toFixed(1)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
+<div className="overflow-x-auto mb-6">
+  <table className="w-full border-collapse text-sm">
+    <thead>
+      <tr>
+        {/* Adjust headers based on new Bucket fields */}
+        {["Key", "Trades", "Gross P&L", "Avg % RoB", "Avg Trade %", "Win %"].map((h) => (
+          <th key={h} className="th">
+            {h}
+          </th>
+        ))}
+      </tr>
+    </thead>
+    <tbody>
+      {bks.map((b) => (
+        <tr key={b.key}>
+          <td className="td">{b.key}</td>
+          <td className="td text-right">{b.count}</td>
+          <td className={`td text-right ${b.grossPL >= 0 ? 'text-green-600' : 'text-red-600'}`}>{formatCurrency(b.grossPL)}</td>
+          <td className={`td text-right ${b.avgReturnOnBalance >= 0 ? 'text-green-600' : 'text-red-600'}`}>{formatPercentage(b.avgReturnOnBalance)}</td>
+          <td className="td text-right">{formatPercentage(b.avgTradeSpecificPercentageGain)}</td>
+          <td className="td text-right">{formatPercentage(b.winRate)}</td>
+        </tr>
+      ))}
+    </tbody>
+  </table>
+</div>
           {/* rows */}
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse text-xs md:text-sm">
-              <thead>
-                <tr>
-                  {[
-                    "Date",
-                    "Sym",
-                    "Dir",
-                    "Lots",
-                    "$",
-                    "%",
-                    "Entry",
-                    "Exit",
-                    "SL",
-                    "Pips",
-                  ].map((h) => (
-                    <th key={h} className="th">
-                      {h}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((r) => (
-                  <tr key={r.id}>
-                    <td className="td">
-                      {new Date(r.entryDate).toLocaleString()}
-                    </td>
-                    <td className="td">{r.instrument}</td>
-                    <td className="td">{r.tradeDirection}</td>
-                    <td className="td">{r.lots ?? "-"}</td>
-                    <td className="td">{r.amountGain?.toFixed(2) ?? "-"}</td>
-                    <td className="td">
-                      {r.percentageGain?.toFixed(2) ?? "-"}%
-                    </td>
-                    <td className="td">{r.entryPrice ?? "-"}</td>
-                    <td className="td">{r.exitPrice ?? "-"}</td>
-                    <td className="td">{r.stopLossPips ?? "-"}</td>
-                    <td className="td">{r.pipsGain ?? "-"}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+       {/* rows */}
+<div className="overflow-x-auto">
+  <table className="w-full border-collapse text-xs md:text-sm">
+    <thead>
+      <tr>
+        {[
+          "Date", "Sym", "Dir", "Lots", "Net P&L ($)", "Trade %", "Actual %", // Adjusted P&L column
+          "Entry", "Exit", "SL", "Pips", "Fees",
+        ].map((h) => (
+          <th key={h} className="th">
+            {h}
+          </th>
+        ))}
+      </tr>
+    </thead>
+    <tbody>
+      {rows.map((r) => {
+        const actualPercentageGain = r.openingBalance && r.openingBalance !== 0 && r.realizedPL != null
+          ? (r.realizedPL / r.openingBalance) * 100
+          : null;
+        return (
+          <tr key={r.id}>
+            <td className="td">{new Date(r.entryDate).toLocaleString()}</td>
+            <td className="td">{r.instrument}</td>
+            <td className="td">{r.tradeDirection}</td>
+            <td className="td text-right">{r.lots ?? "-"}</td>
+            <td className={`td text-right ${r.realizedPL == null ? '' : r.realizedPL >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+              {formatCurrency(r.realizedPL)}
+            </td>
+            <td className="td text-right"> 
+              {/* This is FxTrade.percentageGain */}
+              {r.tradeSpecificPercentageGain != null ? formatPercentage(r.tradeSpecificPercentageGain * 100, 2) : "-"} 
+            </td>
+            <td className={`td text-right ${actualPercentageGain == null ? '' : actualPercentageGain >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                {formatPercentage(actualPercentageGain, 2)}
+            </td>
+            <td className="td text-right">{r.entryPrice ?? "-"}</td>
+            <td className="td text-right">{r.exitPrice ?? "-"}</td>
+            <td className="td text-right">{r.stopLossPips ?? "-"}</td>
+            <td className="td text-right">{r.pipsGain ?? "-"}</td>
+            <td className="td text-right">{formatCurrency(r.fees)}</td>
+          </tr>
+        );
+      })}
+    </tbody>
+  </table>
+</div>
         </>
       )}
 
