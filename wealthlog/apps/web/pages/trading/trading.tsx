@@ -3,383 +3,81 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import { api } from "@wealthlog/common";
 
-// Reuse or import formatToBeirutTime if it's in a shared util
-// If not, define it here or import from AdvFilter for now (better to have it in a common util)
-const formatToBeirutTime = (dateStringOrObject: string | Date | null | undefined, options?: Intl.DateTimeFormatOptions): string => {
-  if (!dateStringOrObject) return "N/A";
-  try {
-    const date = new Date(dateStringOrObject);
-    const defaultOptions: Intl.DateTimeFormatOptions = {
-      year: 'numeric', month: 'short', day: 'numeric',
-      hour: '2-digit', minute: '2-digit',
-      timeZone: 'Asia/Beirut',
-      hour12: true,
-    };
-    return date.toLocaleString('en-GB', { ...defaultOptions, ...options });
-  } catch (e) {
-    return "Invalid Date";
-  }
-};
+const formatToBeirutTime = (dateStringOrObject: string | Date | null | undefined, options?: Intl.DateTimeFormatOptions): string => { /* ... (same as in AdvFilter) ... */ if (!dateStringOrObject) return "N/A"; try { const date = new Date(dateStringOrObject); const defaultOptions: Intl.DateTimeFormatOptions = { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Beirut', hour12: true }; return date.toLocaleString('en-GB', { ...defaultOptions, ...options }); } catch (e) { return "Invalid Date"; } };
+const formatCurrencyWithCommas = (value: number | null | undefined, currencySymbol = "$") => { if (value == null) return "-"; return `${value < 0 ? "-" : ""}${currencySymbol}${Math.abs(value).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`; };
+const formatPercentage = (value: number | null | undefined, decimals = 1): string => { if (value == null) return "- %"; return `${value.toFixed(decimals)}%`; };
 
-const formatCurrencyWithCommas = (value: number | null | undefined, currencySymbol = "$") => {
-    if (value == null) return "-";
-    return `${value < 0 ? "-" : ""}${currencySymbol}${Math.abs(value).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-};
+interface FinancialAccount { id: number; userId: number; name: string; accountType: string; balance: number; currency: string; initialBalance?: number; }
+interface FxTrade { amountGain?: number | null; percentageGain?: number | null; lots?: number | null; entryPrice?: number | null; exitPrice?: number | null; stopLossPips?: number | null; pipsGain?: number | null; source?: string | null; }
+interface MediaLabel { id: number; name: string; }
+interface TradeMedia { id: number; imageUrl: string; description?: string | null; label?: MediaLabel | null; }
+interface Trade { id: number; tradeType: string; instrument: string; tradeDirection: "LONG" | "SHORT"; fees: number; entryDate: string; pattern?: string; notes?: string; openingBalance?: number | null; closingBalance?: number | null; realizedPL?: number | null; fxTrade?: FxTrade; media: TradeMedia[]; }
+// interface MediaTagItem { tagName: string; description: string; externalUrl: string; file?: File | null; } // Not used
 
-const formatPercentage = (value: number | null | undefined, decimals = 1): string => {
-  if (value == null) return "- %";
-  return `${value.toFixed(decimals)}%`;
-};
+interface AccountStats { totalPL: number; tradeCount: number; }
 
 
-/*─────────────────────────────── Types ───────────────────────────────*/
-interface FinancialAccount {
-  id: number;
-  userId: number;
-  name: string;
-  accountType: string;
-  balance: number;
-  currency: string;
-  initialBalance?: number; // Added for consistency if needed
-}
-
-interface FxTrade {
-  amountGain?: number | null;
-  percentageGain?: number | null;
-  lots?: number | null;
-  entryPrice?: number | null;
-  exitPrice?: number | null;
-  stopLossPips?: number | null;
-  pipsGain?: number | null;
-  source?: string | null;
-}
-
-interface MediaLabel {
-  id: number;
-  name: string;
-}
-
-interface TradeMedia {
-  id: number;
-  imageUrl: string;
-  description?: string | null;
-  label?: MediaLabel | null;
-}
-
-interface Trade {
-  id: number;
-  tradeType: string;
-  instrument: string;
-  tradeDirection: "LONG" | "SHORT";
-  fees: number;
-  entryDate: string; // ISO String
-  pattern?: string;
-  notes?: string;
-  openingBalance?: number | null;
-  closingBalance?: number | null;
-  realizedPL?: number | null;
-  fxTrade?: FxTrade;
-  media: TradeMedia[];
-}
-
-interface MediaTagItem {
-  tagName: string;
-  description: string;
-  externalUrl: string;
-  file?: File | null;
-}
-
-/*──────────────────────────── Component ─────────────────────────────*/
 export default function TradingPage() {
   const router = useRouter();
-  const [initialLoading, setInitialLoading] = useState(true);
-  const [error, setError] = useState("");
-
-  const toLocalInputValue = (isoDate: string) => {
-    if (!isoDate) return "";
-    try {
-        const d = new Date(isoDate);
-        // Correctly offset for local time INPUT value
-        const localDate = new Date(d.getTime() - (d.getTimezoneOffset() * 60000));
-        return localDate.toISOString().slice(0, 16); // "YYYY-MM-DDTHH:mm"
-    } catch {
-        return ""; // Handle invalid date strings
-    }
-  };
-
+  const [initialLoading, setInitialLoading] = useState(true); const [error, setError] = useState("");
+  const toLocalInputValue = (isoDate: string) => { if (!isoDate) return ""; try { const d = new Date(isoDate); const localDate = new Date(d.getTime() - (d.getTimezoneOffset() * 60000)); return localDate.toISOString().slice(0, 16); } catch { return ""; } };
   const [accounts, setAccounts] = useState<FinancialAccount[]>([]);
   const [selectedAccountId, setSelectedAccountId] = useState<number | null>(null);
-  const [trades, setTrades] = useState<Trade[]>([]);
-  const [pageSize, setPageSize] = useState(10);
-
-  const [instruments, setInstruments] = useState<string[]>([]);
-  const [patterns, setPatterns] = useState<string[]>([]);
-  // const [mediaTags, setMediaTags] = useState<string[]>([]); // Not used in current JSX
-
+  const [trades, setTrades] = useState<Trade[]>([]); const [pageSize, setPageSize] = useState(10);
+  const [instruments, setInstruments] = useState<string[]>([]); const [patterns, setPatterns] = useState<string[]>([]);
   const [showNewTrade, setShowNewTrade] = useState(false);
-  const [formInstrument, setFormInstrument] = useState("");
-  const [formDirection, setFormDirection] = useState<"LONG" | "SHORT">("LONG");
-  const [formFees, setFormFees] = useState("0");
-  const [formDate, setFormDate] = useState(() => toLocalInputValue(new Date().toISOString()));
-  const [formPattern, setFormPattern] = useState("");
-  const [fxAmountGain, setFxAmountGain] = useState("");
-  const [fxPercentageGain, setFxPercentageGain] = useState("");
-  // const [createMediaList, setCreateMediaList] = useState<MediaTagItem[]>([ // Not used in current JSX
-  //   { tagName: "", description: "", externalUrl: "", file: null },
-  // ]);
-
-  const [showFxAdvanced, setShowFxAdvanced] = useState(false);
-  const [fxLots, setFxLots] = useState(""); // Changed from "0" to "" for better placeholder behavior
-  const [fxEntryPrice, setFxEntryPrice] = useState("");
-  const [fxExitPrice, setFxExitPrice] = useState("");
-  const [fxStopLossPips, setFxStopLossPips] = useState("");
-  const [fxPipsGain, setFxPipsGain] = useState("");
-
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [editTrade, setEditTrade] = useState<Partial<Trade>>({});
-  const [editFxAmount, setEditFxAmount] = useState("");
-  const [editFxPercent, setEditFxPercent] = useState("");
-  // const [editMediaList, setEditMediaList] = useState<MediaTagItem[]>([ // Not used in current JSX
-  //   { tagName: "", description: "", externalUrl: "", file: null },
-  // ]);
-  const [editFxLots, setEditFxLots] = useState("");
-  const [editFxEntry, setEditFxEntry] = useState("");
-  const [editFxExit, setEditFxExit] = useState("");
-  const [editFxSL, setEditFxSL] = useState("");
-  const [editFxPipsGain, setEditFxPipsGain] = useState("");
+  const [formInstrument, setFormInstrument] = useState(""); const [formDirection, setFormDirection] = useState<"LONG" | "SHORT">("LONG");
+  const [formFees, setFormFees] = useState("0"); const [formDate, setFormDate] = useState(() => toLocalInputValue(new Date().toISOString()));
+  const [formPattern, setFormPattern] = useState(""); const [fxAmountGain, setFxAmountGain] = useState("");
+  const [fxPercentageGain, setFxPercentageGain] = useState(""); const [showFxAdvanced, setShowFxAdvanced] = useState(false);
+  const [fxLots, setFxLots] = useState(""); const [fxEntryPrice, setFxEntryPrice] = useState("");
+  const [fxExitPrice, setFxExitPrice] = useState(""); const [fxStopLossPips, setFxStopLossPips] = useState("");
+  const [fxPipsGain, setFxPipsGain] = useState(""); const [showEditModal, setShowEditModal] = useState(false);
+  const [editTrade, setEditTrade] = useState<Partial<Trade>>({}); const [editFxAmount, setEditFxAmount] = useState("");
+  const [editFxPercent, setEditFxPercent] = useState(""); const [editFxLots, setEditFxLots] = useState("");
+  const [editFxEntry, setEditFxEntry] = useState(""); const [editFxExit, setEditFxExit] = useState("");
+  const [editFxSL, setEditFxSL] = useState(""); const [editFxPipsGain, setEditFxPipsGain] = useState("");
   const [showEditFxAdvanced, setShowEditFxAdvanced] = useState(false);
+  const [selectedAccountStats, setSelectedAccountStats] = useState<AccountStats | null>(null);
+
 
   const currentAccount = accounts.find((a) => a.id === selectedAccountId) ?? null;
   const selectedAccountIsMt5 = currentAccount?.name.toLowerCase().includes("mt5") ?? false;
 
-  useEffect(() => {
-    (async () => {
-      try {
-        await api.get("/auth/me"); // Auth check
-        await loadAccounts();
-        const resp = await api.get("/tradingSettings");
-        setInstruments(resp.data.instruments || []);
-        setPatterns(resp.data.patterns || []);
-        // setMediaTags(resp.data.mediaTags || []); // Not used
-      } catch {
-        router.push("/login");
-      } finally {
-        setInitialLoading(false);
-      }
-    })();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // router is stable, loadAccounts is stable if memoized or defined outside
-
-  async function loadAccounts() {
-    setError("");
-    try {
-      const res = await api.get<FinancialAccount[]>("/account");
-      const fxAccounts = res.data.filter((a) => a.accountType === "FX_COMMODITY");
-      setAccounts(fxAccounts);
-      if (fxAccounts.length && !selectedAccountId) {
-        setSelectedAccountId(fxAccounts[0].id);
-      }
-    } catch (err) {
-      console.error(err);
-      setError("Failed to load accounts");
-    }
-  }
-
-  useEffect(() => {
-    if (selectedAccountId) loadTrades(selectedAccountId);
-    else setTrades([]);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedAccountId]);
+  useEffect(() => { /* ... (auth check, loadAccounts, load tradingSettings - same as before) ... */ (async () => { try { await api.get("/auth/me"); await loadAccounts(); const resp = await api.get("/tradingSettings"); setInstruments(resp.data.instruments || []); setPatterns(resp.data.patterns || []); } catch { router.push("/login"); } finally { setInitialLoading(false); } })(); }, []);
+  async function loadAccounts() { /* ... (same as before) ... */ setError(""); try { const res = await api.get<FinancialAccount[]>("/account"); const fxAccounts = res.data.filter((a) => a.accountType === "FX_COMMODITY"); setAccounts(fxAccounts); if (fxAccounts.length && !selectedAccountId) { setSelectedAccountId(fxAccounts[0].id); } } catch (err) { console.error(err); setError("Failed to load accounts"); } }
+  useEffect(() => { if (selectedAccountId) loadTrades(selectedAccountId); else { setTrades([]); setSelectedAccountStats(null); } }, [selectedAccountId]);
 
   async function loadTrades(acctId: number) {
     setError("");
     try {
       const res = await api.get<Trade[]>(`/trade?accountId=${acctId}&tradeType=FX`);
-      const sorted = res.data.sort(
-        (a, b) => new Date(b.entryDate).getTime() - new Date(a.entryDate).getTime()
-      );
+      const sorted = res.data.sort((a, b) => new Date(b.entryDate).getTime() - new Date(a.entryDate).getTime());
       setTrades(sorted);
-    } catch (err) {
-      setError("Could not load trades");
-      console.error(err);
-    }
-  }
-
-  useEffect(() => {
-    if (!selectedAccountId || !selectedAccountIsMt5 || typeof window === 'undefined') return;
-    const id = setInterval(() => loadTrades(selectedAccountId), 10_000);
-    return () => clearInterval(id);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedAccountId, selectedAccountIsMt5]);
-
-
-  async function handleCreateTrade(e: React.FormEvent) {
-    e.preventDefault();
-    if (!selectedAccountId) return setError("No account selected");
-    if (!formInstrument.trim()) return setError("Instrument is required");
-
-    const numericFees = Math.abs(parseFloat(formFees) || 0);
-    const amtRaw = fxAmountGain.trim();
-    const pctRaw = fxPercentageGain.trim();
-    const aGain = amtRaw === "" ? undefined : parseFloat(amtRaw);
-    const pGain = pctRaw === "" ? undefined : parseFloat(pctRaw);
-
-    let fxDataSubmit: any = {};
-    if (aGain != null && pGain != null) {
-      fxDataSubmit = { amountGain: null, percentageGain: pGain / 100 };
-    } else if (pGain != null) {
-      fxDataSubmit = { percentageGain: pGain / 100 };
-    } else if (aGain != null) {
-      fxDataSubmit = { amountGain: aGain };
-    }
-
-    fxDataSubmit = {
-      ...fxDataSubmit,
-      lots: fxLots.trim() === "" ? null : parseFloat(fxLots),
-      entryPrice: fxEntryPrice.trim() === "" ? null : parseFloat(fxEntryPrice),
-      exitPrice: fxExitPrice.trim() === "" ? null : parseFloat(fxExitPrice),
-      stopLossPips: fxStopLossPips.trim() === "" ? null : parseFloat(fxStopLossPips),
-      pipsGain: fxPipsGain.trim() === "" ? null : parseFloat(fxPipsGain),
-    };
-
-    const body = {
-      tradeType: "FX",
-      accountId: selectedAccountId,
-      instrument: formInstrument.trim(),
-      direction: formDirection, // Backend expects 'LONG' or 'SHORT'
-      fees: numericFees,
-      entryDate: new Date(formDate).toISOString(),
-      pattern: formPattern || undefined, // Send undefined if empty, backend handles null
-      fx: Object.keys(fxDataSubmit).length > 0 ? fxDataSubmit : undefined,
-    };
-
-    try {
-      // const creationRes = await api.post("/trade", body); // Assuming media part is separate or not used for now
-      await api.post("/trade", body);
-      // const newTradeId = creationRes.data.tradeId;
-      // Media upload logic can be re-added here if MediaTagItem and createMediaList are used
-
-      setFormInstrument("");
-      setFormDirection("LONG");
-      setFormFees("0");
-      setFormDate(toLocalInputValue(new Date().toISOString()));
-      setFormPattern("");
-      setFxAmountGain("");
-      setFxPercentageGain("");
-      setFxLots("");
-      setFxEntryPrice("");
-      setFxExitPrice("");
-      setFxStopLossPips("");
-      setFxPipsGain("");
-      // setCreateMediaList([{ tagName: "", description: "", externalUrl: "", file: null }]);
-      setShowFxAdvanced(false);
-      setShowNewTrade(false);
-      setError(""); // Clear previous errors
-
-      await loadTrades(selectedAccountId);
-      await loadAccounts();
-    } catch (err: any) {
-      console.error("Create trade error:", err);
-      setError(err?.response?.data?.error || "Could not create trade. Please check inputs.");
-    }
-  }
-
-  async function handleDeleteTrade(tradeId: number) {
-    if (!confirm("Are you sure you want to delete this trade?")) return;
-    setError("");
-    try {
-      await api.delete(`/trade/${tradeId}`);
-      await loadTrades(selectedAccountId!);
-      await loadAccounts();
-    } catch (err: any) {
-      console.error(err);
-      setError(err?.response?.data?.error || "Failed to delete trade");
-    }
-  }
-
-  function openEditModal(trade: Trade) {
-    setEditTrade(trade);
-    setEditFxAmount(String(trade.fxTrade?.amountGain ?? ""));
-    setEditFxPercent(
-      trade.fxTrade?.percentageGain != null ? String(trade.fxTrade.percentageGain * 100) : ""
-    );
-    setEditFxLots(String(trade.fxTrade?.lots ?? ""));
-    setEditFxEntry(String(trade.fxTrade?.entryPrice ?? ""));
-    setEditFxExit(String(trade.fxTrade?.exitPrice ?? ""));
-    setEditFxSL(String(trade.fxTrade?.stopLossPips ?? ""));
-    setEditFxPipsGain(String(trade.fxTrade?.pipsGain ?? ""));
-    setShowEditFxAdvanced(
-      !!(trade.fxTrade?.lots || trade.fxTrade?.entryPrice || trade.fxTrade?.exitPrice || trade.fxTrade?.stopLossPips || trade.fxTrade?.pipsGain)
-    );
-    setShowEditModal(true);
-    setError("");
-  }
-
-  async function handleEditTradeSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!editTrade.id) return;
-    setError("");
-
-    try {
-      const numericFees = Math.abs(parseFloat(String(editTrade.fees)) || 0);
-      const amtRaw = editFxAmount.trim();
-      const pctRaw = editFxPercent.trim();
-      const aGain = amtRaw === "" ? null : parseFloat(amtRaw);
-      const pGain = pctRaw === "" ? null : parseFloat(pctRaw) / 100;
-
-      let fxDataSubmit: any = {};
-      if (aGain != null && pGain != null) {
-        fxDataSubmit = { amountGain: null, percentageGain: pGain };
-      } else if (aGain != null) {
-        fxDataSubmit = { amountGain: aGain, percentageGain: null }; // Explicitly nullify other
-      } else if (pGain != null) {
-        fxDataSubmit = { percentageGain: pGain, amountGain: null }; // Explicitly nullify other
+      // Calculate stats for loaded trades
+      if (sorted.length > 0) {
+        const totalPL = sorted.reduce((sum, trade) => sum + (trade.realizedPL ?? 0), 0);
+        setSelectedAccountStats({ totalPL, tradeCount: sorted.length });
+      } else {
+        setSelectedAccountStats(null);
       }
-
-
-      fxDataSubmit = {
-          ...fxDataSubmit,
-          lots: editFxLots.trim() === "" ? null : Number(editFxLots),
-          entryPrice: editFxEntry.trim() === "" ? null : Number(editFxEntry),
-          exitPrice: editFxExit.trim() === "" ? null : Number(editFxExit),
-          stopLossPips: editFxSL.trim() === "" ? null : Number(editFxSL),
-          pipsGain: editFxPipsGain.trim() === "" ? null : Number(editFxPipsGain),
-      };
-      // Ensure fxDataSubmit is undefined if all its nullable fields are effectively null and no primary gain is set
-      const hasFxData = Object.values(fxDataSubmit).some(val => val !== null && val !== undefined && val !== "");
-      
-      await api.put(`/trade/${editTrade.id}`, {
-        instrument: editTrade.instrument,
-        direction: editTrade.tradeDirection, // Backend expects 'LONG' or 'SHORT'
-        fees: numericFees,
-        entryDate: editTrade.entryDate ? new Date(editTrade.entryDate).toISOString() : new Date().toISOString(),
-        pattern: editTrade.pattern || undefined,
-        fx: hasFxData ? fxDataSubmit : undefined,
-      });
-
-      setShowEditModal(false);
-      if (selectedAccountId) await loadTrades(selectedAccountId);
-      await loadAccounts();
-    } catch (err: any) {
-      console.error("Edit trade error:", err);
-      setError(err?.response?.data?.error || "Failed to edit trade. Check inputs.");
-    }
+    } catch (err) { setError("Could not load trades"); console.error(err); setSelectedAccountStats(null); }
   }
 
-  if (initialLoading) {
-    return (
-      <div className="flex items-center justify-center h-screen bg-[var(--background)] text-[var(--text)]">
-        <p>Loading Trading Page...</p>
-      </div>
-    );
-  }
+  useEffect(() => { /* ... (MT5 polling - same as before) ... */ if (!selectedAccountId || !selectedAccountIsMt5 || typeof window === 'undefined') return; const id = setInterval(() => loadTrades(selectedAccountId), 10_000); return () => clearInterval(id); }, [selectedAccountId, selectedAccountIsMt5]);
+  async function handleCreateTrade(e: React.FormEvent) { /* ... (same as before) ... */ e.preventDefault(); if (!selectedAccountId) return setError("No account selected"); if (!formInstrument.trim()) return setError("Instrument is required"); const numericFees = Math.abs(parseFloat(formFees) || 0); const amtRaw = fxAmountGain.trim(); const pctRaw = fxPercentageGain.trim(); const aGain = amtRaw === "" ? undefined : parseFloat(amtRaw); const pGain = pctRaw === "" ? undefined : parseFloat(pctRaw); let fxDataSubmit: any = {}; if (aGain != null && pGain != null) { fxDataSubmit = { amountGain: null, percentageGain: pGain / 100 }; } else if (pGain != null) { fxDataSubmit = { percentageGain: pGain / 100 }; } else if (aGain != null) { fxDataSubmit = { amountGain: aGain }; } fxDataSubmit = { ...fxDataSubmit, lots: fxLots.trim() === "" ? null : parseFloat(fxLots), entryPrice: fxEntryPrice.trim() === "" ? null : parseFloat(fxEntryPrice), exitPrice: fxExitPrice.trim() === "" ? null : parseFloat(fxExitPrice), stopLossPips: fxStopLossPips.trim() === "" ? null : parseFloat(fxStopLossPips), pipsGain: fxPipsGain.trim() === "" ? null : parseFloat(fxPipsGain), }; const body = { tradeType: "FX", accountId: selectedAccountId, instrument: formInstrument.trim(), direction: formDirection, fees: numericFees, entryDate: new Date(formDate).toISOString(), pattern: formPattern || undefined, fx: Object.keys(fxDataSubmit).length > 0 ? fxDataSubmit : undefined, }; try { await api.post("/trade", body); setFormInstrument(""); setFormDirection("LONG"); setFormFees("0"); setFormDate(toLocalInputValue(new Date().toISOString())); setFormPattern(""); setFxAmountGain(""); setFxPercentageGain(""); setFxLots(""); setFxEntryPrice(""); setFxExitPrice(""); setFxStopLossPips(""); setFxPipsGain(""); setShowFxAdvanced(false); setShowNewTrade(false); setError(""); await loadTrades(selectedAccountId); await loadAccounts(); } catch (err: any) { console.error("Create trade error:", err); setError(err?.response?.data?.error || "Could not create trade. Please check inputs."); } }
+  async function handleDeleteTrade(tradeId: number) { /* ... (same as before) ... */ if (!confirm("Are you sure you want to delete this trade?")) return; setError(""); try { await api.delete(`/trade/${tradeId}`); await loadTrades(selectedAccountId!); await loadAccounts(); } catch (err: any) { console.error(err); setError(err?.response?.data?.error || "Failed to delete trade"); } }
+  function openEditModal(trade: Trade) { /* ... (same as before) ... */ setEditTrade(trade); setEditFxAmount(String(trade.fxTrade?.amountGain ?? "")); setEditFxPercent(trade.fxTrade?.percentageGain != null ? String(trade.fxTrade.percentageGain * 100) : ""); setEditFxLots(String(trade.fxTrade?.lots ?? "")); setEditFxEntry(String(trade.fxTrade?.entryPrice ?? "")); setEditFxExit(String(trade.fxTrade?.exitPrice ?? "")); setEditFxSL(String(trade.fxTrade?.stopLossPips ?? "")); setEditFxPipsGain(String(trade.fxTrade?.pipsGain ?? "")); setShowEditFxAdvanced(!!(trade.fxTrade?.lots || trade.fxTrade?.entryPrice || trade.fxTrade?.exitPrice || trade.fxTrade?.stopLossPips || trade.fxTrade?.pipsGain)); setShowEditModal(true); setError(""); }
+  async function handleEditTradeSubmit(e: React.FormEvent) { /* ... (same as before, ensure fxDataSubmit logic is robust for nulls) ... */ e.preventDefault(); if (!editTrade.id) return; setError(""); try { const numericFees = Math.abs(parseFloat(String(editTrade.fees)) || 0); const amtRaw = editFxAmount.trim(); const pctRaw = editFxPercent.trim(); const aGain = amtRaw === "" ? null : parseFloat(amtRaw); const pGain = pctRaw === "" ? null : parseFloat(pctRaw) / 100; let fxDataSubmit: any = {}; if (aGain != null && pGain != null) { fxDataSubmit = { amountGain: null, percentageGain: pGain }; } else if (aGain != null) { fxDataSubmit = { amountGain: aGain, percentageGain: null }; } else if (pGain != null) { fxDataSubmit = { percentageGain: pGain, amountGain: null }; } fxDataSubmit = { ...fxDataSubmit, lots: editFxLots.trim() === "" ? null : Number(editFxLots), entryPrice: editFxEntry.trim() === "" ? null : Number(editFxEntry), exitPrice: editFxExit.trim() === "" ? null : Number(editFxExit), stopLossPips: editFxSL.trim() === "" ? null : Number(editFxSL), pipsGain: editFxPipsGain.trim() === "" ? null : Number(editFxPipsGain), }; const hasFxData = Object.values(fxDataSubmit).some(val => val !== null && val !== undefined && val !== ""); await api.put(`/trade/${editTrade.id}`, { instrument: editTrade.instrument, direction: editTrade.tradeDirection, fees: numericFees, entryDate: editTrade.entryDate ? new Date(editTrade.entryDate).toISOString() : new Date().toISOString(), pattern: editTrade.pattern || undefined, fx: hasFxData ? fxDataSubmit : undefined, }); setShowEditModal(false); if (selectedAccountId) await loadTrades(selectedAccountId); await loadAccounts(); } catch (err: any) { console.error("Edit trade error:", err); setError(err?.response?.data?.error || "Failed to edit trade. Check inputs."); } }
+  if (initialLoading) { /* ... (same loading UI) ... */ return (<div className="flex items-center justify-center h-screen bg-[var(--background)] text-[var(--text)]"><p>Loading Trading Page...</p></div>); }
 
   const renderTradeRows = trades.slice(0, pageSize).map((t) => {
     const realizedPLVal = t.realizedPL ?? 0;
     const openingBal = t.openingBalance;
-    const percentGainVal = openingBal && openingBal !== 0 && t.realizedPL != null
-                        ? (t.realizedPL / openingBal) * 100
-                        : null;
+    // Calculate P&L Percentage ONLY if openingBalance is positive
+    const percentGainVal = (openingBal != null && openingBal > 0 && t.realizedPL != null)
+      ? (t.realizedPL / openingBal) * 100
+      : null;
     const pnlClass = realizedPLVal > 0 ? "text-green-600" : realizedPLVal < 0 ? "text-red-600" : "text-[var(--text-muted)]";
 
     return (
@@ -389,298 +87,41 @@ export default function TradingPage() {
         <td className="p-3 text-sm text-left">{t.tradeDirection === "LONG" ? "Long" : "Short"}</td>
         <td className="p-3 text-sm text-right">{t.fees.toFixed(2)}</td>
         <td className={`p-3 text-sm text-right font-medium ${pnlClass}`}>
-          {percentGainVal != null ? `${formatPercentage(percentGainVal)}` : "-"}
+          {percentGainVal != null ? `${formatPercentage(percentGainVal)}` : "N/A"}
           <span className="text-xs text-[var(--text-muted)] opacity-80 ml-1">({formatCurrencyWithCommas(realizedPLVal, "$")})</span>
         </td>
-        <td className="p-3 text-sm text-right">
-          {t.openingBalance != null ? formatCurrencyWithCommas(t.openingBalance, "$") : "N/A"}
-        </td>
-        <td className="p-3 text-sm text-right">
-          {t.closingBalance != null ? formatCurrencyWithCommas(t.closingBalance, "$") : "N/A"}
-        </td>
-        <td className="p-3 text-sm text-left"> {/* Actions column typically left aligned */}
-          <div className="flex gap-2">
-            <button
-              onClick={() => openEditModal(t)}
-              className="px-3 py-1 bg-yellow-400 hover:bg-yellow-500 text-gray-800 rounded text-xs font-medium"
-            >
-              Edit
-            </button>
-            <button
-              onClick={() => handleDeleteTrade(t.id)}
-              className="px-3 py-1 bg-red-500 hover:bg-red-600 text-white rounded text-xs font-medium"
-            >
-              Del
-            </button>
-          </div>
-        </td>
+        <td className="p-3 text-sm text-right">{t.openingBalance != null ? formatCurrencyWithCommas(t.openingBalance, "$") : "N/A"}</td>
+        <td className="p-3 text-sm text-right">{t.closingBalance != null ? formatCurrencyWithCommas(t.closingBalance, "$") : "N/A"}</td>
+        <td className="p-3 text-sm text-left">{/* ... (actions buttons - same as before) ... */}<div className="flex gap-2"><button onClick={() => openEditModal(t)} className="px-3 py-1 bg-yellow-400 hover:bg-yellow-500 text-gray-800 rounded text-xs font-medium">Edit</button><button onClick={() => handleDeleteTrade(t.id)} className="px-3 py-1 bg-red-500 hover:bg-red-600 text-white rounded text-xs font-medium">Del</button></div></td>
       </tr>
     );
   });
 
   return (
     <div className="p-4 min-h-screen bg-[var(--background)] text-[var(--text)]">
-      {error && <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
-          <strong className="font-bold">Error: </strong>
-          <span className="block sm:inline">{error}</span>
-          <span className="absolute top-0 bottom-0 right-0 px-4 py-3" onClick={() => setError("")}>
-            <svg className="fill-current h-6 w-6 text-red-500" role="button" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><title>Close</title><path d="M14.348 14.849a1.2 1.2 0 0 1-1.697 0L10 11.819l-2.651 3.029a1.2 1.2 0 1 1-1.697-1.697l2.758-3.15-2.759-3.152a1.2 1.2 0 1 1 1.697-1.697L10 8.183l2.651-3.031a1.2 1.2 0 1 1 1.697 1.697l-2.758 3.152 2.758 3.15a1.2 1.2 0 0 1 0 1.698z"/></svg>
-          </span>
-        </div>}
-
-      <div className="max-w-7xl mx-auto"> {/* Increased max-width for wider screens */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
-          <h1 className="text-3xl font-bold">FX Trading</h1> {/* Slightly larger title */}
-          <button
-            onClick={() => router.push("/trading/advancedFilter")} // Assuming this is the advanced filter page
-            className="mt-2 md:mt-0 px-4 py-2 bg-[var(--primary)] text-white font-semibold rounded-md hover:bg-[var(--primary-focus)] transition-colors"
-          >
-            Advanced Filter & Insights
-          </button>
-        </div>
-  
-        <div className="bg-[var(--background-2)] p-4 rounded-lg shadow mb-6">
-          <h2 className="text-xl font-semibold mb-4">FX Accounts</h2>
-          {accounts.length === 0 ? (
-            <p className="text-sm text-[var(--text-muted)]">No FX accounts found. You can create one if your system supports it.</p>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {accounts.map((ac) => (
-                <button
-                  key={ac.id}
-                  onClick={() => setSelectedAccountId(ac.id)}
-                  className={`p-4 border rounded-xl text-left transition-all duration-200 ease-in-out transform hover:shadow-lg focus:outline-none focus:ring-2
-                    ${ac.id === selectedAccountId
-                      ? "bg-[var(--primary)] text-white shadow-xl ring-2 ring-offset-2 ring-[var(--primary-focus)]"
-                      : "bg-[var(--background)] hover:bg-[var(--background-hover)] border-[var(--border)]"
-                    }`}
-                >
-                  <div className="flex justify-between items-center">
-                    <div className="font-semibold text-lg">{ac.name}</div>
-                    {ac.id === selectedAccountId && <span className="text-xs bg-white/30 px-2 py-0.5 rounded-full font-medium">Active</span>}
-                  </div>
-                  <div className={`text-base mt-1 ${ac.id === selectedAccountId ? 'opacity-90' : 'text-[var(--text-muted)]'}`}>
-                    {formatCurrencyWithCommas(ac.balance, ac.currency === "USD" ? "$" : ac.currency + " ")}
-                  </div>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-
+      {error && ( /* ... (error display - same as before) ... */ <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert"><strong className="font-bold">Error: </strong><span className="block sm:inline">{error}</span><span className="absolute top-0 bottom-0 right-0 px-4 py-3" onClick={() => setError("")}><svg className="fill-current h-6 w-6 text-red-500" role="button" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><title>Close</title><path d="M14.348 14.849a1.2 1.2 0 0 1-1.697 0L10 11.819l-2.651 3.029a1.2 1.2 0 1 1-1.697-1.697l2.758-3.15-2.759-3.152a1.2 1.2 0 1 1 1.697-1.697L10 8.183l2.651-3.031a1.2 1.2 0 1 1 1.697 1.697l-2.758 3.152 2.758 3.15a1.2 1.2 0 0 1 0 1.698z" /></svg></span></div>)}
+      <div className="max-w-7xl mx-auto">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6"> <h1 className="text-3xl font-bold">FX Trading</h1> <button onClick={() => router.push("/trading/advancedFilter")} className="mt-2 md:mt-0 px-4 py-2 bg-[var(--primary)] text-white font-semibold rounded-md hover:bg-[var(--primary-focus)] transition-colors">Advanced Filter & Insights</button> </div>
+        <div className="bg-[var(--background-2)] p-4 rounded-lg shadow mb-6"> <h2 className="text-xl font-semibold mb-4">FX Accounts</h2> {accounts.length === 0 ? (<p className="text-sm text-[var(--text-muted)]">No FX accounts found.</p>) : (<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">{accounts.map((ac) => (<button key={ac.id} onClick={() => setSelectedAccountId(ac.id)} className={`p-4 border rounded-xl text-left transition-all duration-200 ease-in-out transform hover:shadow-lg focus:outline-none focus:ring-2 ${ac.id === selectedAccountId ? "bg-[var(--primary)] text-white shadow-xl ring-2 ring-offset-2 ring-[var(--primary-focus)]" : "bg-[var(--background)] hover:bg-[var(--background-hover)] border-[var(--border)]"}`}><div className="flex justify-between items-center"><div className="font-semibold text-lg">{ac.name}</div>{ac.id === selectedAccountId && <span className="text-xs bg-white/30 px-2 py-0.5 rounded-full font-medium">Active</span>}</div><div className={`text-base mt-1 ${ac.id === selectedAccountId ? 'opacity-90' : 'text-[var(--text-muted)]'}`}>{formatCurrencyWithCommas(ac.balance, ac.currency === "USD" ? "$" : ac.currency + " ")}</div></button>))}</div>)}</div>
         <div className="bg-[var(--background-2)] p-4 rounded-lg shadow">
-          {selectedAccountId ? (
-            <>
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4">
-                <h2 className="text-xl font-semibold mb-2 sm:mb-0">Trades for {currentAccount?.name}</h2>
-                <div className="flex items-center gap-3">
-                  <select
-                    value={pageSize}
-                    onChange={(e) => setPageSize(Number(e.target.value))}
-                    className="input text-sm" // Reusing .input style from AdvFilter
-                  >
-                    <option value={5}>5 per page</option>
-                    <option value={10}>10 per page</option>
-                    <option value={20}>20 per page</option>
-                    <option value={50}>50 per page</option>
-                  </select>
-                  <button
-                    onClick={() => { setShowNewTrade((v) => !v); setError(""); }}
-                    className="px-4 py-2 bg-[var(--primary)] text-white rounded-md hover:bg-[var(--primary-focus)] transition-colors text-sm font-medium"
-                  >
-                    {showNewTrade ? "Close Form" : "+ New Trade"}
-                  </button>
-                </div>
+          {selectedAccountId ? (<>
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4">
+              <h2 className="text-xl font-semibold mb-2 sm:mb-0">Trades for {currentAccount?.name}</h2>
+              <div className="flex items-center gap-3"> <select value={pageSize} onChange={(e) => setPageSize(Number(e.target.value))} className="input text-sm py-1"><option value={5}>5</option><option value={10}>10</option><option value={20}>20</option><option value={50}>50</option></select><button onClick={() => { setShowNewTrade((v) => !v); setError(""); }} className="px-4 py-2 bg-[var(--primary)] text-white rounded-md hover:bg-[var(--primary-focus)] transition-colors text-sm font-medium">{showNewTrade ? "Close Form" : "+ New Trade"}</button> </div>
+            </div>
+            {selectedAccountStats && trades.length > 0 && (
+              <div className="mb-4 p-3 bg-[var(--background)] rounded-lg shadow-sm border border-[var(--border)]">
+                <h3 className="text-md font-semibold mb-1">Summary for Loaded Trades ({selectedAccountStats.tradeCount})</h3>
+                <p className="text-sm">Total P&L: <span className={selectedAccountStats.totalPL >= 0 ? 'text-green-600 font-medium' : 'text-red-600 font-medium'}>{formatCurrencyWithCommas(selectedAccountStats.totalPL)}</span></p>
               </div>
-
-              {showNewTrade && (
-                <div className="border border-[var(--border)] bg-[var(--background)] p-4 rounded-lg mb-6 mt-4">
-                  <h3 className="text-lg font-semibold mb-4">Log New FX Trade</h3>
-                  <form onSubmit={handleCreateTrade} className="space-y-4">
-                    {/* Simplified form structure for brevity, maintain your detailed fields */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label className="block font-medium text-sm mb-1">Instrument</label>
-                            <select className="input w-full" value={formInstrument} onChange={(e) => setFormInstrument(e.target.value)} required>
-                                <option value="">Select instrument</option>
-                                {instruments.map((inst) => (<option key={inst} value={inst}>{inst}</option>))}
-                            </select>
-                        </div>
-                        <div>
-                            <label className="block font-medium text-sm mb-1">Direction</label>
-                            <select className="input w-full" value={formDirection} onChange={(e) => setFormDirection(e.target.value as "LONG" | "SHORT")}>
-                                <option value="LONG">Long</option><option value="SHORT">Short</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label className="block font-medium text-sm mb-1">Fees ($)</label>
-                            <input type="text" placeholder="e.g., 5.50" className="input w-full" value={formFees} onChange={(e) => setFormFees(e.target.value)} />
-                        </div>
-                        <div>
-                            <label className="block font-medium text-sm mb-1">Date/Time (Your Local)</label>
-                            <input type="datetime-local" step="1" className="input w-full" value={formDate} onChange={(e) => setFormDate(e.target.value)} />
-                        </div>
-                    </div>
-                    <div>
-                        <label className="block font-medium text-sm mb-1">Pattern (Optional)</label>
-                        <select className="input w-full" value={formPattern} onChange={(e) => setFormPattern(e.target.value)}>
-                            <option value="">(none)</option>
-                            {patterns.map((pat) => (<option key={pat} value={pat}>{pat}</option>))}
-                        </select>
-                    </div>
-
-                    <div className="border border-[var(--border)] bg-[var(--background-2)] p-3 rounded-lg mt-3">
-                      <div className="flex justify-between items-center mb-2">
-                        <h4 className="font-medium text-sm">FX Gains & Details</h4>
-                        <button type="button" onClick={() => setShowFxAdvanced((v) => !v)} className="text-sm text-blue-600 hover:text-blue-500">
-                          {showFxAdvanced ? "Hide Advanced Fields" : "Show Advanced Fields"}
-                        </button>
-                      </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-sm mb-1">Amount Gain ($)</label>
-                          <input type="text" placeholder="e.g., 150.75" className="input w-full" value={fxAmountGain} onChange={(e) => setFxAmountGain(e.target.value)} />
-                        </div>
-                        <div>
-                          <label className="block text-sm mb-1">% Gain on Trade</label>
-                          <input type="text" placeholder="e.g., 2.5 for 2.5%" className="input w-full" value={fxPercentageGain} onChange={(e) => setFxPercentageGain(e.target.value)} />
-                        </div>
-                      </div>
-                      {showFxAdvanced && (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-3 pt-3 border-t border-[var(--border)]">
-                          <div><label className="block text-sm mb-1">Lots</label><input type="text" placeholder="e.g., 0.01" className="input w-full" value={fxLots} onChange={(e) => setFxLots(e.target.value)} /></div>
-                          <div><label className="block text-sm mb-1">Entry Price</label><input type="text" placeholder="e.g., 1.23456" className="input w-full" value={fxEntryPrice} onChange={(e) => setFxEntryPrice(e.target.value)} /></div>
-                          <div><label className="block text-sm mb-1">Exit Price</label><input type="text" className="input w-full" value={fxExitPrice} onChange={(e) => setFxExitPrice(e.target.value)} /></div>
-                          <div><label className="block text-sm mb-1">Stop-Loss (pips)</label><input type="text" className="input w-full" value={fxStopLossPips} onChange={(e) => setFxStopLossPips(e.target.value)} /></div>
-                          <div><label className="block text-sm mb-1">Pips Gain</label><input type="text" className="input w-full" value={fxPipsGain} onChange={(e) => setFxPipsGain(e.target.value)} /></div>
-                        </div>
-                      )}
-                    </div>
-                    <button type="submit" className="w-full py-2.5 bg-[var(--primary)] text-white rounded-md hover:bg-[var(--primary-focus)] font-semibold transition-colors">
-                      Create Trade
-                    </button>
-                  </form>
-                </div>
-              )}
-
-              {trades.length === 0 ? (
-                <p className="py-4 text-center text-[var(--text-muted)]">No trades found for this account.</p>
-              ) : (
-                <div className="overflow-x-auto mt-4">
-                  <table className="w-full border-collapse">
-                    <thead className="bg-[var(--background-2)]">
-                      <tr>
-                        <th className="p-3 text-left text-sm font-semibold border-b border-[var(--border)]">Date/Time (Beirut)</th>
-                        <th className="p-3 text-left text-sm font-semibold border-b border-[var(--border)]">Instrument</th>
-                        <th className="p-3 text-left text-sm font-semibold border-b border-[var(--border)]">Direction</th>
-                        <th className="p-3 text-right text-sm font-semibold border-b border-[var(--border)]">Fees</th>
-                        <th className="p-3 text-right text-sm font-semibold border-b border-[var(--border)]">Gain (% / $)</th>
-                        <th className="p-3 text-right text-sm font-semibold border-b border-[var(--border)]">Pre-Trade Bal.</th>
-                        <th className="p-3 text-right text-sm font-semibold border-b border-[var(--border)]">Post-Trade Bal.</th>
-                        <th className="p-3 text-left text-sm font-semibold border-b border-[var(--border)]">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>{renderTradeRows}</tbody>
-                  </table>
-                </div>
-              )}
-            </>
-          ) : (
-            <p className="py-4 text-center text-[var(--text-muted)]">Please select an account to view trades.</p>
-          )}
+            )}
+            {showNewTrade && ( /* ... (New Trade Form - same structure as before) ... */ <div className="border border-[var(--border)] bg-[var(--background)] p-4 rounded-lg mb-6 mt-4"><h3 className="text-lg font-semibold mb-4">Log New FX Trade</h3><form onSubmit={handleCreateTrade} className="space-y-4"><div className="grid grid-cols-1 md:grid-cols-2 gap-4"><div><label className="block font-medium text-sm mb-1">Instrument</label><select className="input w-full" value={formInstrument} onChange={(e) => setFormInstrument(e.target.value)} required><option value="">Select instrument</option>{instruments.map((inst) => (<option key={inst} value={inst}>{inst}</option>))}</select></div><div><label className="block font-medium text-sm mb-1">Direction</label><select className="input w-full" value={formDirection} onChange={(e) => setFormDirection(e.target.value as "LONG" | "SHORT")}><option value="LONG">Long</option><option value="SHORT">Short</option></select></div></div><div className="grid grid-cols-1 md:grid-cols-2 gap-4"><div><label className="block font-medium text-sm mb-1">Fees ($)</label><input type="text" placeholder="e.g., 5.50" className="input w-full" value={formFees} onChange={(e) => setFormFees(e.target.value)} /></div><div><label className="block font-medium text-sm mb-1">Date/Time (Your Local)</label><input type="datetime-local" step="1" className="input w-full" value={formDate} onChange={(e) => setFormDate(e.target.value)} /></div></div><div><label className="block font-medium text-sm mb-1">Pattern (Optional)</label><select className="input w-full" value={formPattern} onChange={(e) => setFormPattern(e.target.value)}><option value="">(none)</option>{patterns.map((pat) => (<option key={pat} value={pat}>{pat}</option>))}</select></div><div className="border border-[var(--border)] bg-[var(--background-2)] p-3 rounded-lg mt-3"><div className="flex justify-between items-center mb-2"><h4 className="font-medium text-sm">FX Gains & Details</h4><button type="button" onClick={() => setShowFxAdvanced((v) => !v)} className="text-sm text-blue-600 hover:text-blue-500">{showFxAdvanced ? "Hide Advanced Fields" : "Show Advanced Fields"}</button></div><div className="grid grid-cols-1 md:grid-cols-2 gap-4"><div><label className="block text-sm mb-1">Amount Gain ($)</label><input type="text" placeholder="e.g., 150.75" className="input w-full" value={fxAmountGain} onChange={(e) => setFxAmountGain(e.target.value)} /></div><div><label className="block text-sm mb-1">% Gain on Trade</label><input type="text" placeholder="e.g., 2.5 for 2.5%" className="input w-full" value={fxPercentageGain} onChange={(e) => setFxPercentageGain(e.target.value)} /></div></div>{showFxAdvanced && (<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-3 pt-3 border-t border-[var(--border)]"><div><label className="block text-sm mb-1">Lots</label><input type="text" placeholder="e.g., 0.01" className="input w-full" value={fxLots} onChange={(e) => setFxLots(e.target.value)} /></div><div><label className="block text-sm mb-1">Entry Price</label><input type="text" placeholder="e.g., 1.23456" className="input w-full" value={fxEntryPrice} onChange={(e) => setFxEntryPrice(e.target.value)} /></div><div><label className="block text-sm mb-1">Exit Price</label><input type="text" className="input w-full" value={fxExitPrice} onChange={(e) => setFxExitPrice(e.target.value)} /></div><div><label className="block text-sm mb-1">Stop-Loss (pips)</label><input type="text" className="input w-full" value={fxStopLossPips} onChange={(e) => setFxStopLossPips(e.target.value)} /></div><div><label className="block text-sm mb-1">Pips Gain</label><input type="text" className="input w-full" value={fxPipsGain} onChange={(e) => setFxPipsGain(e.target.value)} /></div></div>)}</div><button type="submit" className="w-full py-2.5 bg-[var(--primary)] text-white rounded-md hover:bg-[var(--primary-focus)] font-semibold transition-colors">Create Trade</button></form></div>)}
+            {trades.length === 0 ? (<p className="py-4 text-center text-[var(--text-muted)]">No trades found for this account.</p>) : (<div className="overflow-x-auto mt-4"><table className="w-full border-collapse"><thead className="bg-[var(--background-2)]"><tr><th className="p-3 text-left text-sm font-semibold border-b border-[var(--border)]">Date/Time (Beirut)</th><th className="p-3 text-left text-sm font-semibold border-b border-[var(--border)]">Instrument</th><th className="p-3 text-left text-sm font-semibold border-b border-[var(--border)]">Direction</th><th className="p-3 text-right text-sm font-semibold border-b border-[var(--border)]">Fees</th><th className="p-3 text-right text-sm font-semibold border-b border-[var(--border)]">Gain (% / $)</th><th className="p-3 text-right text-sm font-semibold border-b border-[var(--border)]">Pre-Trade Bal.</th><th className="p-3 text-right text-sm font-semibold border-b border-[var(--border)]">Post-Trade Bal.</th><th className="p-3 text-left text-sm font-semibold border-b border-[var(--border)]">Actions</th></tr></thead><tbody>{renderTradeRows}</tbody></table></div>)}
+          </>) : (<p className="py-4 text-center text-[var(--text-muted)]">Please select an account to view trades.</p>)}
         </div>
       </div>
-
-      {showEditModal && editTrade.id && (
-         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-            <div className="bg-[var(--background-2)] rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-                <div className="p-6">
-                    <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-xl font-semibold">Edit Trade #{editTrade.id}</h3>
-                        <button onClick={() => setShowEditModal(false)} className="text-2xl text-[var(--text-muted)] hover:text-[var(--text)]">&times;</button>
-                    </div>
-                    <form onSubmit={handleEditTradeSubmit} className="space-y-4">
-                        {/* Simplified form structure for brevity, maintain your detailed fields from New Trade form */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label className="block font-medium text-sm mb-1">Instrument</label>
-                                <select className="input w-full" value={editTrade.instrument || ""} onChange={(e) => setEditTrade(prev => ({ ...prev, instrument: e.target.value }))} required>
-                                    <option value="">Select instrument</option>
-                                    {instruments.map(inst => (<option key={inst} value={inst}>{inst}</option>))}
-                                </select>
-                            </div>
-                            <div>
-                                <label className="block font-medium text-sm mb-1">Direction</label>
-                                <select className="input w-full" value={editTrade.tradeDirection || "LONG"} onChange={(e) => setEditTrade((prev) => ({...prev, tradeDirection: e.target.value as "LONG" | "SHORT"}))}>
-                                    <option value="LONG">Long</option><option value="SHORT">Short</option>
-                                </select>
-                            </div>
-                        </div>
-                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label className="block font-medium text-sm mb-1">Fees ($)</label>
-                                <input type="text" className="input w-full" value={String(editTrade.fees ?? "")} onChange={(e) => setEditTrade((prev) => ({...prev, fees: parseFloat(e.target.value) || 0}))} />
-                            </div>
-                            <div>
-                                <label className="block font-medium text-sm mb-1">Date/Time (Your Local)</label>
-                                <input type="datetime-local" className="input w-full" value={editTrade.entryDate ? toLocalInputValue(editTrade.entryDate) : ""} onChange={(e) => setEditTrade((prev) => ({ ...prev, entryDate: e.target.value }))} />
-                            </div>
-                        </div>
-                        <div>
-                            <label className="block font-medium text-sm mb-1">Pattern</label>
-                            <select className="input w-full" value={editTrade.pattern || ""} onChange={(e) => setEditTrade((prev) => ({ ...prev, pattern: e.target.value }))}>
-                                <option value="">(none)</option>
-                                {patterns.map((pat) => (<option key={pat} value={pat}>{pat}</option>))}
-                            </select>
-                        </div>
-                        
-                        <div className="border border-[var(--border)] bg-[var(--background)] p-3 rounded-lg mt-3">
-                            <div className="flex justify-between items-center mb-2">
-                                <h4 className="font-medium text-sm">FX Gains & Details</h4>
-                                <button type="button" onClick={() => setShowEditFxAdvanced((v) => !v)} className="text-sm text-blue-600 hover:text-blue-500">
-                                {showEditFxAdvanced ? "Hide Advanced" : "Show Advanced"}
-                                </button>
-                            </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div><label className="block text-sm mb-1">Amount Gain ($)</label><input type="text" className="input w-full" value={editFxAmount} onChange={(e) => setEditFxAmount(e.target.value)} /></div>
-                                <div><label className="block text-sm mb-1">% Gain on Trade</label><input type="text" className="input w-full" value={editFxPercent} onChange={(e) => setEditFxPercent(e.target.value)} /></div>
-                            </div>
-                            {showEditFxAdvanced && (
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-3 pt-3 border-t border-[var(--border)]">
-                                <div><label className="block text-sm mb-1">Lots</label><input type="text" className="input w-full" value={editFxLots} onChange={(e) => setEditFxLots(e.target.value)} /></div>
-                                <div><label className="block text-sm mb-1">Entry Price</label><input type="text" className="input w-full" value={editFxEntry} onChange={(e) => setEditFxEntry(e.target.value)} /></div>
-                                <div><label className="block text-sm mb-1">Exit Price</label><input type="text" className="input w-full" value={editFxExit} onChange={(e) => setEditFxExit(e.target.value)} /></div>
-                                <div><label className="block text-sm mb-1">Stop-Loss (pips)</label><input type="text" className="input w-full" value={editFxSL} onChange={(e) => setEditFxSL(e.target.value)} /></div>
-                                <div><label className="block text-sm mb-1">Pips Gain</label><input type="text" className="input w-full" value={editFxPipsGain} onChange={(e) => setEditFxPipsGain(e.target.value)} /></div>
-                                </div>
-                            )}
-                        </div>
-                        <div className="flex justify-end gap-3 pt-4">
-                            <button type="button" onClick={() => setShowEditModal(false)} className="px-4 py-2 border border-[var(--border)] rounded-md hover:bg-[var(--background)]">Cancel</button>
-                            <button type="submit" className="px-4 py-2 bg-[var(--primary)] text-white rounded-md hover:bg-[var(--primary-focus)]">Save Changes</button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </div>
-      )}
-      {/* Add the same CSS as AdvFilter or ensure styles are global/shared */}
-      <style jsx>{`
-        .input { /* Basic input style, ensure it matches AdvFilter or is globally defined */
-          padding: 0.45rem;
-          border-radius: 0.25rem;
-          background: var(--background);
-          border: 1px solid var(--border);
-          color: var(--text);
-        }
-        .input::placeholder {
-            color: var(--text-muted);
-            opacity: 0.7;
-        }
-        /* Other styles like .btn, .btn-sm can be shared if you have a global CSS file */
-      `}</style>
+      {showEditModal && editTrade.id && ( /* ... (Edit Trade Modal - same structure as before) ... */ <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm"><div className="bg-[var(--background-2)] rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto"><div className="p-6"><div className="flex justify-between items-center mb-4"><h3 className="text-xl font-semibold">Edit Trade #{editTrade.id}</h3><button onClick={() => setShowEditModal(false)} className="text-2xl text-[var(--text-muted)] hover:text-[var(--text)]">&times;</button></div><form onSubmit={handleEditTradeSubmit} className="space-y-4"><div className="grid grid-cols-1 md:grid-cols-2 gap-4"><div><label className="block font-medium text-sm mb-1">Instrument</label><select className="input w-full" value={editTrade.instrument || ""} onChange={(e) => setEditTrade(prev => ({ ...prev, instrument: e.target.value }))} required><option value="">Select instrument</option>{instruments.map(inst => (<option key={inst} value={inst}>{inst}</option>))}</select></div><div><label className="block font-medium text-sm mb-1">Direction</label><select className="input w-full" value={editTrade.tradeDirection || "LONG"} onChange={(e) => setEditTrade((prev) => ({ ...prev, tradeDirection: e.target.value as "LONG" | "SHORT" }))}><option value="LONG">Long</option><option value="SHORT">Short</option></select></div></div><div className="grid grid-cols-1 md:grid-cols-2 gap-4"><div><label className="block font-medium text-sm mb-1">Fees ($)</label><input type="text" className="input w-full" value={String(editTrade.fees ?? "")} onChange={(e) => setEditTrade((prev) => ({ ...prev, fees: parseFloat(e.target.value) || 0 }))} /></div><div><label className="block font-medium text-sm mb-1">Date/Time (Your Local)</label><input type="datetime-local" className="input w-full" value={editTrade.entryDate ? toLocalInputValue(editTrade.entryDate) : ""} onChange={(e) => setEditTrade((prev) => ({ ...prev, entryDate: e.target.value }))} /></div></div><div><label className="block font-medium text-sm mb-1">Pattern</label><select className="input w-full" value={editTrade.pattern || ""} onChange={(e) => setEditTrade((prev) => ({ ...prev, pattern: e.target.value }))}><option value="">(none)</option>{patterns.map((pat) => (<option key={pat} value={pat}>{pat}</option>))}</select></div><div className="border border-[var(--border)] bg-[var(--background)] p-3 rounded-lg mt-3"><div className="flex justify-between items-center mb-2"><h4 className="font-medium text-sm">FX Gains & Details</h4><button type="button" onClick={() => setShowEditFxAdvanced((v) => !v)} className="text-sm text-blue-600 hover:text-blue-500">{showEditFxAdvanced ? "Hide Advanced" : "Show Advanced"}</button></div><div className="grid grid-cols-1 md:grid-cols-2 gap-4"><div><label className="block text-sm mb-1">Amount Gain ($)</label><input type="text" className="input w-full" value={editFxAmount} onChange={(e) => setEditFxAmount(e.target.value)} /></div><div><label className="block text-sm mb-1">% Gain on Trade</label><input type="text" className="input w-full" value={editFxPercent} onChange={(e) => setEditFxPercent(e.target.value)} /></div></div>{showEditFxAdvanced && (<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-3 pt-3 border-t border-[var(--border)]"><div><label className="block text-sm mb-1">Lots</label><input type="text" className="input w-full" value={editFxLots} onChange={(e) => setEditFxLots(e.target.value)} /></div><div><label className="block text-sm mb-1">Entry Price</label><input type="text" className="input w-full" value={editFxEntry} onChange={(e) => setEditFxEntry(e.target.value)} /></div><div><label className="block text-sm mb-1">Exit Price</label><input type="text" className="input w-full" value={editFxExit} onChange={(e) => setEditFxExit(e.target.value)} /></div><div><label className="block text-sm mb-1">Stop-Loss (pips)</label><input type="text" className="input w-full" value={editFxSL} onChange={(e) => setEditFxSL(e.target.value)} /></div><div><label className="block text-sm mb-1">Pips Gain</label><input type="text" className="input w-full" value={editFxPipsGain} onChange={(e) => setEditFxPipsGain(e.target.value)} /></div></div>)}</div><div className="flex justify-end gap-3 pt-4"><button type="button" onClick={() => setShowEditModal(false)} className="px-4 py-2 border border-[var(--border)] rounded-md hover:bg-[var(--background)]">Cancel</button><button type="submit" className="px-4 py-2 bg-[var(--primary)] text-white rounded-md hover:bg-[var(--primary-focus)]">Save Changes</button></div></form></div></div></div>)}
+      <style jsx>{`.input { padding: 0.45rem; border-radius: 0.25rem; background: var(--background); border: 1px solid var(--border); color: var(--text); } .input::placeholder { color: var(--text-muted); opacity: 0.7; }`}</style>
     </div>
   );
 }
