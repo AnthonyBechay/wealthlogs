@@ -1,5 +1,6 @@
 /***************************  recalc.helper.js  ***************************/
 const { prisma } = require('../../lib/prisma');
+const { redisClient } = require('../../lib/redis');
 
 /**
  * Rebuilds every balance after `afterDate` (or from day one if omitted).
@@ -107,6 +108,16 @@ async function recalcAccountBalance(accountId, { afterDate = null } = {}) {
     );
 
     await Promise.all(jobs);
+
+    try {
+      const cacheKey = `networth-summary:${accountId}`;
+      await redisClient.del(cacheKey);
+      console.log(`[Cache Invalidation] Cleared networth summary for user ${accountId}`);
+    } catch (cacheErr) {
+      // Log the error, but don't let cache invalidation failure break the main function
+      console.error(`[Cache Invalidation Error] Failed to clear networth summary for user ${accountId}:`, cacheErr);
+    }
+
     return running;
   });
 }

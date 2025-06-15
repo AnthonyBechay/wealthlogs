@@ -5,6 +5,7 @@ const express      = require("express");
 const router       = express.Router();
 const { prisma }   = require("../../lib/prisma");
 const { authenticate } = require("../../middleware/authenticate");
+const { redisClient } = require('../../lib/redis'); // Adjust path if necessary
 
 // ───────────────────────────────────────────────
 // helper: convert ?range= query to a JS Date
@@ -81,9 +82,22 @@ router.get("/networth", authenticate, async (req, res) => {
   Net‑worth summary buckets (FX, Liquid, …)
 ───────────────────────────────────────────────*/
 router.get("/networth/summary", authenticate, async (req, res) => {
+  const userId = req.user.userId;
+  const cacheKey = `networth-summary:${userId}`;
+  const CACHE_TTL_SECONDS = 15 * 60; // 15 minutes, adjust as needed
+
   try {
+    // 1. Try to get data from cache
+    const cachedData = await redisClient.get(cacheKey);
+    if (cachedData) {
+      console.log(`[Cache HIT] Networth summary for user ${userId}`);
+      return res.json(JSON.parse(cachedData));
+    }
+
+    console.log(`[Cache MISS] Networth summary for user ${userId}. Fetching from DB.`);
+    // 2. If cache miss, fetch from DB
     const accounts = await prisma.financialAccount.findMany({
-      where : { userId: req.user.userId, active: true },
+      where : { userId: userId, active: true }, // Ensure userId is correctly used
       select: {
         balance: true,
         accountType: true,
@@ -98,9 +112,16 @@ router.get("/networth/summary", authenticate, async (req, res) => {
     const global   = accounts.reduce((s, a) => s + a.balance, 0);
     const illiquid = global - liquid;
 
-    res.json({ fx, liquid, illiquid, global });
+    const summaryData = { fx, liquid, illiquid, global };
+
+    // 3. Store in cache
+    // Use 'EX' for seconds. SETEX automatically sets with expiry.
+    await redisClient.setex(cacheKey, CACHE_TTL_SECONDS, JSON.stringify(summaryData));
+
+    res.json(summaryData);
   } catch (e) {
     console.error("Net‑worth summary error:", e);
+    // Avoid caching errors
     res.status(500).json({ error: "Failed to compute net‑worth summary" });
   }
 });
