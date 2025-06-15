@@ -1,16 +1,12 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { useRouter } from "next/router";
 import { api } from "@wealthlog/common";
+import { type StatusChangeReason, type LoadingState, type TransactionTypeValue, type FinancialAccount } from '@wealthlog/common/types';
 
-interface FinancialAccount {
-  id: number;
-  name: string;
-  accountType: string;
-  balance: number;
-  currency: string;
-  active: boolean;
-}
-
+// Local FinancialAccount and AccountWithHistory are removed.
+// StatusChange remains local as AccountStatusHistoryItem is a placeholder in common/types.ts for now.
+// If StatusChange were to be shared, AccountStatusHistoryItem in common/types.ts would need to be fully defined
+// to match this StatusChange interface, and then StatusChange could also be imported.
 interface StatusChange {
   id: number;
   accountId: number;
@@ -20,11 +16,6 @@ interface StatusChange {
   comment?: string;
   changedAt: string;
   changedBy?: string;
-}
-
-interface AccountWithHistory extends FinancialAccount {
-  statusHistory?: StatusChange[];
-  lastStatusChange?: string;
 }
 
 interface Transaction {
@@ -40,15 +31,8 @@ interface Transaction {
   toAccount?: { name: string };
 }
 
-type TransactionType = "DEPOSIT" | "WITHDRAW" | "TRANSFER";
-type LoadingState = "idle" | "loading" | "error" | "success";
-type StatusChangeReason = 
-  | "ACCOUNT_CLOSED" 
-  | "MAINTENANCE" 
-  | "SUSPENDED" 
-  | "REACTIVATED" 
-  | "ARCHIVED" 
-  | "MANUAL";
+// Keep a more specific type for the form if needed, derived from the common type
+type FormTransactionType = Extract<TransactionTypeValue, "DEPOSIT" | "WITHDRAW" | "TRANSFER">;
 
 interface FormErrors {
   [key: string]: string;
@@ -58,16 +42,16 @@ export default function AccountsPage() {
   const router = useRouter();
   
   // State management
-  const [accounts, setAccounts] = useState<AccountWithHistory[]>([]);
+  const [accounts, setAccounts] = useState<FinancialAccount[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [statusHistory, setStatusHistory] = useState<StatusChange[]>([]);
+  const [statusHistory, setStatusHistory] = useState<StatusChange[]>([]); // StatusChange is still local
   const [selectedAccountId, setSelectedAccountId] = useState<number | "ALL">("ALL");
   const [loadingState, setLoadingState] = useState<LoadingState>("loading");
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   // Status management
   const [showStatusModal, setShowStatusModal] = useState(false);
-  const [selectedAccountForStatus, setSelectedAccountForStatus] = useState<AccountWithHistory | null>(null);
+  const [selectedAccountForStatus, setSelectedAccountForStatus] = useState<FinancialAccount | null>(null);
   const [statusChangeReason, setStatusChangeReason] = useState<StatusChangeReason>("MANUAL");
   const [statusChangeComment, setStatusChangeComment] = useState("");
 
@@ -78,7 +62,7 @@ export default function AccountsPage() {
   const [accountFormErrors, setAccountFormErrors] = useState<FormErrors>({});
 
   // Transaction form state
-  const [txType, setTxType] = useState<TransactionType>("DEPOSIT");
+  const [txType, setTxType] = useState<FormTransactionType>("DEPOSIT");
   const [txAmount, setTxAmount] = useState("");
   const [txDate, setTxDate] = useState(() => new Date().toISOString().slice(0,16));
   const [txFromId, setTxFromId] = useState<number|null>(null);
@@ -123,7 +107,7 @@ export default function AccountsPage() {
       
       // Load essential data in parallel
       const [accountsRes, transactionsRes] = await Promise.all([
-        api.get<AccountWithHistory[]>("/account"),
+        api.get<FinancialAccount[]>("/account"),
         api.get<Transaction[]>("/transactions")
       ]);
 
@@ -152,7 +136,7 @@ export default function AccountsPage() {
 
   const loadAccounts = useCallback(async () => {
     try {
-      const res = await api.get<AccountWithHistory[]>("/account");
+      const res = await api.get<FinancialAccount[]>("/account");
       setAccounts(res.data || []);
     } catch (error) {
       console.error("Failed to load accounts:", error);
@@ -246,7 +230,7 @@ export default function AccountsPage() {
   };
 
   // Status management functions
-  const validateStatusChange = (account: AccountWithHistory, newStatus: boolean): string[] => {
+  const validateStatusChange = (account: FinancialAccount, newStatus: boolean): string[] => {
     const errors: string[] = [];
     
     // Rule: Cannot deactivate account with non-zero balance
@@ -267,12 +251,12 @@ export default function AccountsPage() {
     return errors;
   };
 
-  const openStatusModal = (account: AccountWithHistory) => {
+  const openStatusModal = (account: FinancialAccount) => {
     setSelectedAccountForStatus(account);
     setShowStatusModal(true);
   };
 
-  const handleStatusChange = async (account: AccountWithHistory, newStatus: boolean, reason: StatusChangeReason, comment?: string) => {
+  const handleStatusChange = async (account: FinancialAccount, newStatus: boolean, reason: StatusChangeReason, comment?: string) => {
     const validationErrors = validateStatusChange(account, newStatus);
     
     if (validationErrors.length > 0) {
@@ -718,7 +702,7 @@ export default function AccountsPage() {
                 <select 
                   value={txType} 
                   onChange={e => {
-                    setTxType(e.target.value as TransactionType);
+                    setTxType(e.target.value as FormTransactionType);
                     setTransactionFormErrors({});
                   }}
                   className="w-full border rounded p-2"

@@ -186,6 +186,8 @@ model Label {
   expenseLabels              ExpenseLabel[]
   realEstateInvestmentLabels RealEstateInvestmentLabel[]
   TradeMedia                 TradeMedia[]
+
+  @@index([userId, name])
 }
 
 model ExpenseCategory {
@@ -250,6 +252,12 @@ model FinancialAccount {
   tags                  Tag[]                  @relation("AccountTags")
   balanceHistory        BalanceHistory[]
   statusHistory         StatusHistory[]      
+
+  @@index([userId])
+  @@index([active])
+  @@index([createdAt])
+  @@index([userId, active])
+  @@index([userId, createdAt])
 }
 
 
@@ -281,6 +289,12 @@ model Trade {
   media          TradeMedia[]
 
   @@index([entryDate])
+  @@index([accountId])
+  @@index([tradeType])
+  @@index([instrumentId])
+  @@index([patternId])
+  @@index([accountId, entryDate])
+  @@index([accountId, tradeType, entryDate])
 }
 
 /// Specialized trades
@@ -357,6 +371,8 @@ model Transaction {
   @@index([fromAccountId])
   @@index([toAccountId])
   @@index([dateTime])
+  @@index([fromAccountId, dateTime])
+  @@index([toAccountId, dateTime])
 }
 
 model BalanceHistory {
@@ -605,6 +621,9 @@ model Expense {
   expenseLabels          ExpenseLabel[]
 
   @@index([date])
+  @@index([userId])
+  @@index([expenseCategoryId])
+  @@index([userId, date])
 }
 
 model ProjectedEntry {
@@ -753,6 +772,9 @@ model TradeMedia {
   description String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @default(now())
+
+  @@index([tradeId])
+  @@index([labelId])
 }
 
 model StatusHistory {
@@ -768,5 +790,8 @@ model StatusHistory {
   // Relation
   account FinancialAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
 
+  @@index([accountId])
+  @@index([changedAt])
+  @@index([accountId, changedAt])
   @@map("status_history")
 }

@@ -2,12 +2,13 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import { api } from "@wealthlog/common";
+import { type FinancialAccount } from '@wealthlog/common/types';
 
 const formatToBeirutTime = (dateStringOrObject: string | Date | null | undefined, options?: Intl.DateTimeFormatOptions): string => { /* ... (same as in AdvFilter) ... */ if (!dateStringOrObject) return "N/A"; try { const date = new Date(dateStringOrObject); const defaultOptions: Intl.DateTimeFormatOptions = { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Beirut', hour12: true }; return date.toLocaleString('en-GB', { ...defaultOptions, ...options }); } catch (e) { return "Invalid Date"; } };
 const formatCurrencyWithCommas = (value: number | null | undefined, currencySymbol = "$") => { if (value == null) return "-"; return `${value < 0 ? "-" : ""}${currencySymbol}${Math.abs(value).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`; };
 const formatPercentage = (value: number | null | undefined, decimals = 1): string => { if (value == null) return "- %"; return `${value.toFixed(decimals)}%`; };
 
-interface FinancialAccount { id: number; userId: number; name: string; accountType: string; balance: number; currency: string; initialBalance?: number; }
+// Local FinancialAccount interface removed
 interface FxTrade { amountGain?: number | null; percentageGain?: number | null; lots?: number | null; entryPrice?: number | null; exitPrice?: number | null; stopLossPips?: number | null; pipsGain?: number | null; source?: string | null; }
 interface MediaLabel { id: number; name: string; }
 interface TradeMedia { id: number; imageUrl: string; description?: string | null; label?: MediaLabel | null; }
