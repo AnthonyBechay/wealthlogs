@@ -1,5 +1,6 @@
 // wealthlog/apps/backend/src/lib/redis.js
 const IORedis = require('ioredis');
+const logger = require('./logger'); // Import Winston logger
 
 const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
 
@@ -15,11 +16,11 @@ const redisOptions = {
 const redisClient = new IORedis(redisUrl, redisOptions);
 
 redisClient.on('connect', () => {
-  console.log('Successfully connected to Redis.');
+  logger.info('Successfully connected to Redis.');
 });
 
 redisClient.on('error', (err) => {
-  console.error('Redis connection error:', err);
+  logger.error('Redis connection error:', { message: err.message, stack: err.stack });
 });
 
 module.exports = { redisClient };

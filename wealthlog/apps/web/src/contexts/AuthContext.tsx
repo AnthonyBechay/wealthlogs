@@ -1,15 +1,10 @@
 // apps/web/src/contexts/AuthContext.tsx
 import { createContext, useContext, useEffect, useState } from 'react'
-import { api, setAccessToken } from '@wealthlog/common'
-
-interface User {
-  id: number
-  username: string
-  // …add whatever user fields you expose from /auth/me
-}
+import { useRouter } from 'next/router'
+import { api, setAccessToken, SharedUser } from '@wealthlog/common'
 
 interface AuthCtx {
-  user: User | null
+  user: SharedUser | null
   loading: boolean
   refresh: () => Promise<void>
   logout: () => Promise<void>
@@ -23,13 +18,30 @@ const AuthContext = createContext<AuthCtx>({
 })
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null)
+  const [user, setUser] = useState<SharedUser | null>(null)
   const [loading, setLoading] = useState(true)
+  const router = useRouter()
 
   /* hit /auth/me once when the app mounts */
   useEffect(() => {
     refresh()
-  }, [])
+
+    const interceptor = api.interceptors.response.use(
+      (response) => response,
+      (error) => {
+        if (error.response?.status === 401) {
+          logout() // Clear user state and token
+          router.push('/login')
+        }
+        return Promise.reject(error)
+      }
+    )
+
+    // Cleanup interceptor on unmount
+    return () => {
+      api.interceptors.response.eject(interceptor)
+    }
+  }, [router])
 
   /** re‑fetch current user */
   async function refresh() {
@@ -37,8 +49,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLoading(true)
       const { data } = await api.get('/auth/me')
       setUser(data.user ?? null)
-    } catch {
-      setUser(null)
+    } catch (error) {
+      // Don't clear user if it's not an auth error,
+      // the interceptor will handle 401s.
+      if (error.response?.status !== 401) {
+        setUser(null)
+      }
     } finally {
       setLoading(false)
     }
@@ -49,8 +65,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       await api.post('/auth/logout')
     } catch {/* ignore */}
-    setAccessToken(null)
-    setUser(null)
+    setAccessToken(null) // Clear token from storage/cookies
+    setUser(null) // Clear user from state
   }
 
   return (

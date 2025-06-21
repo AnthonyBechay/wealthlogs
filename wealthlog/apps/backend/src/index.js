@@ -8,6 +8,7 @@ const compression = require('compression');
 const rateLimit = require('express-rate-limit');
 const fs = require("fs");
 const path = require("path");
+const logger = require('./lib/logger'); // Import Winston logger
 
 const app = express();
 const { prisma } = require('./lib/prisma');
@@ -142,12 +143,14 @@ app.use("/trade/insights", tradingInsightsRouter);
 
 // Start the server
 app.listen(PORT, () => {
-  console.log(`🚀 WealthLog API running on port ${PORT}`);
-  console.log(`⚡ Compression: Smart filtering enabled (2KB+ threshold)`);
-  console.log(`🛡️  Security: Helmet & Rate limiting active`);
-  console.log(`📊 Monitoring: Health check available at /health`);
-  console.log(`🏠 Real Estate: Endpoints available at /real-estate/*`);
-  console.log(`⚙️  Settings: Endpoints available at /settings/*`);
+  logger.info(`🚀 WealthLog API running on port ${PORT}`);
+  logger.info(`⚡ Compression: Smart filtering enabled (2KB+ threshold)`);
+  logger.info(`🛡️  Security: Helmet & Rate limiting active`);
+  logger.info(`📊 Monitoring: Health check available at /health`);
+  // The following logs seem more like debug/developer info than regular startup info.
+  // Consider changing to logger.debug or removing if not essential for production.
+  logger.info(`🏠 Real Estate: Endpoints available at /real-estate/*`);
+  logger.info(`⚙️  Settings: Endpoints available at /settings/*`);
 });
 
 // IMPROVED: Better 404 handler with more info
@@ -161,7 +164,12 @@ app.use((req, res, next) => {
 
 // IMPROVED: Better error handler with environment-aware responses
 app.use((err, req, res, next) => {
-  console.error('Internal server error:', err);
+  logger.error('Internal server error:', {
+    message: err.message,
+    stack: err.stack,
+    path: req.originalUrl,
+    method: req.method
+  });
   
   // Don't leak error details in production
   const isDevelopment = process.env.NODE_ENV !== 'production';

@@ -1,6 +1,7 @@
 /***************************  recalc.helper.js  ***************************/
 const { prisma } = require('../../lib/prisma');
 const { redisClient } = require('../../lib/redis');
+const logger = require('../../lib/logger'); // Import Winston logger
 
 /**
  * Rebuilds every balance after `afterDate` (or from day one if omitted).
@@ -138,7 +139,7 @@ async function recalcAccountBalance(accountId, { afterDate = null } = {}) {
 async function invalidateDashboardCache(userId) {
   try {
     await redisClient.del(`networth:summary`); // This key is user-specific but without userId in your frontend, so it's a global key
-    console.log(`[Cache Invalidate] Deleted networth:summary (global for user if not user-scoped correctly)`);
+    logger.info(`[Cache Invalidate] Deleted networth:summary (global for user if not user-scoped correctly)`, { userId });
 
     // Assuming your frontend's `networth:${range}` key also needs the userId, let's adjust it
     // If your frontend's SWR key for networth chart is actually `networth:${range}` and is user-agnostic,
@@ -153,15 +154,15 @@ async function invalidateDashboardCache(userId) {
     // Correcting based on typical multi-user app caching strategy (and the `authenticate` middleware)
     // Assuming the SWR keys are conceptually prefixed by user ID on the backend even if not explicit in frontend
     await redisClient.del(`networth-summary:${userId}`); // Specific user's summary
-    console.log(`[Cache Invalidate] Deleted networth-summary for user ${userId}`);
+    logger.info(`[Cache Invalidate] Deleted networth-summary for user ${userId}`, { userId });
 
     const ranges = ["30d", "90d", "365d", "ytd", "all"];
     for (const r of ranges) {
       await redisClient.del(`networth:${userId}:${r}`); // Specific user's range data
-      console.log(`[Cache Invalidate] Deleted networth curve for user ${userId}, range ${r}`);
+      logger.info(`[Cache Invalidate] Deleted networth curve for user ${userId}, range ${r}`, { userId, range: r });
     }
   } catch (cacheError) {
-    console.warn('[Cache Invalidation Error]: Could not invalidate Redis cache:', cacheError.message);
+    logger.warn('[Cache Invalidation Error]: Could not invalidate Redis cache', { message: cacheError.message, userId });
     // Log the error but don't prevent the main function from completing
   }
 }
