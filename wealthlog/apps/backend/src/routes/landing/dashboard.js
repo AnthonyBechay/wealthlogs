@@ -6,6 +6,7 @@ const router       = express.Router();
 const { prisma }   = require("../../lib/prisma");
 const { authenticate } = require("../../middleware/authenticate");
 const { redisClient } = require('../../lib/redis'); // Adjust path if necessary
+const logger = require('../../lib/logger'); // Import Winston logger
 
 // ───────────────────────────────────────────────
 // helper: convert ?range= query to a JS Date
@@ -48,16 +49,16 @@ router.get("/networth", authenticate, async (req, res) => {
     try {
       const cachedData = await redisClient.get(cacheKey);
       if (cachedData) {
-        console.log(`[Cache HIT] Networth curve for user ${userId}, range ${range}`);
+        logger.info(`[Cache HIT] Networth curve for user ${userId}, range ${range}`, { userId, range, cacheKey });
         return res.json(JSON.parse(cachedData)); // Return immediately if found in cache
       }
     } catch (cacheReadError) {
-      console.error('[Cache Read Error] Networth curve (falling back to DB):', cacheReadError.message);
+      logger.error('[Cache Read Error] Networth curve (falling back to DB)', { message: cacheReadError.message, userId, range, cacheKey });
       // Don't throw, just let it proceed to DB fetch
     }
 
     // --- 2. If not in cache or cache read failed, fetch from DB ---
-    console.log(`[Cache MISS] Networth curve for user ${userId}, range ${range}. Fetching from DB.`);
+    logger.info(`[Cache MISS] Networth curve for user ${userId}, range ${range}. Fetching from DB.`, { userId, range, cacheKey });
     const from = rangeToFromDate(range);
 
     // 1) pull every snapshot for the user in range
@@ -98,16 +99,16 @@ router.get("/networth", authenticate, async (req, res) => {
     try {
       if (data) {
         await redisClient.setex(cacheKey, CACHE_TTL_SECONDS, JSON.stringify(data));
-        console.log(`[Cache SET] Networth curve for user ${userId}, range ${range}`);
+        logger.info(`[Cache SET] Networth curve for user ${userId}, range ${range}`, { userId, range, cacheKey });
       }
     } catch (cacheSetError) {
-      console.warn('[Cache Set Error] Networth curve (continuing without caching):', cacheSetError.message);
+      logger.warn('[Cache Set Error] Networth curve (continuing without caching)', { message: cacheSetError.message, userId, range, cacheKey });
       // Log the error but don't prevent the response
     }
 
     res.json(data); // Send the data to the frontend
   } catch (dbFetchError) { // This catch block now specifically handles DB or processing errors
-    console.error("Dashboard networth error:", dbFetchError);
+    logger.error("Dashboard networth error", { message: dbFetchError.message, stack: dbFetchError.stack, userId, range });
     res.status(500).json({ error: "Failed to compute net worth" });
   }
 });
@@ -126,16 +127,16 @@ router.get("/networth/summary", authenticate, async (req, res) => {
     try {
       cachedData = await redisClient.get(cacheKey);
       if (cachedData) {
-        console.log(`[Cache HIT] Networth summary for user ${userId}`);
+        logger.info(`[Cache HIT] Networth summary for user ${userId}`, { userId, cacheKey });
         return res.json(JSON.parse(cachedData)); // Return immediately if found in cache
       }
     } catch (cacheReadError) {
-      console.error('[Cache Read Error] Networth summary (falling back to DB):', cacheReadError.message);
+      logger.error('[Cache Read Error] Networth summary (falling back to DB)', { message: cacheReadError.message, userId, cacheKey });
       // Don't throw, just let it proceed to DB fetch
     }
 
     // --- 2. If cache miss or cache read failed, fetch from DB ---
-    console.log(`[Cache MISS] Networth summary for user ${userId}. Fetching from DB.`);
+    logger.info(`[Cache MISS] Networth summary for user ${userId}. Fetching from DB.`, { userId, cacheKey });
     const accounts = await prisma.financialAccount.findMany({
       where : { userId: userId, active: true },
       select: {
@@ -157,15 +158,15 @@ router.get("/networth/summary", authenticate, async (req, res) => {
     // --- 3. Try to store in cache (don't block response if this fails) ---
     try {
       await redisClient.setex(cacheKey, CACHE_TTL_SECONDS, JSON.stringify(summaryData));
-      console.log(`[Cache SET] Networth summary for user ${userId}`);
+      logger.info(`[Cache SET] Networth summary for user ${userId}`, { userId, cacheKey });
     } catch (cacheSetError) {
-      console.warn('[Cache Set Error] Networth summary (continuing without caching):', cacheSetError.message);
+      logger.warn('[Cache Set Error] Networth summary (continuing without caching)', { message: cacheSetError.message, userId, cacheKey });
       // Log the error but don't prevent the response
     }
 
     res.json(summaryData); // Always send the data to the frontend
   } catch (dbFetchError) { // This catch block now specifically handles DB or processing errors
-    console.error("Net‑worth summary error:", dbFetchError);
+    logger.error("Net‑worth summary error", { message: dbFetchError.message, stack: dbFetchError.stack, userId });
     // Only send 500 if DB fetch or core logic fails, not just cache
     res.status(500).json({ error: "Failed to compute net‑worth summary" });
   }
