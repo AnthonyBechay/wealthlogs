@@ -250,7 +250,7 @@ export default function Landing() {
       {/* Header row with title and action buttons */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
-          {t("Dashboard")}
+          {hsanbarre}
           {/* Loading indicator */}
           {isLoading && (
             <div className="w-6 h-6 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
