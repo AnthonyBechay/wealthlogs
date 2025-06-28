@@ -1,4 +1,4 @@
-// wealthlog/apps/backend/src/lib/logger.js
+// wealthlog/apps/backend/src/lib/logger.js william test
 const winston = require('winston');
 
 const logLevel = process.env.ADVANCED_LOGS === 'true' ? 'debug' : 'info';
