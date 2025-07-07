@@ -1,16 +1,25 @@
 import React, { useState, useEffect, createContext, useContext } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
-import { createStackNavigator } from '@react-navigation/stack';
+import { CardStyleInterpolators, createStackNavigator } from '@react-navigation/stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { View, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, ActivityIndicator, StyleSheet, Platform } from 'react-native';
 
 import LoginScreen from '../screens/Auth/LoginScreen';
 import RegisterScreen from '../screens/Auth/RegisterScreen';
 import HomeScreen from '../screens/Main/HomeScreen';
-import AddTransactionScreen from '../screens/Main/AddTransactionScreen'; // Import new screen
-import { logoutUser as apiLogoutUser } from '../services/apiService';
+import AddTransactionScreen from '../screens/Main/AddTransactionScreen'; 
+import { logoutUser as apiLogoutUser } from '../services/apiService'; 
+import { globalStyles, commonColors, typography } from '../constants/Styles'; // Updated path
+import Colors from '../constants/Colors'; // Updated path
 
-const AuthContext = createContext(null);
+
+const AuthContext = createContext<{
+  isAuthenticated: boolean;
+  isLoading: boolean;
+  userToken: string | null;
+  login: (token: string) => Promise<void>;
+  logout: () => Promise<void>;
+} | null>(null);
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
@@ -25,7 +34,7 @@ const Stack = createStackNavigator();
 const AuthProvider = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [userToken, setUserToken] = useState(null);
+  const [userToken, setUserToken] = useState<string | null>(null); 
 
   useEffect(() => {
     const checkAuthStatus = async () => {
@@ -61,17 +70,16 @@ const AuthProvider = ({ children }) => {
 
   const logout = async () => {
     try {
-      await apiLogoutUser();
+      await apiLogoutUser(); 
     } catch (e) {
       console.error('Logout API call failed', e);
-      // Ensure local state is cleared even if API call fails
       await AsyncStorage.removeItem('userToken');
     } finally {
       setIsAuthenticated(false);
       setUserToken(null);
     }
   };
-
+  
   return (
     <AuthContext.Provider value={{ isAuthenticated, isLoading, userToken, login, logout }}>
       {children}
@@ -84,34 +92,52 @@ const AppNavigator = () => {
 
   if (isLoading) {
     return (
-      <View style={styles.loaderContainer}>
-        <ActivityIndicator size="large" color="#0000ff" />
+      <View style={globalStyles.centeredContainer}>
+        <ActivityIndicator size="large" color={commonColors.primary} />
       </View>
     );
   }
+  
+  const screenOptions = {
+    headerStyle: {
+      backgroundColor: Colors.light.card, 
+      elevation: Platform.OS === 'android' ? 2 : 0,
+      shadowColor: commonColors.black,
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.1,
+      shadowRadius: 1,
+      borderBottomWidth: Platform.OS === 'android' ? 0 : StyleSheet.hairlineWidth, 
+      borderBottomColor: Colors.light.border,
+    },
+    headerTintColor: Colors.light.text, 
+    headerTitleStyle: {
+      fontWeight: typography.fontWeightBold,
+      fontSize: typography.fontSizeLarge,
+    },
+    cardStyleInterpolator: CardStyleInterpolators.forHorizontalIOS, 
+  };
 
   return (
     <NavigationContainer>
-      <Stack.Navigator>
+      <Stack.Navigator screenOptions={screenOptions}>
         {isAuthenticated ? (
           <>
-            <Stack.Screen
-              name="MainApp"
-              component={HomeScreen}
-              options={{ headerShown: false }}
+            <Stack.Screen 
+              name="MainApp" 
+              component={HomeScreen} 
+              options={{ headerShown: false }} 
             />
-            <Stack.Screen
-              name="AddTransaction"
-              component={AddTransactionScreen}
-              options={{ title: 'Add Transaction' }} // Show header with back button and title
+            <Stack.Screen 
+              name="AddTransaction" 
+              component={AddTransactionScreen} 
+              options={{ title: 'Add Transaction' }} 
             />
           </>
         ) : (
           <>
             <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }}/>
             <Stack.Screen name="Register" component={RegisterScreen} options={{ headerShown: false }}/>
-            {/* Fallback for unauthenticated access to MainApp */}
-            <Stack.Screen name="MainApp" component={LoginScreen} options={{ headerShown: false }}/>
+            <Stack.Screen name="MainApp" component={LoginScreen} options={{ headerShown: false }}/> 
           </>
         )}
       </Stack.Navigator>
@@ -119,7 +145,6 @@ const AppNavigator = () => {
   );
 };
 
-// This RootNavigator ensures that AuthProvider wraps AppNavigator
 const RootNavigator = () => {
   return (
     <AuthProvider>
@@ -127,13 +152,5 @@ const RootNavigator = () => {
     </AuthProvider>
   );
 };
-
-const styles = StyleSheet.create({
-  loaderContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-});
 
 export default RootNavigator;

@@ -1,35 +1,55 @@
-import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, Button, StyleSheet, Alert, FlatList, ActivityIndicator, TouchableOpacity, Platform } from 'react-native';
+import React, { useState, useCallback } from 'react';
+import { View, Text, StyleSheet, Alert, FlatList, ActivityIndicator, TouchableOpacity, Platform, RefreshControl, Button } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../../navigation/AppNavigator';
-import { getTransactions } from '../../services/apiService';
+import { getTransactions } from '../../services/apiService'; 
+import { globalStyles, commonColors, spacing, typography } from '../../constants/Styles';
+import Colors from '../../constants/Colors';
+
+
+interface Transaction {
+  id: string;
+  type: 'DEPOSIT' | 'WITHDRAW' | 'TRANSFER' | 'DIVIDEND';
+  amount: number;
+  description: string | null;
+  dateTime: string; 
+  fromAccount?: { name: string };
+  toAccount?: { name: string };
+}
 
 const HomeScreen = ({ navigation }) => {
   const { logout } = useAuth();
-  const [transactions, setTransactions] = useState([]);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const fetchTransactions = async () => {
-    setIsLoading(true);
+  const fetchTransactions = useCallback(async () => {
     setError(null);
     try {
       const data = await getTransactions();
       setTransactions(data || []);
     } catch (err) {
       console.error("Error fetching transactions for HomeScreen:", err);
-      setError(err.message || 'Failed to fetch transactions.');
-    } finally {
-      setIsLoading(false);
+      const errorMessage = err.message || err.error || 'Failed to fetch transactions.';
+      setError(errorMessage);
     }
-  };
-
+  }, []);
+  
   useFocusEffect(
     useCallback(() => {
-      fetchTransactions();
-      return () => { /* Optional cleanup */ };
-    }, [])
+      setIsLoading(true);
+      fetchTransactions().finally(() => setIsLoading(false));
+      return () => {};
+    }, [fetchTransactions])
   );
+
+  const onRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    await fetchTransactions();
+    setIsRefreshing(false);
+  }, [fetchTransactions]);
+
 
   const handleLogout = async () => {
     try {
@@ -40,12 +60,14 @@ const HomeScreen = ({ navigation }) => {
     }
   };
 
-  const renderTransactionItem = ({ item }) => (
+  const renderTransactionItem = ({ item }: { item: Transaction }) => (
     <View style={styles.transactionItem}>
       <View style={styles.transactionRow}>
-        <Text style={styles.transactionDescription}>{item.description || item.type}</Text>
+        <Text style={styles.transactionDescription} numberOfLines={1} ellipsizeMode="tail">
+            {item.description || item.type}
+        </Text>
         <Text style={[
-            styles.transactionAmount,
+            styles.transactionAmount, 
             item.type === 'DEPOSIT' || item.type === 'DIVIDEND' ? styles.amountPositive : styles.amountNegative
           ]}>
           {item.type === 'DEPOSIT' || item.type === 'DIVIDEND' ? '+' : '-'}${item.amount.toFixed(2)}
@@ -57,25 +79,27 @@ const HomeScreen = ({ navigation }) => {
     </View>
   );
 
+  if (isLoading && transactions.length === 0 && !isRefreshing) {
+    return <View style={globalStyles.centeredContainer}><ActivityIndicator size="large" color={commonColors.primary} /></View>;
+  }
+
   return (
-    <View style={styles.container}>
+    <View style={globalStyles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>Transactions</Text>
+        <Text style={styles.headerTitle}>Transactions</Text>
         <TouchableOpacity onPress={() => navigation.navigate('AddTransaction')} style={styles.addButton}>
           <Text style={styles.addButtonText}>Add New</Text>
         </TouchableOpacity>
       </View>
 
-      {isLoading && transactions.length === 0 ? (
-        <ActivityIndicator size="large" color="#007bff" style={{marginTop: 20}}/>
-      ) : error ? (
-        <View style={styles.centeredMessage}>
-            <Text style={styles.errorText}>{error}</Text>
-            <Button title="Retry" onPress={fetchTransactions} />
+      {error && transactions.length === 0 ? ( 
+        <View style={globalStyles.centeredContainer}>
+            <Text style={globalStyles.errorText}>{error}</Text>
+            <Button title="Retry" onPress={() => { setIsLoading(true); fetchTransactions().finally(() => setIsLoading(false)); }} color={commonColors.primary} />
         </View>
-      ) : transactions.length === 0 ? (
-        <View style={styles.centeredMessage}>
-          <Text style={styles.noTransactionsText}>No transactions yet. Add one!</Text>
+      ) : transactions.length === 0 && !isLoading ? ( 
+        <View style={globalStyles.centeredContainer}>
+          <Text style={styles.noTransactionsText}>No transactions yet. Tap 'Add New' to start!</Text>
         </View>
       ) : (
         <FlatList
@@ -83,111 +107,96 @@ const HomeScreen = ({ navigation }) => {
           renderItem={renderTransactionItem}
           keyExtractor={(item) => item.id.toString()}
           style={styles.list}
-          onRefresh={fetchTransactions}
-          refreshing={isLoading}
+          contentContainerStyle={transactions.length === 0 ? styles.listEmpty : {}}
+          refreshControl={
+            <RefreshControl
+              refreshing={isRefreshing}
+              onRefresh={onRefresh}
+              colors={[commonColors.primary]} 
+              tintColor={commonColors.primary} 
+            />
+          }
         />
       )}
+      {error && transactions.length > 0 && ( 
+          <Text style={styles.inlineErrorText}>Could not refresh: {error}</Text>
+      )}
       <View style={styles.footer}>
-        <Button title="Logout" onPress={handleLogout} color="#ff6347" />
+        <Button title="Logout" onPress={handleLogout} color={commonColors.danger} />
       </View>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f8f9fa',
+  // container: globalStyles.container, // Base container style from global
+  header: { // Extend global header style or define locally
+    ...globalStyles.headerBase, // Use base header style
+    // any local overrides for HomeScreen header
   },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 15,
-    paddingTop: Platform.OS === 'android' ? 25 : 15,
-    paddingBottom: 10,
-    backgroundColor: '#ffffff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#dee2e6',
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#343a40',
+  headerTitle: { // Extend global header title or define locally
+    ...globalStyles.headerTitle,
+    // any local overrides
   },
   addButton: {
-    backgroundColor: '#007bff',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 5,
+    backgroundColor: commonColors.primary,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: 20, 
   },
   addButtonText: {
-    color: '#ffffff',
-    fontSize: 16,
-    fontWeight: '500',
+    color: commonColors.white,
+    fontSize: typography.fontSizeMedium,
+    fontWeight: typography.fontWeightMedium,
   },
   list: {
     flex: 1,
   },
+  listEmpty: { // Style for when FlatList is empty, to center the "No transactions" message
+    flexGrow: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   transactionItem: {
-    backgroundColor: '#ffffff',
-    padding: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e9ecef',
+    ...globalStyles.listItem, // Use global list item base
+     paddingVertical: spacing.md, // Adjust padding
   },
   transactionRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 5,
+    marginBottom: spacing.xs,
   },
   transactionDescription: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#495057',
-    flexShrink: 1, // Allow text to shrink if too long
+    fontSize: typography.fontSizeMedium,
+    fontWeight: typography.fontWeightMedium,
+    color: Colors.light.text, // Use themed text color
+    flexShrink: 1, 
   },
   transactionAmount: {
-    fontSize: 16,
-    fontWeight: 'bold',
+    fontSize: typography.fontSizeMedium,
+    fontWeight: typography.fontWeightBold,
   },
-  amountPositive: {
-    color: '#28a745',
-  },
-  amountNegative: {
-    color: '#dc3545',
-  },
-  transactionDate: {
-    fontSize: 12,
-    color: '#6c757d',
-    marginBottom: 3,
-  },
-  accountInfo: {
-    fontSize: 12,
-    color: '#6c757d',
-  },
-  centeredMessage: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  noTransactionsText: {
-    fontSize: 18,
-    color: '#6c757d',
-  },
-  errorText: {
-    fontSize: 16,
-    color: 'red',
-    textAlign: 'center',
-    marginBottom: 10,
-  },
+  amountPositive: { color: commonColors.success },
+  amountNegative: { color: commonColors.danger },
+  transactionDate: { fontSize: typography.fontSizeSmall, color: Colors.light.secondary, marginBottom: spacing.xs / 2 },
+  accountInfo: { fontSize: typography.fontSizeSmall, color: Colors.light.secondary },
+  noTransactionsText: { fontSize: typography.fontSizeLarge, color: Colors.light.secondary, textAlign: 'center' },
+  inlineErrorText: { 
+      fontSize: typography.fontSizeRegular, 
+      color: commonColors.danger, 
+      textAlign: 'center', 
+      padding: spacing.sm, 
+      backgroundColor: Colors.light.errorBackground || '#ffe0e0' // Add errorBackground to Colors.ts if needed
+    },
   footer: {
-    padding: 15,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
     borderTopWidth: 1,
-    borderTopColor: '#dee2e6',
-    backgroundColor: '#ffffff',
+    borderTopColor: Colors.light.border,
+    backgroundColor: Colors.light.card,
   }
+  // centeredMessage and errorText from globalStyles are used directly
 });
 
 export default HomeScreen;
