@@ -38,7 +38,7 @@ This is the React Native mobile application for WealthLog, designed to provide a
 
 ### API Configuration
 
-*   The mobile app currently expects the backend API to be at `http://localhost:5000`.
+*   The mobile app currently expects the backend API to be at `http://localhost:5000`. 
 *   If your backend runs on a different URL, update the `API_BASE_URL` constant in `wealthlog/apps/mobile/WealthLogMobile/src/services/apiService.ts`.
 *   For Android emulators, `localhost` typically refers to the emulator's own loopback interface. To connect to a backend running on your host machine from an Android emulator, you usually need to use `http://10.0.2.2:<PORT>` instead of `http://localhost:<PORT>`. Update `apiService.ts` accordingly if testing with an Android emulator and a locally hosted backend. For physical devices, ensure the device can reach the backend server's IP address on your network.
 

@@ -2,7 +2,7 @@ import React, { useState, useCallback } from 'react';
 import { View, Text, StyleSheet, Alert, FlatList, ActivityIndicator, TouchableOpacity, Platform, RefreshControl, Button } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../../navigation/AppNavigator';
-import { getTransactions } from '../../services/apiService';
+import { getTransactions } from '../../services/apiService'; 
 import { globalStyles, commonColors, spacing, typography } from '../../constants/Styles';
 import Colors from '../../constants/Colors';
 
@@ -12,7 +12,7 @@ interface Transaction {
   type: 'DEPOSIT' | 'WITHDRAW' | 'TRANSFER' | 'DIVIDEND';
   amount: number;
   description: string | null;
-  dateTime: string;
+  dateTime: string; 
   fromAccount?: { name: string };
   toAccount?: { name: string };
 }
@@ -35,7 +35,7 @@ const HomeScreen = ({ navigation }) => {
       setError(errorMessage);
     }
   }, []);
-
+  
   useFocusEffect(
     useCallback(() => {
       setIsLoading(true);
@@ -67,7 +67,7 @@ const HomeScreen = ({ navigation }) => {
             {item.description || item.type}
         </Text>
         <Text style={[
-            styles.transactionAmount,
+            styles.transactionAmount, 
             item.type === 'DEPOSIT' || item.type === 'DIVIDEND' ? styles.amountPositive : styles.amountNegative
           ]}>
           {item.type === 'DEPOSIT' || item.type === 'DIVIDEND' ? '+' : '-'}${item.amount.toFixed(2)}
@@ -92,12 +92,12 @@ const HomeScreen = ({ navigation }) => {
         </TouchableOpacity>
       </View>
 
-      {error && transactions.length === 0 ? (
+      {error && transactions.length === 0 ? ( 
         <View style={globalStyles.centeredContainer}>
             <Text style={globalStyles.errorText}>{error}</Text>
             <Button title="Retry" onPress={() => { setIsLoading(true); fetchTransactions().finally(() => setIsLoading(false)); }} color={commonColors.primary} />
         </View>
-      ) : transactions.length === 0 && !isLoading ? (
+      ) : transactions.length === 0 && !isLoading ? ( 
         <View style={globalStyles.centeredContainer}>
           <Text style={styles.noTransactionsText}>No transactions yet. Tap 'Add New' to start!</Text>
         </View>
@@ -112,13 +112,13 @@ const HomeScreen = ({ navigation }) => {
             <RefreshControl
               refreshing={isRefreshing}
               onRefresh={onRefresh}
-              colors={[commonColors.primary]}
-              tintColor={commonColors.primary}
+              colors={[commonColors.primary]} 
+              tintColor={commonColors.primary} 
             />
           }
         />
       )}
-      {error && transactions.length > 0 && (
+      {error && transactions.length > 0 && ( 
           <Text style={styles.inlineErrorText}>Could not refresh: {error}</Text>
       )}
       <View style={styles.footer}>
@@ -142,7 +142,7 @@ const styles = StyleSheet.create({
     backgroundColor: commonColors.primary,
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
-    borderRadius: 20,
+    borderRadius: 20, 
   },
   addButtonText: {
     color: commonColors.white,
@@ -171,7 +171,7 @@ const styles = StyleSheet.create({
     fontSize: typography.fontSizeMedium,
     fontWeight: typography.fontWeightMedium,
     color: Colors.light.text, // Use themed text color
-    flexShrink: 1,
+    flexShrink: 1, 
   },
   transactionAmount: {
     fontSize: typography.fontSizeMedium,
@@ -182,11 +182,11 @@ const styles = StyleSheet.create({
   transactionDate: { fontSize: typography.fontSizeSmall, color: Colors.light.secondary, marginBottom: spacing.xs / 2 },
   accountInfo: { fontSize: typography.fontSizeSmall, color: Colors.light.secondary },
   noTransactionsText: { fontSize: typography.fontSizeLarge, color: Colors.light.secondary, textAlign: 'center' },
-  inlineErrorText: {
-      fontSize: typography.fontSizeRegular,
-      color: commonColors.danger,
-      textAlign: 'center',
-      padding: spacing.sm,
+  inlineErrorText: { 
+      fontSize: typography.fontSizeRegular, 
+      color: commonColors.danger, 
+      textAlign: 'center', 
+      padding: spacing.sm, 
       backgroundColor: Colors.light.errorBackground || '#ffe0e0' // Add errorBackground to Colors.ts if needed
     },
   footer: {
