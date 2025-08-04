@@ -1,8 +1,7 @@
 const path = require('path');
-const { i18n } = require('./next-i18next.config');
+const withNextIntl = require('next-intl/plugin')();
 
 const nextConfig = {
-  i18n,
   transpilePackages: ['@wealthlog/common'],
   eslint: {
     ignoreDuringBuilds: true,
@@ -24,4 +23,4 @@ const nextConfig = {
   },
 };
 
-module.exports = nextConfig;
+module.exports = withNextIntl(nextConfig);

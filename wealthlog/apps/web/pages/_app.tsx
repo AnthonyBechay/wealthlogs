@@ -8,8 +8,7 @@ import Link from 'next/link';
 import { ThemeProvider } from 'next-themes';
 
 import { api, setAccessToken } from '@wealthlog/common';
-import { appWithTranslation } from 'next-i18next';
-import nextI18NextConfig from '../next-i18next.config';
+import { NextIntlClientProvider } from 'next-intl';
 
 
 /* Public routes requiring no auth */
@@ -393,7 +392,12 @@ function MyApp({ Component, pageProps }: AppProps) {
 
           {/* Page content */}
           <main className="flex-1 overflow-y-auto bg-white dark:bg-gray-900">
-            <Component {...pageProps} />
+            <NextIntlClientProvider
+              locale={router.locale}
+              messages={pageProps.messages}
+            >
+              <Component {...pageProps} />
+            </NextIntlClientProvider>
           </main>
         </div>
       </div>
@@ -401,4 +405,4 @@ function MyApp({ Component, pageProps }: AppProps) {
   );
 }
 
-export default appWithTranslation(MyApp, nextI18NextConfig);
+export default MyApp;

@@ -6,15 +6,23 @@
     "apps/*",
     "packages/*"
   ],
-
   "scripts": {
-    "bootstrap": "npm install",           
-    "dev": "turbo run dev --parallel",    
-    "build": "turbo run build",           
-    "lint": "turbo run lint"
+    "bootstrap": "npm install",
+    "dev": "turbo run dev --parallel",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "mobile:build": "npm run build:web && npm run mobile:sync",
+    "build:web": "turbo run build --filter=@wealthlog/web",
+    "mobile:sync": "cd apps/mobile && npx cap sync"
   },
-
   "devDependencies": {
+    "@capacitor/android": "^7.4.2",
+    "@capacitor/cli": "^7.4.2",
+    "@capacitor/core": "^7.4.2",
+    "@capacitor/ios": "^7.4.2",
     "turbo": "^2.4.4"
+  },
+  "dependencies": {
+    "next-intl": "^4.3.4"
   }
 }

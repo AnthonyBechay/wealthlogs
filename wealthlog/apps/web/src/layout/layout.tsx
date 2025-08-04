@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { useTheme } from 'next-themes';
-import { useTranslation } from 'next-i18next';
+import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/router';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -13,7 +13,7 @@ interface LayoutProps {
 const publicPaths = ['/login', '/register'];
 
 export default function Layout({ children, onLogout }: LayoutProps) {
-  const { t } = useTranslation('common');
+  const t = useTranslations('common');
   const { theme, setTheme } = useTheme();
   const { user } = useAuth();
   const router = useRouter();
