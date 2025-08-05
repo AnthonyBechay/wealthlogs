@@ -1,5 +1,6 @@
 // utils/api.ts
 import axios from "axios";
+import { Capacitor } from '@capacitor/core';
 
 // We'll store the token in localStorage OR memory in production.
 let accessToken: string | null = null;
@@ -16,13 +17,26 @@ export function setAccessToken(token: string | null) {
 
 // On page load, let's see if there's a token in localStorage
 const storedToken = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
+
 if (storedToken) {
   accessToken = storedToken;
 }
 
+const getApiBaseUrl = () => {
+  if (Capacitor.isNativePlatform()) {
+    // For native mobile development, point to the host machine's localhost.
+    // On Android emulators, this is 10.0.2.2
+    // For iOS simulators, this would be localhost.
+    // This might need to be configurable for production builds.
+    return 'http://10.0.2.2:5000';
+  }
+  // For web, use the Next.js environment variable or a fallback.
+  return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+};
+
 // Create Axios instance
 export const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000",
+  baseURL: getApiBaseUrl(),
 });
 
 // Interceptor to add Bearer token

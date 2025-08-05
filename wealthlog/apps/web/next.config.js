@@ -2,20 +2,16 @@ const path = require('path');
 const withNextIntl = require('next-intl/plugin')();
 
 const nextConfig = {
+  output: 'export',
+  images: {
+    unoptimized: true,
+  },
   transpilePackages: ['@wealthlog/common'],
   eslint: {
     ignoreDuringBuilds: true,
   },
   typescript: {
     ignoreBuildErrors: true,
-  },
-  async rewrites() {
-    return [
-      {
-        source: '/auth/:path*',
-        destination: 'http://localhost:5000/auth/:path*',
-      },
-    ];
   },
   webpack(config) {
     config.resolve.alias['@wealthlog/common'] = path.resolve(__dirname, '../../packages/common/src');
