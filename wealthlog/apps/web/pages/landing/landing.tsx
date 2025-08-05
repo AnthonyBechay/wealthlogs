@@ -5,9 +5,7 @@ import { useMemo, useState, useCallback } from "react";
 import { useRouter } from "next/router";
 import useSWR from "swr";
 import { api } from "@wealthlog/common";
-
-import { useTranslation } from "next-i18next";
-import { serverSideTranslations } from "next-i18next/serverSideTranslations";
+import { useTranslations } from "next-intl";
 
 // Chart components
 import {
@@ -137,7 +135,7 @@ function RangeSelector({
   onRangeChange: (range: RangeType) => void;
   loading?: boolean;
 }) {
-  const { t } = useTranslation("common");
+  const t = useTranslations("common");
   const ranges: RangeType[] = ["30d", "90d", "365d", "ytd", "all"];
 
   return (
@@ -212,7 +210,7 @@ function usePerformanceData(range: RangeType) {
 
 // ——— MAIN COMPONENT ———
 export default function Landing() {
-  const { t } = useTranslation("common");
+  const t = useTranslations("common");
   const router = useRouter();
 
   // State for selected time range
@@ -429,13 +427,4 @@ export default function Landing() {
       </div>
     </div>
   );
-}
-
-// Function for static props with i18n support
-export async function getStaticProps({ locale }: { locale: string }) {
-  return {
-    props: {
-      ...(await serverSideTranslations(locale, ["common"])),
-    },
-  };
 }

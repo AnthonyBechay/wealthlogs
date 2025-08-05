@@ -5,9 +5,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { useTheme } from 'next-themes';
 import { api } from '@wealthlog/common';
-import { useTranslation } from 'next-i18next';
-import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
-
+import { useTranslations } from 'next-intl';
 const KNOWN_TIMEZONES = [
   'UTC',
   'America/New_York',
@@ -36,7 +34,7 @@ const Card = ({ children }: { children: React.ReactNode }) => (
 
 export default function SettingsGeneral() {
   const router = useRouter();
-  const { t } = useTranslation('common');
+  const t = useTranslations('common');
   const { setTheme } = useTheme();
 
   const [loading, setLoading] = useState(true);
@@ -187,10 +185,3 @@ export default function SettingsGeneral() {
   );
 }
 
-export async function getStaticProps({ locale }: { locale: string }) {
-  return {
-    props: {
-      ...(await serverSideTranslations(locale, ['common'])),
-    },
-  };
-}
