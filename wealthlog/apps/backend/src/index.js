@@ -161,6 +161,7 @@ app.use('/en', express.static(frontendPath));
 // For any other request that isn't an API call or a static file,
 // send the main index.html file. This enables SPA routing.
 app.get('/en/*', (req, res) => {
+
   res.sendFile(path.resolve(frontendPath, 'index.html'));
 });
 
