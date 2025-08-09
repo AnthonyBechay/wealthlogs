@@ -107,13 +107,27 @@ router.post('/register', async (req, res) => {
 
 // LOGIN
 router.post('/login', async (req, res) => {
-  const { username, password } = req.body;
+  const { email, password } = req.body;
+
+  if (!email || !password) {
+    return res.status(400).json({ error: 'Email and password are required.' });
+  }
+
   try {
-    // Find user
-    const user = await prisma.user.findUnique({
-      where: { username },
-      include: { roles: true }
+    // Find user by email first, then by username as a fallback.
+    // This allows users to enter either their email or username in the email field.
+    let user = await prisma.user.findUnique({
+      where: { email },
+      include: { roles: true },
     });
+
+    if (!user) {
+      user = await prisma.user.findUnique({
+        where: { username: email },
+        include: { roles: true },
+      });
+    }
+
     if (!user) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
@@ -481,9 +495,42 @@ router.post('/resend-verification', async (req, res) => {
     });
   }
 });
-// /ME endpoint (test to see if user is logged in)
-router.get('/me', (req, res) => {
-  return res.json({ message: 'This route requires Auth. If you see this, you are authenticated.' });
+const { authenticate } = require('../middleware/authenticate');
+
+// /ME endpoint: get the currently authenticated user
+router.get('/me', authenticate, async (req, res) => {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.userId },
+      select: {
+        id: true,
+        username: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        roles: {
+          select: {
+            name: true,
+          },
+        },
+      },
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Transform roles to a simple array of strings
+    const userWithRoles = {
+      ...user,
+      roles: user.roles.map((r) => r.name),
+    };
+
+    res.json(userWithRoles);
+  } catch (error) {
+    console.error('[ME] Error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
 module.exports = router;
