@@ -13,7 +13,8 @@ import { AuthProvider, useAuth } from '../src/contexts/AuthContext'
 
 
 /* Public routes requiring no auth */
-const PUBLIC_PATHS = ['/', '/login', '/register', '/forgot-password']
+const PUBLIC_PATHS = ['/', '/login', '/register', '/forgot-password'];
+const LOCALES = ['en', 'fr', 'ar']; // From middleware.ts
 
 // Theme types and constants
 type ThemeMode = 'light' | 'dark' | 'system'
@@ -38,8 +39,24 @@ const NAVIGATION_ITEMS: NavigationItem[] = [
 
 // Utility to check if a route is public
 const isPublicRoute = (pathname: string): boolean => {
-  return PUBLIC_PATHS.includes(pathname)
-}
+  const path = pathname;
+
+  // Check if the path itself is public (for routes without locale prefix)
+  if (PUBLIC_PATHS.includes(path)) {
+    return true;
+  }
+
+  // Check if the path with a locale prefix is public
+  const locale = path.split('/')[1];
+  if (LOCALES.includes(locale)) {
+    const pathWithoutLocale = path.substring(locale.length + 1) || '/';
+    if (PUBLIC_PATHS.includes(pathWithoutLocale)) {
+      return true;
+    }
+  }
+
+  return false;
+};
 
 // Helper to get theme from localStorage
 const getStoredTheme = (): ThemeMode => {
