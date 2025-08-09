@@ -1,81 +1,80 @@
-// apps/web/src/contexts/AuthContext.tsx
-import { createContext, useContext, useEffect, useState } from 'react'
+import { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/router'
+import { jwtDecode } from 'jwt-decode'
 import { api, setAccessToken, SharedUser } from '@wealthlog/common'
 
-interface AuthCtx {
+interface AuthContextType {
   user: SharedUser | null
   loading: boolean
-  refresh: () => Promise<void>
-  logout: () => Promise<void>
+  login: (token: string) => void
+  logout: () => void
 }
 
-const AuthContext = createContext<AuthCtx>({
-  user: null,
-  loading: true,
-  refresh: async () => {},
-  logout: async () => {},
-})
+const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
+export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<SharedUser | null>(null)
   const [loading, setLoading] = useState(true)
   const router = useRouter()
 
-  /* hit /auth/me once when the app mounts */
-  useEffect(() => {
-    refresh()
-
-    const interceptor = api.interceptors.response.use(
-      (response) => response,
-      (error) => {
-        if (error.response?.status === 401) {
-          logout() // Clear user state and token
-          router.push('/login')
+  const handleToken = useCallback(
+    async (token: string | null) => {
+      if (token) {
+        try {
+          const decoded: { exp: number } = jwtDecode(token)
+          if (decoded.exp * 1000 > Date.now()) {
+            setAccessToken(token)
+            const { data } = await api.get('/auth/me')
+            setUser(data)
+          } else {
+            throw new Error('Token expired')
+          }
+        } catch (error) {
+          console.error('Auth handleToken error:', error)
+          setAccessToken(null)
+          setUser(null)
         }
-        return Promise.reject(error)
-      }
-    )
-
-    // Cleanup interceptor on unmount
-    return () => {
-      api.interceptors.response.eject(interceptor)
-    }
-  }, [router])
-
-  /** re‑fetch current user */
-  async function refresh() {
-    try {
-      setLoading(true)
-      const { data } = await api.get('/auth/me')
-      setUser(data.user ?? null)
-    } catch (error) {
-      // Don't clear user if it's not an auth error,
-      // the interceptor will handle 401s.
-      if (error.response?.status !== 401) {
+      } else {
+        setAccessToken(null)
         setUser(null)
       }
-    } finally {
       setLoading(false)
-    }
+    },
+    [api]
+  )
+
+  useEffect(() => {
+    const token = localStorage.getItem('accessToken')
+    handleToken(token)
+  }, [handleToken])
+
+  const login = (token: string) => {
+    handleToken(token)
   }
 
-  /** destroy token + context */
-  async function logout() {
+  const logout = useCallback(async () => {
     try {
       await api.post('/auth/logout')
-    } catch {/* ignore */}
-    setAccessToken(null) // Clear token from storage/cookies
-    setUser(null) // Clear user from state
-  }
+    } catch (error) {
+      console.error('Logout error:', error)
+    } finally {
+      setAccessToken(null) // Clear token from storage/cookies
+      setUser(null)
+      router.push('/login')
+    }
+  }, [api, router])
 
   return (
-    <AuthContext.Provider value={{ user, loading, refresh, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, logout }}>
       {children}
     </AuthContext.Provider>
   )
 }
 
-export function useAuth() {
-  return useContext(AuthContext)
+export const useAuth = () => {
+  const context = useContext(AuthContext)
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider')
+  }
+  return context
 }
