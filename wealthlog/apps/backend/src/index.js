@@ -141,6 +141,31 @@ app.use('/generalSettings', generalSettingsRouter);
 app.use('/tradingSettings', tradingSettingsRouter);
 app.use("/trade/insights", tradingInsightsRouter);
 
+// =================================================================
+//  SERVE FRONTEND APPLICATION
+// =================================================================
+
+// Define the path to the frontend's build output directory.
+// This path is relative to the location of this index.js file.
+const frontendPath = path.join(__dirname, '..', '..', 'web', 'out');
+
+// Redirect from root to the default language
+app.get('/', (req, res) => {
+  res.redirect(301, '/en');
+});
+
+// Serve the static files (JS, CSS, images) from the frontend build directory
+// The '/en' path is important to match the frontend's basePath
+app.use('/en', express.static(frontendPath));
+
+// For any other request that isn't an API call or a static file,
+// send the main index.html file. This enables SPA routing.
+app.get('/en/*', (req, res) => {
+  res.sendFile(path.resolve(frontendPath, 'index.html'));
+});
+
+// =================================================================
+
 // Start the server
 app.listen(PORT, () => {
   logger.info(`🚀 WealthLog API running on port ${PORT}`);
