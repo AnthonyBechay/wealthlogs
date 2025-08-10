@@ -5,7 +5,7 @@ import { Capacitor } from '@capacitor/core'
 let accessToken: string | null = null
 
 // Helper to set or clear the access token in memory and localStorage
-export function setAccessToken(token: string | null) {
+export function setAuthToken(token: string | null) {
   accessToken = token
   if (typeof window !== 'undefined') {
     if (token) {

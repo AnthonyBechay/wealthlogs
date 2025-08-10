@@ -1,80 +1,93 @@
-import { createContext, useContext, useState, useEffect, useCallback } from 'react'
-import { useRouter } from 'next/router'
-import { jwtDecode } from 'jwt-decode'
-import { api, setAccessToken, SharedUser } from '@wealthlog/common'
+// apps/web/src/contexts/AuthContext.tsx
+import { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/router';
+import { jwtDecode } from 'jwt-decode';
+// ✅ CORRECTED IMPORT: Import the new 'User' type and the 'api' helper
+import { api, setAuthToken, User } from '@wealthlog/common';
 
 interface AuthContextType {
-  user: SharedUser | null
-  loading: boolean
-  login: (token: string) => void
-  logout: () => void
+  user: User | null; // ✅ Use the new User type
+  loading: boolean;
+  login: (token: string) => void;
+  logout: () => void;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined)
+// A helper type for the decoded JWT payload
+interface DecodedToken {
+  exp: number;
+  // Add other properties from your JWT payload if needed
+}
+
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  const [user, setUser] = useState<SharedUser | null>(null)
-  const [loading, setLoading] = useState(true)
-  const router = useRouter()
+  const [user, setUser] = useState<User | null>(null); // ✅ Use the new User type
+  const [loading, setLoading] = useState(true);
+  const router = useRouter();
 
-  const handleToken = useCallback(
-    async (token: string | null) => {
-      if (token) {
-        try {
-          const decoded: { exp: number } = jwtDecode(token)
-          if (decoded.exp * 1000 > Date.now()) {
-            setAccessToken(token)
-            const { data } = await api.get('/auth/me')
-            setUser(data)
-          } else {
-            throw new Error('Token expired')
-          }
-        } catch (error) {
-          console.error('Auth handleToken error:', error)
-          setAccessToken(null)
-          setUser(null)
+  const handleToken = useCallback(async (token: string | null) => {
+    if (token) {
+      try {
+        const decoded = jwtDecode<DecodedToken>(token);
+        // Check if token is expired
+        if (decoded.exp * 1000 > Date.now()) {
+          setAuthToken(token); // Set token for future api requests
+          const { data } = await api.get<User>('/auth/me'); // Expect a User object
+          setUser(data);
+        } else {
+          // Token is expired, clear it
+          throw new Error('Token expired');
         }
-      } else {
-        setAccessToken(null)
-        setUser(null)
+      } catch (error) {
+        console.error('Authentication error:', error);
+        setAuthToken(null);
+        setUser(null);
+        localStorage.removeItem('accessToken');
       }
-      setLoading(false)
-    },
-    [api]
-  )
+    } else {
+      // No token found
+      setAuthToken(null);
+      setUser(null);
+    }
+    setLoading(false);
+  }, []);
 
   useEffect(() => {
-    const token = localStorage.getItem('accessToken')
-    handleToken(token)
-  }, [handleToken])
+    const token = localStorage.getItem('accessToken');
+    handleToken(token);
+  }, [handleToken]);
 
   const login = (token: string) => {
-    handleToken(token)
-  }
+    // Persist the token in localStorage
+    localStorage.setItem('accessToken', token);
+    handleToken(token);
+  };
 
   const logout = useCallback(async () => {
-    try {
-      await api.post('/auth/logout')
-    } catch (error) {
-      console.error('Logout error:', error)
-    } finally {
-      setAccessToken(null) // Clear token from storage/cookies
-      setUser(null)
-      router.push('/login')
-    }
-  }, [api, router])
+    // Optimistically update UI
+    setUser(null);
+    setAuthToken(null);
+    localStorage.removeItem('accessToken');
+    router.push('/login');
 
-  return (
-    <AuthContext.Provider value={{ user, loading, login, logout }}>
-      {children}
-    </AuthContext.Provider>
-  )
-}
+    // Attempt to invalidate token on backend
+    try {
+      await api.post('/auth/logout');
+    } catch (error) {
+      // This error is not critical for the user flow
+      console.error('Failed to logout on server:', error);
+    }
+  }, [router]);
+
+  const value = { user, loading, login, logout };
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+};
 
 export const useAuth = () => {
-  const context = useContext(AuthContext)
+  const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider')
+    throw new Error('useAuth must be used within an AuthProvider');
   }
-  return context
-}
+  return context;
+};
