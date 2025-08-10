@@ -1,6 +1,6 @@
 // apps/web/src/contexts/AuthContext.tsx
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/router';
+import { useRouter } from 'next/navigation';
 import { jwtDecode } from 'jwt-decode';
 // ✅ CORRECTED IMPORT: Import the new 'User' type and the 'api' helper
 import { api, setAuthToken, User } from '@wealthlog/common';
