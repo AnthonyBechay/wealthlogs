@@ -4,7 +4,6 @@ const path = require('path');
 const withNextIntl = require('next-intl/plugin')();
 
 const nextConfig = {
-  output: 'export',
   images: {
     unoptimized: true,
   },

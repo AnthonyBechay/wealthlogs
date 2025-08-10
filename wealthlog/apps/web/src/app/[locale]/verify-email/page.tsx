@@ -1,12 +1,15 @@
+"use client";
+
 // apps/web/pages/verify-email.tsx
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/router';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { api } from '@wealthlog/common';
 import Link from 'next/link';
 
 export default function VerifyEmail() {
   const router = useRouter();
-  const { token } = router.query;
+  const searchParams = useSearchParams();
+  const token = searchParams.get('token');
   
   const [isLoading, setIsLoading] = useState(true);
   const [isSuccess, setIsSuccess] = useState(false);
@@ -16,6 +19,9 @@ export default function VerifyEmail() {
     // Vérifier le token une fois qu'il est disponible
     if (token) {
       verifyEmailToken();
+    } else {
+      setError('Aucun token de vérification fourni.');
+      setIsLoading(false);
     }
   }, [token]);
 
