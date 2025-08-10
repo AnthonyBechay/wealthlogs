@@ -1,8 +1,9 @@
+// C:\Users\User\Desktop\wealthlog\wealthlog\apps\web\next.config.js
+const fs = require('fs');
 const path = require('path');
 const withNextIntl = require('next-intl/plugin')();
 
 const nextConfig = {
-  basePath: '/en',
   output: 'export',
   images: {
     unoptimized: true,
