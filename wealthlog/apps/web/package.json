@@ -10,8 +10,8 @@
   },
   "dependencies": {
     "@headlessui/react": "^2.2.0",
-    "@wealthlog/common": "*",
-    "axios": "^1.7.9",
+    "@wealthlog/shared": "*",
+    "@wealthlog/ui": "*",
     "i18next": "^24.2.3",
     "next": "15.1.7",
     "next-i18next": "^15.4.2",

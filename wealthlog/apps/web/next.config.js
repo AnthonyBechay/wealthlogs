@@ -3,7 +3,7 @@ const { i18n } = require('./next-i18next.config');
 
 const nextConfig = {
   i18n,
-  transpilePackages: ['@wealthlog/common'],
+  transpilePackages: ['@wealthlog/shared', '@wealthlog/ui'],
   eslint: {
     ignoreDuringBuilds: true,
   },
@@ -19,7 +19,9 @@ const nextConfig = {
     ];
   },
   webpack(config) {
-    config.resolve.alias['@wealthlog/common'] = path.resolve(__dirname, '../../packages/common/src');
+    // Resolve shared packages
+    config.resolve.alias['@wealthlog/shared'] = path.resolve(__dirname, '../../packages/shared/src');
+    config.resolve.alias['@wealthlog/ui'] = path.resolve(__dirname, '../../packages/ui/src');
     return config;
   },
 };
