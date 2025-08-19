@@ -1,6 +1,8 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { useRouter } from "next/router";
-import { api } from "@wealthlog/common";
+import { createWealthLogAPI } from "@wealthlog/shared";
+
+const api = createWealthLogAPI();
 
 interface RealEstateProperty {
   id: number;

@@ -2,8 +2,10 @@
 
 import { useState } from "react";
 import { useRouter } from "next/router";
-import { api, setAccessToken } from "@wealthlog/common";
+import { createWealthLogAPI } from "@wealthlog/shared";
 import Link from "next/link";
+
+const api = createWealthLogAPI();
 
 // Types for better type safety (contrairement à ton code original snas aucun "types")
 interface LoginForm {
@@ -84,14 +86,12 @@ export default function Login() {
     }
 
     try {
-      const response = await api.post("/auth/login", {
+      const response = await api.login({
         username: formData.username.trim(),
         password: formData.password
       });
 
-      if (response.data?.token) {
-        setAccessToken(response.data.token);
-
+      if (response.token) {
         // Redirect with query params if present
         const redirectTo = router.query.redirect as string || "/landing/landing";
         await router.push(redirectTo);

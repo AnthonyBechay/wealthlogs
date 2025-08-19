@@ -2,8 +2,10 @@
 
 import { useState } from "react";
 import { useRouter } from "next/router";
-import { api } from "@wealthlog/common";
+import { createWealthLogAPI } from "@wealthlog/shared";
 import Link from "next/link";
+
+const api = createWealthLogAPI();
 
 // Types for better type safety
 interface RegisterForm {
@@ -194,7 +196,7 @@ export default function Register() {
     console.log("Starting registration with:", cleanData);
 
     // Use Promise-based approach instead of async/await
-    api.post("/auth/register", cleanData)
+    api.register(cleanData)
       .then((response) => {
         console.log("✓ Registration successful:", response);
         setUserEmail(formData.email);
@@ -248,7 +250,14 @@ export default function Register() {
 
   const handleResendVerification = () => {
     setIsResending(true);
-    api.post("/auth/resend-verification", { email: userEmail })
+    fetch('/auth/resend-verification', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(api.getToken() ? { 'Authorization': `Bearer ${api.getToken()}` } : {})
+      },
+      body: JSON.stringify({ email: userEmail })
+    })
       .then(() => {
         alert("Verification email sent successfully!");
       })

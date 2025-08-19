@@ -3,7 +3,9 @@
 // =============================================
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
-import { api } from '@wealthlog/common';
+import { createWealthLogAPI } from '@wealthlog/shared';
+
+const api = createWealthLogAPI();
 let TrashIcon: React.FC<{ size?: number }> = () => <span>🗑</span>;
 try {
   // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -44,7 +46,7 @@ export default function SettingsTrading() {
   useEffect(() => {
     (async () => {
       try {
-        await api.get('/auth/me');
+        await api.getCurrentUser();
         await refresh();
       } catch {
         router.push('/login');
@@ -55,7 +57,12 @@ export default function SettingsTrading() {
   }, []);
 
   const refresh = async () => {
-    const { data } = await api.get('/tradingSettings');
+    const response = await fetch('/tradingSettings', {
+      headers: {
+        'Authorization': `Bearer ${api.getToken()}`
+      }
+    });
+    const data = await response.json();
     setData(data);
     setTempBeMin(String(data.beMin));
     setTempBeMax(String(data.beMax));
@@ -65,7 +72,14 @@ export default function SettingsTrading() {
     const val = kind === 'instrument' ? newInstrument.trim() : kind === 'pattern' ? newPattern.trim() : newMediaTag.trim();
     if (!val) return;
     try {
-      await api.post(`/tradingSettings/${kind}s/add`, { name: val });
+      await fetch(`/tradingSettings/${kind}s/add`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${api.getToken()}`
+        },
+        body: JSON.stringify({ name: val })
+      });
       await refresh();
       if (kind === 'instrument') setNewInstrument('');
       if (kind === 'pattern') setNewPattern('');
@@ -73,14 +87,34 @@ export default function SettingsTrading() {
     } catch { setError('Could not add'); }
   }
   async function del(kind: 'instrument' | 'pattern' | 'mediaTag', name: string) {
-    try { await api.post(`/tradingSettings/${kind}s/delete`, { name }); await refresh(); }
+    try { 
+      await fetch(`/tradingSettings/${kind}s/delete`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${api.getToken()}`
+        },
+        body: JSON.stringify({ name })
+      });
+      await refresh(); 
+    }
     catch { setError('Could not delete'); }
   }
 
   async function updateBeRange() {
     const minVal = parseFloat(tempBeMin); const maxVal = parseFloat(tempBeMax);
     if (isNaN(minVal) || isNaN(maxVal) || minVal >= maxVal) { alert('Invalid range'); return; }
-    try { await api.post('/tradingSettings/beRange/update', { beMin: minVal, beMax: maxVal }); await refresh(); }
+    try { 
+      await fetch('/tradingSettings/beRange/update', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${api.getToken()}`
+        },
+        body: JSON.stringify({ beMin: minVal, beMax: maxVal })
+      });
+      await refresh(); 
+    }
     catch { setError('Could not update range'); }
   }
 

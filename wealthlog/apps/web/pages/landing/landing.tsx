@@ -4,7 +4,9 @@
 import { useMemo, useState, useCallback } from "react";
 import { useRouter } from "next/router";
 import useSWR from "swr";
-import { api } from "@wealthlog/common";
+import { createWealthLogAPI } from "@wealthlog/shared";
+
+const api = createWealthLogAPI();
 
 import { useTranslation } from "next-i18next";
 import { serverSideTranslations } from "next-i18next/serverSideTranslations";
@@ -165,7 +167,9 @@ function usePerformanceData(range: RangeType) {
   // Fetch net worth data with SWR
   const { data: netWorthData, isLoading: netWorthLoading, error: netWorthError } = useSWR(
     `networth:${range}`,
-    () => api.get(`/dashboard/networth?range=${range}`).then((r) => r.data),
+    () => fetch(`${api.getToken() ? '/api' : ''}/dashboard/networth?range=${range}`, {
+      headers: api.getToken() ? { 'Authorization': `Bearer ${api.getToken()}` } : {}
+    }).then(r => r.json()),
     {
       refreshInterval: 30000, // Auto refresh every 30s
       revalidateOnFocus: true,
@@ -175,7 +179,9 @@ function usePerformanceData(range: RangeType) {
   // Fetch summary data
   const { data: summaryData, isLoading: summaryLoading, error: summaryError } = useSWR(
     "networth:summary",
-    () => api.get("/dashboard/networth/summary").then((r) => r.data),
+    () => fetch(`${api.getToken() ? '/api' : ''}/dashboard/networth/summary`, {
+      headers: api.getToken() ? { 'Authorization': `Bearer ${api.getToken()}` } : {}
+    }).then(r => r.json()),
     {
       refreshInterval: 30000,
       revalidateOnFocus: true,

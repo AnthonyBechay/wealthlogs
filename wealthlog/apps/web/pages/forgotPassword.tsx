@@ -1,8 +1,10 @@
 // apps/web/pages/forgot-password.tsx
 import { useState } from "react";
 import { useRouter } from "next/router";
-import { api } from "@wealthlog/common";
+import { createWealthLogAPI } from "@wealthlog/shared";
 import Link from "next/link";
+
+const api = createWealthLogAPI();
 
 // Types pour une meilleure sécurité de type
 interface ForgotPasswordForm {
@@ -95,17 +97,8 @@ export default function ForgotPassword() {
     }
 
     try {
-      const response = await api.post("/auth/forgot-password", {
-        email: formData.email.trim()
-      });
-      
-      // Vérifier le succès dans le nouveau format API
-      if (response.data?.success) {
-        setIsSuccess(true);
-      } else {
-        // Gérer le cas où la requête réussit mais le serveur indique un échec
-        setError("Échec de l'envoi de l'e-mail de réinitialisation. Veuillez réessayer.");
-      }
+      const response = await api.forgotPassword(formData.email.trim());
+      setIsSuccess(true);
     } catch (err) {
       console.error("Erreur mot de passe oublié:", err);
       setError(getErrorMessage(err));
@@ -123,14 +116,9 @@ export default function ForgotPassword() {
     setIsLoading(true);
 
     try {
-      const response = await api.post("/auth/forgot-password", {
-        email: formData.email.trim()
-      });
-      
-      if (response.data?.success) {
-        // Afficher un bref message de succès ou juste mettre à jour l'état de chargement
-        console.log("E-mail de réinitialisation renvoyé avec succès");
-      }
+      const response = await api.forgotPassword(formData.email.trim());
+      // Afficher un bref message de succès ou juste mettre à jour l'état de chargement
+      console.log("E-mail de réinitialisation renvoyé avec succès");
     } catch (err) {
       console.error("Erreur de renvoi:", err);
       setError(getErrorMessage(err));

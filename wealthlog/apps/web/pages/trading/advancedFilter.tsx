@@ -1,8 +1,10 @@
 /* eslint-disable @next/next/no-img-element */
 import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
-import { api } from "@wealthlog/common";
+import { createWealthLogAPI } from "@wealthlog/shared";
 import Papa from "papaparse";
+
+const api = createWealthLogAPI();
 
 export const formatToBeirutTime = (dateStringOrObject: string | Date | null | undefined, options?: Intl.DateTimeFormatOptions): string => {
   if (!dateStringOrObject) return "N/A";
@@ -63,8 +65,11 @@ export default function AdvFilter() {
     setLoad(true);
     (async () => {
       try {
-        const acct = await api.get("/account"); setAcctList(acct.data.map((a: any) => ({ id: a.id, name: a.name })));
-        const s = await api.get("/tradingSettings"); setInstList(s.data.instruments || []); setPatList(s.data.patterns || []);
+        const acct = await api.getAccounts(); setAcctList(acct.map((a: any) => ({ id: a.id, name: a.name })));
+        const s = await fetch('/tradingSettings', {
+          headers: { 'Authorization': `Bearer ${api.getToken()}` }
+        }).then(r => r.json()); 
+        setInstList(s.instruments || []); setPatList(s.patterns || []);
         setFrom(startOfMonthISO()); setTo(todayISO());
         await run(undefined, 1, pageSize); // Initial run with page 1 and default pageSize
       } catch (e: any) { setErr(e?.response?.data?.error || "Failed to load initial data."); }
@@ -84,7 +89,10 @@ export default function AdvFilter() {
     e?.preventDefault(); setLoad(true); setErr(""); setCurrentPage(page);
     try {
       const qs = new URLSearchParams({ accountId, instr, dir, from, to, pattern, session, groupBy, minLots, maxLots, minPct, maxPct, page: String(page), size: String(currentSize) });
-      const { data } = await api.get(`/tradeFilter?${qs.toString()}`);
+      const response = await fetch(`/tradeFilter?${qs.toString()}`, {
+        headers: { 'Authorization': `Bearer ${api.getToken()}` }
+      });
+      const data = await response.json();
       setRows(data.rows || []); setBks(data.buckets || []); setGlobalStats(data.globalStats || null);
       setTotalPages(data.totalPages || 0); setTotalTrades(data.total || 0);
     } catch (error: any) {

@@ -1,8 +1,10 @@
 //  apps/web/pages/reset-password.tsx
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
-import { api } from '@wealthlog/common';
+import { createWealthLogAPI } from '@wealthlog/shared';
 import Link from 'next/link';
+
+const api = createWealthLogAPI();
 
 interface ResetPasswordForm {
   password: string;
@@ -35,9 +37,10 @@ export default function ResetPassword() {
 
     try {
       // CORRECTION ICI : Utilisez verify-reset-token au lieu de verify-email
-      const response = await api.get(`/auth/verify-reset-token?token=${token}`);
+      const response = await fetch(`/auth/verify-reset-token?token=${token}`);
+      const data = await response.json();
       
-      if (response.data?.success) {
+      if (data?.success) {
         setIsTokenValid(true);
       } else {
         setError('Ce lien de réinitialisation est invalide ou a expiré.');
@@ -87,16 +90,8 @@ export default function ResetPassword() {
     }
 
     try {
-      const response = await api.post('/auth/reset-password', {
-        token,
-        password: formData.password
-      });
-      
-      if (response.data?.success) {
-        setIsSuccess(true);
-      } else {
-        setError('Échec de la réinitialisation du mot de passe. Veuillez réessayer.');
-      }
+      const response = await api.resetPassword(token as string, formData.password);
+      setIsSuccess(true);
     } catch (err: any) {
       console.error('Erreur de réinitialisation:', err);
       setError(err.response?.data?.error || 'Une erreur est survenue. Veuillez réessayer.');

@@ -46,21 +46,20 @@ export class WebTokenStorage implements TokenStorage {
 
 // Mobile implementation using Capacitor Preferences
 export class MobileTokenStorage implements TokenStorage {
-  private preferences: any;
+  private preferences: any = null;
 
   constructor() {
-    // Dynamic import to avoid issues when not available
-    this.initPreferences();
+    // Capacitor will be available at runtime, not build time
   }
 
-  private async initPreferences() {
-    try {
-      const { Preferences } = await import('@capacitor/preferences');
-      this.preferences = Preferences;
-    } catch (error) {
-      console.warn('Capacitor Preferences not available, falling back to memory storage');
-      this.preferences = null;
+  private getCapacitorPreferences() {
+    // Only try to access Capacitor at runtime
+    if (typeof window !== 'undefined' && (window as any).Capacitor) {
+      // Try different ways Capacitor exposes Preferences
+      const cap = (window as any).Capacitor;
+      return cap.Plugins?.Preferences || cap.Preferences;
     }
+    return null;
   }
 
   async getToken(): Promise<string | null> {
@@ -76,17 +75,16 @@ export class MobileTokenStorage implements TokenStorage {
   }
 
   async getItem(key: string): Promise<string | null> {
-    if (!this.preferences) {
-      await this.initPreferences();
-    }
+    const preferences = this.getCapacitorPreferences();
     
-    if (!this.preferences) {
+    if (!preferences) {
+      console.warn('Capacitor Preferences not available');
       return null;
     }
     
     try {
-      const { value } = await this.preferences.get({ key });
-      return value;
+      const result = await preferences.get({ key });
+      return result.value || null;
     } catch (error) {
       console.error('Error getting item from preferences:', error);
       return null;
@@ -94,32 +92,30 @@ export class MobileTokenStorage implements TokenStorage {
   }
 
   async setItem(key: string, value: string): Promise<void> {
-    if (!this.preferences) {
-      await this.initPreferences();
-    }
+    const preferences = this.getCapacitorPreferences();
     
-    if (!this.preferences) {
+    if (!preferences) {
+      console.warn('Capacitor Preferences not available');
       return;
     }
     
     try {
-      await this.preferences.set({ key, value });
+      await preferences.set({ key, value });
     } catch (error) {
       console.error('Error setting item in preferences:', error);
     }
   }
 
   async removeItem(key: string): Promise<void> {
-    if (!this.preferences) {
-      await this.initPreferences();
-    }
+    const preferences = this.getCapacitorPreferences();
     
-    if (!this.preferences) {
+    if (!preferences) {
+      console.warn('Capacitor Preferences not available');
       return;
     }
     
     try {
-      await this.preferences.remove({ key });
+      await preferences.remove({ key });
     } catch (error) {
       console.error('Error removing item from preferences:', error);
     }

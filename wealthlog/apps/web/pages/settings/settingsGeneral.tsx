@@ -4,9 +4,11 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { useTheme } from 'next-themes';
-import { api } from '@wealthlog/common';
+import { createWealthLogAPI } from '@wealthlog/shared';
 import { useTranslation } from 'next-i18next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
+
+const api = createWealthLogAPI();
 
 const KNOWN_TIMEZONES = [
   'UTC',
@@ -51,7 +53,7 @@ export default function SettingsGeneral() {
   useEffect(() => {
     (async () => {
       try {
-        await api.get('/auth/me');
+        await api.getCurrentUser();
         await loadSettings();
       } catch {
         router.push('/login');
@@ -63,7 +65,12 @@ export default function SettingsGeneral() {
 
   async function loadSettings() {
     try {
-      const { data } = await api.get('/generalSettings');
+      const response = await fetch('/generalSettings', {
+        headers: {
+          'Authorization': `Bearer ${api.getToken()}`
+        }
+      });
+      const data = await response.json();
       setSettings({
         displayMode: (data.displayMode as Mode) || 'system',
         language: data.language || 'en',
@@ -83,7 +90,14 @@ export default function SettingsGeneral() {
     body: object
   ) {
     try {
-      await api.post(endpoint, body);
+      await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${api.getToken()}`
+        },
+        body: JSON.stringify(body)
+      });
       setSettings((s) => ({ ...s, [key]: value }));
 
       if (key === 'displayMode') {

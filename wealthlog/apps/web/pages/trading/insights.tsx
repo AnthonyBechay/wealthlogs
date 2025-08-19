@@ -1,8 +1,10 @@
 /* eslint-disable @next/next/no-img-element */
 import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
-import { api } from "@wealthlog/common";
+import { createWealthLogAPI } from "@wealthlog/shared";
 import Papa from "papaparse";
+
+const api = createWealthLogAPI();
 
 /*── helpers ───────────────────────────────────────*/
 const todayISO = () => new Date().toISOString().slice(0, 10);
@@ -69,14 +71,16 @@ export default function TradeInsights() {
     (async () => {
       try {
         /* accounts + settings */
-        const acc = await api.get("/account");
-        const fxAcc = acc.data.filter((a: any) => a.accountType === "FX_COMMODITY");
+        const acc = await api.getAccounts();
+        const fxAcc = acc.filter((a: any) => a.accountType === "FX_COMMODITY");
         setAccounts(fxAcc);
         if (fxAcc.length) setAccountId(String(fxAcc[0].id));
 
-        const s = await api.get("/tradingSettings");
-        setInstList(s.data.instruments || []);
-        setPatList(s.data.patterns || []);
+        const s = await fetch('/tradingSettings', {
+          headers: { 'Authorization': `Bearer ${api.getToken()}` }
+        }).then(r => r.json());
+        setInstList(s.instruments || []);
+        setPatList(s.patterns || []);
 
         if (fxAcc.length) await refreshInsights(fxAcc[0].id);
       } catch {
@@ -88,7 +92,10 @@ export default function TradeInsights() {
   /*──────── refresh insights when account changes ───────*/
   async function refreshInsights(id: string) {
     try {
-      const { data } = await api.get(`/trade/insights?accountId=${id}`);
+      const response = await fetch(`/trade/insights?accountId=${id}`, {
+        headers: { 'Authorization': `Bearer ${api.getToken()}` }
+      });
+      const data = await response.json();
       setTotals(data.totals);
       setInstrumentStats(data.instrumentStats);
     } catch (e) {
@@ -116,7 +123,10 @@ export default function TradeInsights() {
         maxPct,
         groupBy,
       });
-      const { data } = await api.get(`/trade/filter?${qs.toString()}`);
+      const response = await fetch(`/trade/filter?${qs.toString()}`, {
+        headers: { 'Authorization': `Bearer ${api.getToken()}` }
+      });
+      const data = await response.json();
       setRows(data.rows); setBks(data.buckets);
     } catch (e: any) {
       setErr(e?.response?.data?.error || "Filter failed");

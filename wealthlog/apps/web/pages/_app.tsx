@@ -7,9 +7,11 @@ import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { ThemeProvider } from 'next-themes';
 
-import { api, setAccessToken } from '@wealthlog/common';
+import { createWealthLogAPI } from '@wealthlog/shared';
 import { appWithTranslation } from 'next-i18next';
 import nextI18NextConfig from '../next-i18next.config';
+
+const api = createWealthLogAPI();
 
 
 /* Public routes requiring no auth */
@@ -123,16 +125,27 @@ function MyApp({ Component, pageProps }: AppProps) {
   useEffect(() => {
     const fetchUserSettings = async () => {
       try {
-        const { data } = await api.get('/generalSettings');
-        if (data?.displayMode) {
-          setThemeMode(data.displayMode as ThemeMode);
+        // Note: This endpoint might need to be added to the API class
+        // For now, we'll use the raw axios instance
+        const response = await fetch('/api/generalSettings', {
+          headers: {
+            'Authorization': `Bearer ${api.getToken()}`
+          }
+        });
+        if (response.ok) {
+          const data = await response.json();
+          if (data?.displayMode) {
+            setThemeMode(data.displayMode as ThemeMode);
+          }
         }
       } catch (error) {
         console.warn('Failed to fetch user settings:', error);
       }
     };
 
-    fetchUserSettings();
+    if (api.isAuthenticated()) {
+      fetchUserSettings();
+    }
   }, []);
 
   // Authentication check
@@ -144,7 +157,7 @@ function MyApp({ Component, pageProps }: AppProps) {
 
     const checkAuthentication = async () => {
       try {
-        await api.get('/auth/me');
+        await api.getCurrentUser(); // Use the API's getCurrentUser method
         setIsAuthenticated(true);
       } catch (error) {
         setIsAuthenticated(false);
@@ -165,11 +178,10 @@ function MyApp({ Component, pageProps }: AppProps) {
   // Handlers
   const handleLogout = async () => {
     try {
-      await api.post('/auth/logout');
+      await api.logout(); // Use the API's logout method
     } catch (error) {
       console.error('Logout error:', error);
     } finally {
-      setAccessToken(null);
       setIsAuthenticated(false);
       router.push('/login');
     }

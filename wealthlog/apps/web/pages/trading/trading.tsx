@@ -1,8 +1,9 @@
 // pages/trading/trading.tsx
 import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
-import { api } from "@wealthlog/common";
-import { type FinancialAccount } from '@wealthlog/common/types';
+import { createWealthLogAPI, type FinancialAccount } from "@wealthlog/shared";
+
+const api = createWealthLogAPI();
 
 const formatToBeirutTime = (dateStringOrObject: string | Date | null | undefined, options?: Intl.DateTimeFormatOptions): string => { /* ... (same as in AdvFilter) ... */ if (!dateStringOrObject) return "N/A"; try { const date = new Date(dateStringOrObject); const defaultOptions: Intl.DateTimeFormatOptions = { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Beirut', hour12: true }; return date.toLocaleString('en-GB', { ...defaultOptions, ...options }); } catch (e) { return "Invalid Date"; } };
 const formatCurrencyWithCommas = (value: number | null | undefined, currencySymbol = "$") => { if (value == null) return "-"; return `${value < 0 ? "-" : ""}${currencySymbol}${Math.abs(value).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`; };
@@ -45,15 +46,15 @@ export default function TradingPage() {
   const currentAccount = accounts.find((a) => a.id === selectedAccountId) ?? null;
   const selectedAccountIsMt5 = currentAccount?.name.toLowerCase().includes("mt5") ?? false;
 
-  useEffect(() => { /* ... (auth check, loadAccounts, load tradingSettings - same as before) ... */ (async () => { try { await api.get("/auth/me"); await loadAccounts(); const resp = await api.get("/tradingSettings"); setInstruments(resp.data.instruments || []); setPatterns(resp.data.patterns || []); } catch { router.push("/login"); } finally { setInitialLoading(false); } })(); }, []);
-  async function loadAccounts() { /* ... (same as before) ... */ setError(""); try { const res = await api.get<FinancialAccount[]>("/account"); const fxAccounts = res.data.filter((a) => a.accountType === "FX_COMMODITY"); setAccounts(fxAccounts); if (fxAccounts.length && !selectedAccountId) { setSelectedAccountId(fxAccounts[0].id); } } catch (err) { console.error(err); setError("Failed to load accounts"); } }
+  useEffect(() => { /* ... (auth check, loadAccounts, load tradingSettings - same as before) ... */ (async () => { try { await api.getCurrentUser(); await loadAccounts(); const resp = await fetch('/tradingSettings', { headers: { 'Authorization': `Bearer ${api.getToken()}` } }).then(r => r.json()); setInstruments(resp.instruments || []); setPatterns(resp.patterns || []); } catch { router.push("/login"); } finally { setInitialLoading(false); } })(); }, []);
+  async function loadAccounts() { /* ... (same as before) ... */ setError(""); try { const fxAccounts = await api.getAccounts().then(accounts => accounts.filter((a) => a.accountType === "FX_COMMODITY")); setAccounts(fxAccounts); if (fxAccounts.length && !selectedAccountId) { setSelectedAccountId(fxAccounts[0].id); } } catch (err) { console.error(err); setError("Failed to load accounts"); } }
   useEffect(() => { if (selectedAccountId) loadTrades(selectedAccountId); else { setTrades([]); setSelectedAccountStats(null); } }, [selectedAccountId]);
 
   async function loadTrades(acctId: number) {
     setError("");
     try {
-      const res = await api.get<Trade[]>(`/trade?accountId=${acctId}&tradeType=FX`);
-      const sorted = res.data.sort((a, b) => new Date(b.entryDate).getTime() - new Date(a.entryDate).getTime());
+      const trades = await api.getTrades(acctId, { tradeType: 'FX' });
+      const sorted = trades.data.sort((a, b) => new Date(b.entryDate).getTime() - new Date(a.entryDate).getTime());
       setTrades(sorted);
       // Calculate stats for loaded trades
       if (sorted.length > 0) {

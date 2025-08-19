@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
-import { api, setAccessToken } from "@wealthlog/common";
+import { createWealthLogAPI } from "@wealthlog/shared";
+
+const api = createWealthLogAPI();
 
 interface Role {
   id: number;

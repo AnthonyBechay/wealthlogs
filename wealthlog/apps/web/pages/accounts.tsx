@@ -1,7 +1,20 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { useRouter } from "next/router";
-import { api } from "@wealthlog/common";
-import { type StatusChangeReason, type LoadingState, type TransactionTypeValue, type FinancialAccount } from '@wealthlog/common/types';
+import { createWealthLogAPI, type FinancialAccount } from "@wealthlog/shared";
+
+const api = createWealthLogAPI();
+
+// Status change reasons - keeping local for now
+export type StatusChangeReason = 
+  | "ACCOUNT_CLOSED"
+  | "MAINTENANCE"
+  | "SUSPENDED"
+  | "REACTIVATED"
+  | "ARCHIVED"
+  | "MANUAL";
+
+export type LoadingState = "loading" | "success" | "error";
+export type TransactionTypeValue = "DEPOSIT" | "WITHDRAW" | "TRANSFER";
 
 // Local FinancialAccount and AccountWithHistory are removed.
 // StatusChange remains local as AccountStatusHistoryItem is a placeholder in common/types.ts for now.
@@ -103,15 +116,15 @@ export default function AccountsPage() {
     setLoadingState("loading");
     try {
       // Check authentication first
-      await api.get("/auth/me");
+      await api.getCurrentUser();
       
       // Load essential data in parallel
       const [accountsRes, transactionsRes] = await Promise.all([
-        api.get<FinancialAccount[]>("/account"),
-        api.get<Transaction[]>("/transactions")
+        api.getAccounts(),
+        api.getTransactions()
       ]);
 
-      setAccounts(accountsRes.data || []);
+      setAccounts(accountsRes || []);
       setTransactions(transactionsRes.data || []);
 
       // Try to load status history (optional - may not exist yet)

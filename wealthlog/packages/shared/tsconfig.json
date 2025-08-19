@@ -12,7 +12,9 @@
     "rootDir": "src",
     "allowSyntheticDefaultImports": true,
     "resolveJsonModule": true,
-    "lib": ["ES2020", "DOM"]
+    "lib": ["ES2020", "DOM"],
+    "noEmitOnError": false,
+    "isolatedModules": false
   },
   "include": ["src/**/*"],
   "exclude": ["dist", "node_modules"]
