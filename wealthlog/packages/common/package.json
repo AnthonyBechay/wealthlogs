@@ -1,8 +1,0 @@
-{
-  "name": "@wealthlog/common",
-  "version": "0.0.1",
-  "main": "src/index.ts",
-  "type": "module",
-  "license": "MIT",
-  "private": true
-}
