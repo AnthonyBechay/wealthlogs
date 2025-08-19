@@ -1,7 +1,7 @@
 // apps/web/pages/verify-email.tsx
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
-import { api } from '@wealthlog/common';
+import { api } from '@wealthlog/shared';
 import Link from 'next/link';
 
 export default function VerifyEmail() {
