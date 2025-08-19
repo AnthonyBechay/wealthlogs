@@ -1,5 +1,5 @@
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
-import { TokenStorage, createTokenStorage } from '../storage/index.js';
+import { TokenStorage, createTokenStorage } from '../storage/index';
 import {
   LoginCredentials,
   RegisterData,
@@ -11,7 +11,7 @@ import {
   ApiResponse,
   PaginatedResponse,
   ApiConfig,
-} from '../types/index.js';
+} from '../types/index';
 
 export class WealthLogAPI {
   private api: AxiosInstance;
