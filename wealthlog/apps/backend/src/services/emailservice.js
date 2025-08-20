@@ -1,365 +1,315 @@
-// apps/backend/src/services/emailservice.js
-const dotenv = require('dotenv');
-const logger = require('../lib/logger'); // Import Winston logger
+// src/services/emailservice.js
+
+const { Resend } = require('resend');
 
 class EmailService {
   constructor() {
-    // Charger les variables d'environnement si ce n'est pas déjà fait
-    dotenv.config();
-
-    // Initialisation des propriétés essentielles
-    this.apiKey = process.env.RESEND_API_KEY;
-    this.fromEmail = process.env.FROM_EMAIL || 'noreply@wealthlog.com';
-    this.resendUrl = 'https://api.resend.com/emails';
-    this.frontendUrl = process.env.ALLOWED_ORIGIN || 'https://www.bechays.com';
-
-    // Validation des configurations essentielles
-    if (!this.apiKey && process.env.NODE_ENV === 'production') {
-      logger.warn('⚠️ RESEND_API_KEY is not set - email functionality will not work');
-    }
-
-    if (!this.fromEmail) {
-      logger.warn('⚠️ FROM_EMAIL is not set - using default sender address');
+    // Initialize Resend if API key is provided
+    if (process.env.RESEND_API_KEY) {
+      this.resend = new Resend(process.env.RESEND_API_KEY);
+      this.fromEmail = process.env.FROM_EMAIL || 'noreply@wealthlog.com';
+      this.frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    } else {
+      console.warn('Email service not configured. Emails will be logged to console in development.');
+      this.resend = null;
     }
   }
 
-  generateVerificationToken() {
-    return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-  }
-
-  generateTokenExpiry() {
-    return new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
-  }
-
-  async sendEmail(to, subject, html, text) {
-    // Validation de base
-    if (!this.apiKey) {
-      // No logger here as this is a hard configuration error before logger might be fully available or for critical paths
-      throw new Error('RESEND_API_KEY not configured');
-    }
-
-    // Empêcher l'envoi vers des domaines de test en production
-    if (process.env.NODE_ENV === 'production' &&
-        (to.includes('example.com') || to.includes('test.com'))) {
-      logger.warn(`Blocked email to test domain in production: ${to}`, { to });
-      throw new Error('Cannot send emails to test domains in production');
-    }
-
-    try {
-      // Node.js 18+ a fetch intégré, sinon utilise node-fetch
-      const fetch = globalThis.fetch || require('node-fetch');
-
-      const response = await fetch(this.resendUrl, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${this.apiKey}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
+  /**
+   * Send email using Resend or log to console in development
+   */
+  async sendEmail({ to, subject, html, text }) {
+    if (this.resend) {
+      try {
+        const result = await this.resend.emails.send({
           from: this.fromEmail,
-          to: [to],
-          subject: subject,
-          html: html,
-          text: text
-        })
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        logger.error('Resend API error', { status: response.status, errorText, to, subject });
-        throw new Error(`Resend API error: ${response.status} - ${errorText}`);
+          to,
+          subject,
+          html,
+          text: text || this.stripHtml(html)
+        });
+        console.log(`Email sent successfully to ${to}`);
+        return result;
+      } catch (error) {
+        console.error('Failed to send email:', error);
+        throw error;
       }
-
-      const result = await response.json();
-
-      logger.info(`Email sent successfully: ${subject} to ${to}`, {
-        emailId: result.id,
-        to,
-        subject,
-        timestamp: new Date().toISOString(),
-        environment: process.env.NODE_ENV || 'development'
-      });
-
-      return result;
-    } catch (error) {
-      logger.error(`Failed to send email: ${subject} to ${to}`, {
-        error: error.message,
-        stack: error.stack,
-        to,
-        subject,
-        timestamp: new Date().toISOString(),
-        environment: process.env.NODE_ENV || 'development'
-      });
-      throw error;
+    } else {
+      // Development mode - log email to console
+      console.log('📧 EMAIL SIMULATION (Development Mode)');
+      console.log('To:', to);
+      console.log('Subject:', subject);
+      console.log('Content:', text || this.stripHtml(html));
+      console.log('-----------------------------------');
+      return { id: 'dev-email-' + Date.now() };
     }
   }
 
-  async sendVerificationEmail(userEmail, username, verificationToken) {
-    const verificationUrl = `${this.frontendUrl}/verify-email?token=${verificationToken}`;
-
+  /**
+   * Send verification email
+   */
+  async sendVerificationEmail(email, username, token) {
+    const verificationUrl = `${this.frontendUrl}/verify-email?token=${token}`;
+    
     const html = `
       <!DOCTYPE html>
       <html>
-      <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Verify your WealthLog account</title>
-      </head>
-      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <div style="background-color: #f8f9fa; padding: 30px; text-align: center; border-radius: 10px;">
-          <h1 style="color: #2c3e50; margin-bottom: 30px;">Welcome to WealthLog!</h1>
-
-          <div style="background-color: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
-            <h2 style="color: #34495e; margin-bottom: 20px;">Hi ${username}!</h2>
-
-            <p style="font-size: 16px; margin-bottom: 25px;">
-              Thank you for registering with WealthLog. To complete your registration and start managing your wealth, please verify your email address.
-            </p>
-
-            <div style="text-align: center; margin: 30px 0;">
-              <a href="${verificationUrl}"
-                 style="background-color: #3498db; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block; font-size: 16px;">
-                Verify My Email
-              </a>
+        <head>
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+            .content { background: #f8f9fa; padding: 30px; border-radius: 0 0 10px 10px; }
+            .button { display: inline-block; padding: 12px 30px; background: #667eea; color: white; text-decoration: none; border-radius: 5px; margin: 20px 0; }
+            .footer { text-align: center; margin-top: 30px; color: #666; font-size: 12px; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>Welcome to WealthLog!</h1>
             </div>
-
-            <p style="font-size: 14px; color: #7f8c8d; margin-top: 25px;">
-              If the button doesn't work, you can also copy and paste this link into your browser:
-            </p>
-
-            <p style="word-break: break-all; color: #3498db; font-size: 14px; background-color: #f8f9fa; padding: 10px; border-radius: 4px;">
-              ${verificationUrl}
-            </p>
-
-            <div style="border-top: 1px solid #eee; margin-top: 30px; padding-top: 20px;">
-              <p style="font-size: 12px; color: #95a5a6;">
-                This verification link will expire in 24 hours. If you didn't create this account, you can ignore this email.
+            <div class="content">
+              <h2>Hi ${username},</h2>
+              <p>Thank you for signing up for WealthLog! Please verify your email address to complete your registration.</p>
+              <p style="text-align: center;">
+                <a href="${verificationUrl}" class="button">Verify Email Address</a>
               </p>
+              <p>Or copy and paste this link into your browser:</p>
+              <p style="word-break: break-all; background: #fff; padding: 10px; border-radius: 5px;">
+                ${verificationUrl}
+              </p>
+              <p>This link will expire in 24 hours.</p>
+              <p>If you didn't create an account with WealthLog, please ignore this email.</p>
+            </div>
+            <div class="footer">
+              <p>© 2024 WealthLog. All rights reserved.</p>
             </div>
           </div>
-
-          <div style="margin-top: 30px;">
-            <p style="font-size: 12px; color: #7f8c8d;">
-              © 2025 WealthLog. All rights reserved.
-            </p>
-          </div>
-        </div>
-      </body>
+        </body>
       </html>
     `;
 
-    const text = `
-      Welcome to WealthLog!
-
-      Hi ${username}!
-
-      Thank you for registering with WealthLog. To complete your registration, please verify your email address by clicking the link below:
-
-      ${verificationUrl}
-
-      This link will expire in 24 hours.
-
-      If you didn't create this account, you can ignore this email.
-
-      © 2025 WealthLog. All rights reserved.
-    `;
-
-    try {
-      const result = await this.sendEmail(userEmail, 'Verify your WealthLog account', html, text);
-      logger.info(`Verification email sent to ${userEmail}`, { userEmail });
-      return result;
-    } catch (error) {
-      logger.error('Failed to send verification email', { userEmail, message: error.message, stack: error.stack });
-
-      if (process.env.NODE_ENV === 'development') {
-        logger.warn('Email failed in development (sendVerificationEmail), continuing anyway...', { userEmail });
-        return { warning: 'Email could not be sent but account was created' };
-      }
-
-      throw new Error('Failed to send verification email');
-    }
+    return this.sendEmail({
+      to: email,
+      subject: 'Verify your WealthLog account',
+      html
+    });
   }
 
-  async sendWelcomeEmail(userEmail, username) {
+  /**
+   * Send welcome email after verification
+   */
+  async sendWelcomeEmail(email, username) {
+    const dashboardUrl = `${this.frontendUrl}/landing/landing`;
+    
     const html = `
       <!DOCTYPE html>
       <html>
-      <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Welcome to WealthLog</title>
-      </head>
-      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <div style="background-color: #f8f9fa; padding: 30px; text-align: center; border-radius: 10px;">
-          <h1 style="color: #27ae60; margin-bottom: 30px;">🎉 Welcome to WealthLog!</h1>
+        <head>
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+            .content { background: #f8f9fa; padding: 30px; border-radius: 0 0 10px 10px; }
+            .button { display: inline-block; padding: 12px 30px; background: #667eea; color: white; text-decoration: none; border-radius: 5px; margin: 20px 0; }
+            .features { background: white; padding: 20px; border-radius: 5px; margin: 20px 0; }
+            .footer { text-align: center; margin-top: 30px; color: #666; font-size: 12px; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>Welcome to WealthLog!</h1>
+            </div>
+            <div class="content">
+              <h2>Hi ${username},</h2>
+              <p>Your email has been verified successfully! You're all set to start managing your wealth with WealthLog.</p>
+              
+              <div class="features">
+                <h3>What you can do now:</h3>
+                <ul>
+                  <li>📊 Track your portfolio performance</li>
+                  <li>💼 Manage multiple financial accounts</li>
+                  <li>📈 Monitor your trades and investments</li>
+                  <li>🏠 Track real estate investments</li>
+                  <li>💳 Manage expenses and loans</li>
+                </ul>
+              </div>
+              
+              <p style="text-align: center;">
+                <a href="${dashboardUrl}" class="button">Go to Dashboard</a>
+              </p>
+              
+              <p>Need help getting started? Check out our documentation or contact support.</p>
+            </div>
+            <div class="footer">
+              <p>© 2024 WealthLog. All rights reserved.</p>
+            </div>
+          </div>
+        </body>
+      </html>
+    `;
 
-          <div style="background-color: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
-            <h2 style="color: #34495e; margin-bottom: 20px;">Hi ${username}!</h2>
+    return this.sendEmail({
+      to: email,
+      subject: 'Welcome to WealthLog!',
+      html
+    });
+  }
 
-            <p style="font-size: 16px; margin-bottom: 25px;">
-              Congratulations! Your email has been successfully verified and your WealthLog account is now active.
-            </p>
-
-            <div style="background-color: #ecf0f1; padding: 20px; border-radius: 8px; margin: 25px 0;">
-              <h3 style="color: #2c3e50; margin-bottom: 15px;">What's next?</h3>
-              <ul style="text-align: left; padding-left: 20px;">
-                <li style="margin-bottom: 10px;">Start tracking your investments and trades</li>
-                <li style="margin-bottom: 10px;">Set up your financial accounts</li>
-                <li style="margin-bottom: 10px;">Explore our analytics and insights</li>
-                <li style="margin-bottom: 10px;">Join our community of investors</li>
+  /**
+   * Send password reset email
+   */
+  async sendPasswordResetEmail(email, username, token) {
+    const resetUrl = `${this.frontendUrl}/reset-password?token=${token}`;
+    
+    const html = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+            .content { background: #f8f9fa; padding: 30px; border-radius: 0 0 10px 10px; }
+            .button { display: inline-block; padding: 12px 30px; background: #f5576c; color: white; text-decoration: none; border-radius: 5px; margin: 20px 0; }
+            .warning { background: #fff3cd; border: 1px solid #ffc107; padding: 15px; border-radius: 5px; margin: 20px 0; }
+            .footer { text-align: center; margin-top: 30px; color: #666; font-size: 12px; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>Password Reset Request</h1>
+            </div>
+            <div class="content">
+              <h2>Hi ${username},</h2>
+              <p>We received a request to reset your password for your WealthLog account.</p>
+              
+              <p style="text-align: center;">
+                <a href="${resetUrl}" class="button">Reset Password</a>
+              </p>
+              
+              <p>Or copy and paste this link into your browser:</p>
+              <p style="word-break: break-all; background: #fff; padding: 10px; border-radius: 5px;">
+                ${resetUrl}
+              </p>
+              
+              <div class="warning">
+                <strong>⚠️ Important:</strong>
+                <ul>
+                  <li>This link will expire in 1 hour</li>
+                  <li>If you didn't request this, please ignore this email</li>
+                  <li>Your password won't be changed until you click the link and create a new one</li>
+                </ul>
+              </div>
+              
+              <p>For security reasons, if you didn't request this password reset, we recommend you:</p>
+              <ul>
+                <li>Check your account for any unauthorized activity</li>
+                <li>Consider changing your password if you suspect any security issues</li>
               </ul>
             </div>
-
-            <div style="text-align: center; margin: 30px 0;">
-              <a href="${this.frontendUrl}/dashboard"
-                 style="background-color: #27ae60; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block; font-size: 16px;">
-                Go to Dashboard
-              </a>
-            </div>
-
-            <div style="border-top: 1px solid #eee; margin-top: 30px; padding-top: 20px;">
-              <p style="font-size: 12px; color: #95a5a6;">
-                Need help getting started? Check out our help center or contact our support team.
-              </p>
+            <div class="footer">
+              <p>© 2024 WealthLog. All rights reserved.</p>
+              <p>This is an automated email, please do not reply.</p>
             </div>
           </div>
-
-          <div style="margin-top: 30px;">
-            <p style="font-size: 12px; color: #7f8c8d;">
-              © 2025 WealthLog. All rights reserved.
-            </p>
-          </div>
-        </div>
-      </body>
+        </body>
       </html>
     `;
 
-    const text = `
-      Welcome to WealthLog!
-
-      Hi ${username}!
-
-      Congratulations! Your email has been successfully verified and your WealthLog account is now active.
-
-      What's next?
-      - Start tracking your investments and trades
-      - Set up your financial accounts
-      - Explore our analytics and insights
-      - Join our community of investors
-
-      Visit your dashboard: ${this.frontendUrl}/dashboard
-
-      Need help? Contact our support team.
-
-      © 2025 WealthLog. All rights reserved.
-    `;
-
-    try {
-      const result = await this.sendEmail(userEmail, 'Welcome to WealthLog - Your account is verified!', html, text);
-      logger.info(`Welcome email sent to ${userEmail}`, { userEmail });
-      return result;
-    } catch (error) {
-      logger.error('Failed to send welcome email', { userEmail, message: error.message, stack: error.stack });
-
-      if (process.env.NODE_ENV === 'development') {
-        logger.warn('Welcome email failed in development, continuing anyway...', { userEmail });
-        return { warning: 'Welcome email could not be sent but verification succeeded' };
-      }
-
-      logger.warn('Welcome email failed but verification succeeded', { userEmail });
-      return { warning: 'Welcome email could not be sent but verification succeeded' };
-    }
+    return this.sendEmail({
+      to: email,
+      subject: 'Reset your WealthLog password',
+      html
+    });
   }
 
-  async sendPasswordResetEmail(userEmail, username, resetToken) {
-    const resetUrl = `${this.frontendUrl}/reset-password?token=${resetToken}`;
-
+  /**
+   * Send password changed notification
+   */
+  async sendPasswordChangedEmail(email, username) {
     const html = `
       <!DOCTYPE html>
       <html>
-      <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Reset your WealthLog password</title>
-      </head>
-      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <div style="background-color: #f8f9fa; padding: 30px; text-align: center; border-radius: 10px;">
-          <h1 style="color: #e74c3c; margin-bottom: 30px;">🔒 Password Reset Request</h1>
-
-          <div style="background-color: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
-            <h2 style="color: #34495e; margin-bottom: 20px;">Hi ${username}!</h2>
-
-            <p style="font-size: 16px; margin-bottom: 25px;">
-              We received a request to reset the password for your WealthLog account. If you made this request, click the button below to reset your password.
-            </p>
-
-            <div style="text-align: center; margin: 30px 0;">
-              <a href="${resetUrl}"
-                 style="background-color: #e74c3c; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block; font-size: 16px;">
-                Reset My Password
-              </a>
+        <head>
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: linear-gradient(135deg, #89f7fe 0%, #66a6ff 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+            .content { background: #f8f9fa; padding: 30px; border-radius: 0 0 10px 10px; }
+            .alert { background: #d4edda; border: 1px solid #28a745; padding: 15px; border-radius: 5px; margin: 20px 0; }
+            .footer { text-align: center; margin-top: 30px; color: #666; font-size: 12px; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>Password Changed Successfully</h1>
             </div>
-
-            <p style="font-size: 14px; color: #7f8c8d; margin-top: 25px;">
-              If the button doesn't work, you can also copy and paste this link into your browser:
-            </p>
-
-            <p style="word-break: break-all; color: #e74c3c; font-size: 14px; background-color: #f8f9fa; padding: 10px; border-radius: 4px;">
-              ${resetUrl}
-            </p>
-
-            <div style="border-top: 1px solid #eee; margin-top: 30px; padding-top: 20px;">
-              <p style="font-size: 12px; color: #95a5a6;">
-                This password reset link will expire in 1 hour. If you didn't request this reset, you can ignore this email and your password will remain unchanged.
-              </p>
+            <div class="content">
+              <h2>Hi ${username},</h2>
+              
+              <div class="alert">
+                <strong>✅ Your password has been changed successfully!</strong>
+              </div>
+              
+              <p>This email confirms that your WealthLog account password was changed on ${new Date().toLocaleString()}.</p>
+              
+              <p><strong>If you made this change:</strong> No further action is needed. You can now log in with your new password.</p>
+              
+              <p><strong>If you didn't make this change:</strong></p>
+              <ul>
+                <li>Your account may be compromised</li>
+                <li>Please contact our support team immediately</li>
+                <li>Try to reset your password again using the forgot password option</li>
+              </ul>
+              
+              <p>For your security, we recommend:</p>
+              <ul>
+                <li>Using a strong, unique password</li>
+                <li>Enabling two-factor authentication (coming soon)</li>
+                <li>Regularly reviewing your account activity</li>
+              </ul>
+            </div>
+            <div class="footer">
+              <p>© 2024 WealthLog. All rights reserved.</p>
+              <p>This is an automated security notification.</p>
             </div>
           </div>
-
-          <div style="margin-top: 30px;">
-            <p style="font-size: 12px; color: #7f8c8d;">
-              © 2025 WealthLog. All rights reserved.
-            </p>
-          </div>
-        </div>
-      </body>
+        </body>
       </html>
     `;
 
-    const text = `
-      Password Reset Request
-
-      Hi ${username}!
-
-      We received a request to reset the password for your WealthLog account. If you made this request, use the link below to reset your password:
-
-      ${resetUrl}
-
-      This link will expire in 1 hour.
-
-      If you didn't request this reset, you can ignore this email and your password will remain unchanged.
-
-      © 2025 WealthLog. All rights reserved.
-    `;
-
-    try {
-      const result = await this.sendEmail(userEmail, 'Reset your WealthLog password', html, text);
-      logger.info(`Password reset email sent to ${userEmail}`, { userEmail });
-      return result;
-    } catch (error) {
-      logger.error('Failed to send password reset email', { userEmail, message: error.message, stack: error.stack });
-      throw new Error('Failed to send password reset email');
-    }
+    return this.sendEmail({
+      to: email,
+      subject: 'Your WealthLog password has been changed',
+      html
+    });
   }
 
-  // Méthode utilitaire pour valider un email
+  /**
+   * Validate email format
+   */
   isValidEmail(email) {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(email);
   }
 
-  // Méthode pour nettoyer/normaliser les emails
+  /**
+   * Normalize email (lowercase and trim)
+   */
   normalizeEmail(email) {
     return email.toLowerCase().trim();
+  }
+
+  /**
+   * Strip HTML tags from string
+   */
+  stripHtml(html) {
+    return html.replace(/<[^>]*>/g, '');
   }
 }
 

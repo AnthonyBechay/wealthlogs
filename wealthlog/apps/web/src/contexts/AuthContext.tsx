@@ -1,81 +1,108 @@
-// apps/web/src/contexts/AuthContext.tsx
-import { createContext, useContext, useEffect, useState } from 'react'
-import { useRouter } from 'next/router'
-import { api, setAccessToken, SharedUser } from '@wealthlog/common'
+// src/contexts/AuthContext.tsx
 
-interface AuthCtx {
-  user: SharedUser | null
-  loading: boolean
-  refresh: () => Promise<void>
-  logout: () => Promise<void>
+import { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import { useRouter } from 'next/router';
+import authService, { User } from '../services/auth.service';
+
+interface AuthContextType {
+  user: User | null;
+  loading: boolean;
+  login: (username: string, password: string) => Promise<void>;
+  loginWithGoogle: () => void;
+  logout: () => Promise<void>;
+  refresh: () => Promise<void>;
+  isAuthenticated: boolean;
 }
 
-const AuthContext = createContext<AuthCtx>({
+const AuthContext = createContext<AuthContextType>({
   user: null,
   loading: true,
-  refresh: async () => {},
+  login: async () => {},
+  loginWithGoogle: () => {},
   logout: async () => {},
-})
+  refresh: async () => {},
+  isAuthenticated: false,
+});
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<SharedUser | null>(null)
-  const [loading, setLoading] = useState(true)
-  const router = useRouter()
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+  const router = useRouter();
 
-  /* hit /auth/me once when the app mounts */
+  // Check authentication status on mount
   useEffect(() => {
-    refresh()
+    checkAuth();
+  }, []);
 
-    const interceptor = api.interceptors.response.use(
-      (response) => response,
-      (error) => {
-        if (error.response?.status === 401) {
-          logout() // Clear user state and token
-          router.push('/login')
-        }
-        return Promise.reject(error)
-      }
-    )
-
-    // Cleanup interceptor on unmount
-    return () => {
-      api.interceptors.response.eject(interceptor)
-    }
-  }, [router])
-
-  /** re‑fetch current user */
-  async function refresh() {
+  const checkAuth = async () => {
     try {
-      setLoading(true)
-      const { data } = await api.get('/auth/me')
-      setUser(data.user ?? null)
+      setLoading(true);
+      if (authService.getAccessToken()) {
+        const userData = await authService.getCurrentUser();
+        setUser(userData);
+      }
     } catch (error) {
-      // Don't clear user if it's not an auth error,
-      // the interceptor will handle 401s.
-      if (error.response?.status !== 401) {
-        setUser(null)
-      }
+      console.error('Auth check failed:', error);
+      setUser(null);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
-  /** destroy token + context */
-  async function logout() {
+  const login = async (username: string, password: string) => {
     try {
-      await api.post('/auth/logout')
-    } catch {/* ignore */}
-    setAccessToken(null) // Clear token from storage/cookies
-    setUser(null) // Clear user from state
-  }
+      const response = await authService.login({ username, password });
+      setUser(response.user);
+      router.push('/landing/landing');
+    } catch (error) {
+      console.error('Login error:', error);
+      throw error;
+    }
+  };
+
+  const loginWithGoogle = () => {
+    authService.initiateGoogleLogin();
+  };
+
+  const logout = async () => {
+    try {
+      await authService.logout();
+      setUser(null);
+      router.push('/login');
+    } catch (error) {
+      console.error('Logout error:', error);
+      setUser(null);
+      router.push('/login');
+    }
+  };
+
+  const refresh = async () => {
+    await checkAuth();
+  };
+
+  const isAuthenticated = !!user && !!authService.getAccessToken();
 
   return (
-    <AuthContext.Provider value={{ user, loading, refresh, logout }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        loading,
+        login,
+        loginWithGoogle,
+        logout,
+        refresh,
+        isAuthenticated,
+      }}
+    >
       {children}
     </AuthContext.Provider>
-  )
+  );
 }
 
 export function useAuth() {
-  return useContext(AuthContext)
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
 }

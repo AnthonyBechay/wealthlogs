@@ -108,6 +108,12 @@ model User {
   
   // TRACKING FIELD (corrected name)
   lastLoginAt              DateTime?
+  
+  // GOOGLE OAUTH
+  googleId                 String?   @unique
+  
+  // REFRESH TOKENS
+  refreshTokens            RefreshToken[]
 
   // Roles & Permissions
   roles         Role[]         @relation("UserRoles")
@@ -794,4 +800,18 @@ model StatusHistory {
   @@index([changedAt])
   @@index([accountId, changedAt])
   @@map("status_history")
+}
+
+model RefreshToken {
+  id        Int       @id @default(autoincrement())
+  token     String    @unique
+  userId    Int
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+  
+  @@index([userId])
+  @@index([token])
+  @@index([expiresAt])
 }

@@ -6,20 +6,18 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { ThemeProvider } from 'next-themes';
-
-import { createWealthLogAPI } from '@wealthlog/shared';
+import { AuthProvider, useAuth } from '../src/contexts/AuthContext';
+import authService from '../src/services/auth.service';
 import { appWithTranslation } from 'next-i18next';
 import nextI18NextConfig from '../next-i18next.config';
 
-const api = createWealthLogAPI();
-
-
 /* Public routes requiring no auth */
-const PUBLIC_PATHS = ['/', '/login', '/register', '/forgot-password'];
-const isPublic = (p: string) => PUBLIC_PATHS.includes(p);
+const PUBLIC_PATHS = ['/', '/login', '/register', '/forgot-password', '/reset-password', '/verify-email', '/auth/callback'];
+const isPublicRoute = (pathname: string): boolean => {
+  return PUBLIC_PATHS.some(path => pathname.startsWith(path));
+};
 
 type ThemeMode = 'light' | 'dark' | 'system';
-
 
 interface NavigationItem {
   href: string;
@@ -27,8 +25,6 @@ interface NavigationItem {
   icon: string;
   isActive?: boolean;
 }
-
-// Constants
 
 const NAVIGATION_ITEMS: NavigationItem[] = [
   { href: '/landing/landing', label: 'Dashboard', icon: '🏠' },
@@ -41,11 +37,6 @@ const NAVIGATION_ITEMS: NavigationItem[] = [
   { href: '/settings/settingsGeneral', label: 'General Settings', icon: '⚙️' },
   { href: '/settings/settingsTrading', label: 'Trading Settings', icon: '🛠️' },
 ];
-
-// Utilities
-const isPublicRoute = (pathname: string): boolean => {
-  return PUBLIC_PATHS.includes(pathname);
-};
 
 const getStoredTheme = (): ThemeMode => {
   if (typeof window === 'undefined') return 'system';
@@ -98,18 +89,15 @@ const LoadingScreen = () => (
   </div>
 );
 
-// Main App Component
-function MyApp({ Component, pageProps }: AppProps) {
+// Layout component that uses auth context
+function AppLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-
-  // State
+  const { user, logout, loading, isAuthenticated } = useAuth();
   const [themeMode, setThemeMode] = useState<ThemeMode>('system');
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
-  // Initialize theme from localStorage
+  // Initialize theme
   useEffect(() => {
     setThemeMode(getStoredTheme());
   }, []);
@@ -125,66 +113,35 @@ function MyApp({ Component, pageProps }: AppProps) {
   useEffect(() => {
     const fetchUserSettings = async () => {
       try {
-        // Note: This endpoint might need to be added to the API class
-        // For now, we'll use the raw axios instance
-        const response = await fetch('/api/generalSettings', {
-          headers: {
-            'Authorization': `Bearer ${api.getToken()}`
-          }
-        });
-        if (response.ok) {
-          const data = await response.json();
-          if (data?.displayMode) {
-            setThemeMode(data.displayMode as ThemeMode);
-          }
+        const api = authService.getApiInstance();
+        const response = await api.get('/api/generalSettings');
+        if (response.data?.displayMode) {
+          setThemeMode(response.data.displayMode as ThemeMode);
         }
       } catch (error) {
         console.warn('Failed to fetch user settings:', error);
       }
     };
 
-    if (api.isAuthenticated()) {
+    if (isAuthenticated) {
       fetchUserSettings();
     }
-  }, []);
+  }, [isAuthenticated]);
 
-  // Authentication check
+  // Handle authentication redirects
   useEffect(() => {
-    if (isPublicRoute(router.pathname)) {
-      setIsCheckingAuth(false);
-      return;
+    if (!loading && !isAuthenticated && !isPublicRoute(router.pathname)) {
+      router.replace(`/login?redirect=${encodeURIComponent(router.asPath)}`);
     }
-
-    const checkAuthentication = async () => {
-      try {
-        await api.getCurrentUser(); // Use the API's getCurrentUser method
-        setIsAuthenticated(true);
-      } catch (error) {
-        setIsAuthenticated(false);
-        router.replace('/login');
-      } finally {
-        setIsCheckingAuth(false);
-      }
-    };
-
-    checkAuthentication();
-  }, [router.pathname]);
+  }, [loading, isAuthenticated, router]);
 
   // Close drawer on route change
   useEffect(() => {
     setIsDrawerOpen(false);
   }, [router.pathname]);
 
-  // Handlers
   const handleLogout = async () => {
-    try {
-      await api.logout(); // Use the API's logout method
-    } catch (error) {
-      console.error('Logout error:', error);
-    } finally {
-      setIsAuthenticated(false);
-      router.push('/login');
-    }
+    await logout();
   };
 
   const handleLogoClick = () => {
@@ -192,8 +149,8 @@ function MyApp({ Component, pageProps }: AppProps) {
     setIsDrawerOpen(false);
   };
 
-  // Render conditions
-  if (isCheckingAuth) {
+  // Show loading screen while checking auth
+  if (loading) {
     return (
       <ThemeProvider
         attribute="class"
@@ -205,6 +162,7 @@ function MyApp({ Component, pageProps }: AppProps) {
     );
   }
 
+  // Public routes don't need the layout
   if (isPublicRoute(router.pathname)) {
     return (
       <ThemeProvider
@@ -212,16 +170,17 @@ function MyApp({ Component, pageProps }: AppProps) {
         defaultTheme="system"
         forcedTheme={themeMode === 'system' ? undefined : themeMode}
       >
-        <Component {...pageProps} />
+        {children}
       </ThemeProvider>
     );
   }
 
+  // Protected routes need authentication
   if (!isAuthenticated) {
     return null;
   }
 
-  // Main layout
+  // Main authenticated layout
   return (
     <ThemeProvider
       attribute="class"
@@ -229,7 +188,6 @@ function MyApp({ Component, pageProps }: AppProps) {
       forcedTheme={themeMode === 'system' ? undefined : themeMode}
     >
       <div className="flex min-h-screen bg-gray-50 dark:bg-gray-900">
-
         {/* Desktop Sidebar */}
         <aside
           className={`
@@ -271,6 +229,18 @@ function MyApp({ Component, pageProps }: AppProps) {
 
           {/* Footer */}
           <footer className="p-4 space-y-3 border-t border-white/10">
+            {/* User info */}
+            {!isSidebarCollapsed && user && (
+              <div className="px-3 py-2 bg-white/10 rounded-lg">
+                <p className="text-white text-sm font-medium truncate">
+                  {user.firstName} {user.lastName}
+                </p>
+                <p className="text-white/70 text-xs truncate">
+                  {user.email}
+                </p>
+              </div>
+            )}
+
             {/* Collapse toggle */}
             <button
               onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
@@ -356,6 +326,16 @@ function MyApp({ Component, pageProps }: AppProps) {
 
           {/* Mobile footer */}
           <footer className="p-4 border-t border-white/10">
+            {user && (
+              <div className="mb-3 px-3 py-2 bg-white/10 rounded-lg">
+                <p className="text-white text-sm font-medium truncate">
+                  {user.firstName} {user.lastName}
+                </p>
+                <p className="text-white/70 text-xs truncate">
+                  {user.email}
+                </p>
+              </div>
+            )}
             <button
               onClick={handleLogout}
               className="
@@ -405,11 +385,22 @@ function MyApp({ Component, pageProps }: AppProps) {
 
           {/* Page content */}
           <main className="flex-1 overflow-y-auto bg-white dark:bg-gray-900">
-            <Component {...pageProps} />
+            {children}
           </main>
         </div>
       </div>
     </ThemeProvider>
+  );
+}
+
+// Main App Component
+function MyApp({ Component, pageProps }: AppProps) {
+  return (
+    <AuthProvider>
+      <AppLayout>
+        <Component {...pageProps} />
+      </AppLayout>
+    </AuthProvider>
   );
 }
 

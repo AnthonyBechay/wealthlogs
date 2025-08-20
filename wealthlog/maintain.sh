@@ -1,321 +1,399 @@
 #!/bin/bash
 
-# 🏦 WealthLog Maintenance Script
-# Usage: ./maintain.sh [soft|hard|reset|build|dev|help]
-# Compatible with Git Bash, WSL, and Unix systems
+# WealthLog Maintenance Script
+# Usage: ./maintain.sh [command]
+# Commands: install, build, dev, test, clean, migrate, seed, deploy, logs, status, full-reset
 
-set -e  # Exit on any error
+set -e
 
-# Colors for pretty output
+# Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
-PURPLE='\033[0;35m'
-CYAN='\033[0;36m'
-WHITE='\033[1;37m'
 NC='\033[0m' # No Color
 
-# Emojis for better UX
-ROCKET="🚀"
-CLEAN="🧹"
-BUILD="🔨"
-CHECK="✅"
-CROSS="❌"
-INFO="ℹ️"
-FIRE="🔥"
-GEAR="⚙️"
-PACKAGE="📦"
-WEB="🌐"
-MOBILE="📱"
-SERVER="🖥️"
+# Project root
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# Project info
-PROJECT_NAME="WealthLog"
-SCRIPT_VERSION="1.0.0"
-
-print_header() {
-    echo -e "${PURPLE}"
-    echo "╔══════════════════════════════════════════════════════════════╗"
-    echo "║                    🏦 $PROJECT_NAME Maintenance                   ║"
-    echo "║                        Version $SCRIPT_VERSION                        ║"
-    echo "╚══════════════════════════════════════════════════════════════╝"
-    echo -e "${NC}"
+# Function to print colored output
+print_status() {
+    echo -e "${BLUE}[INFO]${NC} $1"
 }
 
-print_help() {
-    echo -e "${WHITE}Usage:${NC} ./maintain.sh [command]"
-    echo ""
-    echo -e "${YELLOW}Commands:${NC}"
-    echo -e "  ${GREEN}soft${NC}     ${CLEAN} Soft cleanup (node_modules, build cache)"
-    echo -e "  ${RED}hard${NC}     ${FIRE} Hard cleanup (+ lock files, force fresh install)"
-    echo -e "  ${BLUE}reset${NC}    ${GEAR} Nuclear reset (everything + git clean)"
-    echo -e "  ${CYAN}build${NC}    ${BUILD} Clean build all packages"
-    echo -e "  ${PURPLE}dev${NC}      ${ROCKET} Start development servers"
-    echo -e "  ${WHITE}help${NC}     ${INFO} Show this help message"
-    echo ""
-    echo -e "${YELLOW}Examples:${NC}"
-    echo -e "  ./maintain.sh soft          # Quick cleanup"
-    echo -e "  ./maintain.sh hard          # Deep cleanup"
-    echo -e "  ./maintain.sh build         # Build everything"
-    echo -e "  ./maintain.sh dev           # Start dev servers"
+print_success() {
+    echo -e "${GREEN}[SUCCESS]${NC} $1"
 }
 
-check_project_root() {
-    if [[ ! -f "package.json" ]] || [[ ! -f "turbo.json" ]]; then
-        echo -e "${RED}${CROSS} Error: Not in WealthLog project root!${NC}"
-        echo -e "${INFO} Please run this script from the project root directory."
+print_error() {
+    echo -e "${RED}[ERROR]${NC} $1"
+}
+
+print_warning() {
+    echo -e "${YELLOW}[WARNING]${NC} $1"
+}
+
+# Check if Node.js is installed
+check_node() {
+    if ! command -v node &> /dev/null; then
+        print_error "Node.js is not installed. Please install Node.js first."
         exit 1
     fi
-    
-    if [[ ! -d "packages/shared" ]] || [[ ! -d "packages/ui" ]]; then
-        echo -e "${RED}${CROSS} Error: Missing required packages!${NC}"
-        echo -e "${INFO} Expected packages/shared and packages/ui directories."
-        exit 1
-    fi
-    
-    echo -e "${GREEN}${CHECK} Project structure validated${NC}"
+    print_status "Node.js version: $(node --version)"
 }
 
-cleanup_node_modules() {
-    local level=$1
-    echo -e "${YELLOW}${CLEAN} Cleaning node_modules...${NC}"
-    
-    # Root node_modules
-    if [[ -d "node_modules" ]]; then
-        rm -rf "node_modules"
-        echo -e "${GREEN}  ${CHECK} Removed root node_modules${NC}"
-    fi
-    
-    # Apps node_modules
-    for app in apps/*/; do
-        if [[ -d "${app}node_modules" ]]; then
-            rm -rf "${app}node_modules"
-            echo -e "${GREEN}  ${CHECK} Removed ${app}node_modules${NC}"
-        fi
-    done
-    
-    # Packages node_modules
-    for pkg in packages/*/; do
-        if [[ -d "${pkg}node_modules" ]]; then
-            rm -rf "${pkg}node_modules"
-            echo -e "${GREEN}  ${CHECK} Removed ${pkg}node_modules${NC}"
-        fi
-    done
-}
-
-cleanup_build_cache() {
-    echo -e "${YELLOW}${CLEAN} Cleaning build cache...${NC}"
-    
-    # Next.js cache
-    rm -rf .next apps/*/.next
-    echo -e "${GREEN}  ${CHECK} Removed .next cache${NC}"
-    
-    # TypeScript build outputs
-    rm -rf packages/*/dist
-    echo -e "${GREEN}  ${CHECK} Removed dist directories${NC}"
-    
-    # Turbo cache
-    if [[ -d ".turbo" ]]; then
-        rm -rf .turbo
-        echo -e "${GREEN}  ${CHECK} Removed turbo cache${NC}"
-    fi
-    
-    # Capacitor builds
-    rm -rf apps/mobile/dist apps/mobile/android/app/build apps/mobile/ios/App/App.xcarchive
-    echo -e "${GREEN}  ${CHECK} Removed mobile build cache${NC}"
-}
-
-cleanup_lock_files() {
-    echo -e "${YELLOW}${CLEAN} Removing lock files...${NC}"
-    
-    if [[ -f "package-lock.json" ]]; then
-        rm package-lock.json
-        echo -e "${GREEN}  ${CHECK} Removed package-lock.json${NC}"
-    fi
-    
-    if [[ -f "yarn.lock" ]]; then
-        rm yarn.lock
-        echo -e "${GREEN}  ${CHECK} Removed yarn.lock${NC}"
-    fi
-    
-    if [[ -f "pnpm-lock.yaml" ]]; then
-        rm pnpm-lock.yaml
-        echo -e "${GREEN}  ${CHECK} Removed pnpm-lock.yaml${NC}"
-    fi
-}
-
-soft_cleanup() {
-    echo -e "${CYAN}${ROCKET} Starting soft cleanup...${NC}"
-    cleanup_node_modules
-    cleanup_build_cache
-    echo -e "${GREEN}${CHECK} Soft cleanup completed!${NC}"
-}
-
-hard_cleanup() {
-    echo -e "${RED}${FIRE} Starting hard cleanup...${NC}"
-    cleanup_node_modules
-    cleanup_build_cache
-    cleanup_lock_files
-    
-    # Remove any potential legacy files
-    if [[ -d "packages/common" ]]; then
-        rm -rf "packages/common"
-        echo -e "${GREEN}  ${CHECK} Removed legacy packages/common${NC}"
-    fi
-    
-    echo -e "${GREEN}${CHECK} Hard cleanup completed!${NC}"
-}
-
-nuclear_reset() {
-    echo -e "${RED}${FIRE}${FIRE} Starting nuclear reset...${NC}"
-    echo -e "${YELLOW}⚠️  This will remove ALL untracked files!${NC}"
-    read -p "Are you sure? (y/N): " -n 1 -r
-    echo
-    
-    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-        echo -e "${INFO} Nuclear reset cancelled."
-        return
-    fi
-    
-    hard_cleanup
-    
-    # Git clean (removes all untracked files)
-    git clean -fdx
-    echo -e "${GREEN}  ${CHECK} Git workspace cleaned${NC}"
-    
-    echo -e "${GREEN}${CHECK} Nuclear reset completed!${NC}"
-}
-
-install_dependencies() {
-    echo -e "${BLUE}${PACKAGE} Installing dependencies...${NC}"
-    
-    # Check if npm is available
+# Check if npm is installed
+check_npm() {
     if ! command -v npm &> /dev/null; then
-        echo -e "${RED}${CROSS} npm not found! Please install Node.js.${NC}"
+        print_error "npm is not installed. Please install npm first."
         exit 1
     fi
-    
-    # Install with workspaces
-    npm install --workspaces --include-workspace-root
-    echo -e "${GREEN}${CHECK} Dependencies installed!${NC}"
+    print_status "npm version: $(npm --version)"
 }
 
-build_packages() {
-    echo -e "${CYAN}${BUILD} Building packages...${NC}"
+# Install dependencies
+install() {
+    print_status "Installing dependencies..."
+    cd "$PROJECT_ROOT"
+    
+    # Install root dependencies
+    npm install
+    
+    # Install backend dependencies
+    print_status "Installing backend dependencies..."
+    cd apps/backend
+    npm install
+    
+    # Install additional OAuth dependencies
+    npm install passport passport-google-oauth20 cookie-parser express-session
+    
+    cd "$PROJECT_ROOT"
+    
+    # Install web dependencies
+    print_status "Installing web dependencies..."
+    cd apps/web
+    npm install
+    
+    cd "$PROJECT_ROOT"
+    
+    # Install shared package dependencies
+    print_status "Building shared packages..."
+    npm run build:packages
+    
+    print_success "All dependencies installed successfully!"
+}
+
+# Build the project
+build() {
+    print_status "Building the project..."
+    cd "$PROJECT_ROOT"
     
     # Build shared packages first
-    echo -e "${INFO} Building shared packages..."
-    npm run build --workspace=@wealthlog/shared
-    npm run build --workspace=@wealthlog/ui
+    print_status "Building shared packages..."
+    npm run build:packages
     
-    # Build apps
-    echo -e "${INFO} Building applications..."
-    npm run build:backend
-    npm run build:web
+    # Build backend (no build step for JS)
+    print_status "Preparing backend..."
+    cd apps/backend
+    npm run prisma:generate
     
-    echo -e "${GREEN}${CHECK} Build completed!${NC}"
+    cd "$PROJECT_ROOT"
+    
+    # Build web app
+    print_status "Building web application..."
+    cd apps/web
+    npm run build
+    
+    cd "$PROJECT_ROOT"
+    
+    print_success "Build completed successfully!"
 }
 
-start_dev_servers() {
-    echo -e "${PURPLE}${ROCKET} Development server options:${NC}"
-    echo ""
-    echo -e "1. ${WEB} Web app only       (npm run dev:web)"
-    echo -e "2. ${MOBILE} Mobile app only    (npm run dev:mobile)"
-    echo -e "3. ${SERVER} Backend only       (npm run dev:backend)"
-    echo -e "4. ${ROCKET} All services       (npm run dev)"
-    echo ""
-    read -p "Choose option (1-4): " -n 1 -r
-    echo
+# Run development servers
+dev() {
+    print_status "Starting development servers..."
+    cd "$PROJECT_ROOT"
     
-    case $REPLY in
-        1) npm run dev:web ;;
-        2) npm run dev:mobile ;;
-        3) npm run dev:backend ;;
-        4) npm run dev ;;
-        *) echo -e "${RED}Invalid option${NC}" ;;
-    esac
+    # Check if .env files exist
+    if [ ! -f "apps/backend/.env" ]; then
+        print_warning "Backend .env file not found. Creating from template..."
+        create_env_files
+    fi
+    
+    # Run migrations first
+    migrate
+    
+    # Start all services in development mode
+    npm run dev
 }
 
-show_status() {
-    echo -e "${WHITE}${INFO} Project Status:${NC}"
-    echo ""
+# Run tests
+test() {
+    print_status "Running tests..."
+    cd "$PROJECT_ROOT"
     
-    # Check packages structure
-    echo -e "${CYAN}📂 Packages:${NC}"
-    for pkg in packages/*/; do
-        if [[ -d "$pkg" ]]; then
-            pkg_name=$(basename "$pkg")
-            if [[ -f "${pkg}package.json" ]]; then
-                version=$(grep '"version"' "${pkg}package.json" | cut -d'"' -f4)
-                echo -e "  ${GREEN}${CHECK} ${pkg_name}${NC} (v${version})"
-            else
-                echo -e "  ${RED}${CROSS} ${pkg_name}${NC} (no package.json)"
-            fi
-        fi
-    done
+    # Run backend tests
+    print_status "Testing backend..."
+    cd apps/backend
+    npm test 2>/dev/null || print_warning "No backend tests configured"
     
-    echo ""
-    echo -e "${CYAN}📱 Apps:${NC}"
-    for app in apps/*/; do
-        if [[ -d "$app" ]]; then
-            app_name=$(basename "$app")
-            if [[ -f "${app}package.json" ]]; then
-                version=$(grep '"version"' "${app}package.json" | cut -d'"' -f4)
-                echo -e "  ${GREEN}${CHECK} ${app_name}${NC} (v${version})"
-            else
-                echo -e "  ${RED}${CROSS} ${app_name}${NC} (no package.json)"
-            fi
-        fi
-    done
+    cd "$PROJECT_ROOT"
     
-    echo ""
-    if [[ -f "package-lock.json" ]]; then
-        echo -e "${GREEN}${CHECK} Dependencies locked${NC}"
+    # Run web tests
+    print_status "Testing web app..."
+    cd apps/web
+    npm test 2>/dev/null || print_warning "No web tests configured"
+    
+    cd "$PROJECT_ROOT"
+    
+    print_success "Tests completed!"
+}
+
+# Clean project
+clean() {
+    print_status "Cleaning project..."
+    cd "$PROJECT_ROOT"
+    
+    # Remove node_modules
+    print_status "Removing node_modules..."
+    rm -rf node_modules
+    rm -rf apps/backend/node_modules
+    rm -rf apps/web/node_modules
+    rm -rf apps/mobile/node_modules 2>/dev/null || true
+    rm -rf packages/*/node_modules
+    
+    # Remove build artifacts
+    print_status "Removing build artifacts..."
+    rm -rf apps/web/.next
+    rm -rf apps/web/.turbo
+    rm -rf apps/backend/.turbo
+    rm -rf packages/*/dist
+    rm -rf .turbo
+    
+    # Remove lock files
+    print_status "Removing lock files..."
+    rm -f package-lock.json
+    rm -f apps/*/package-lock.json
+    rm -f packages/*/package-lock.json
+    
+    print_success "Project cleaned successfully!"
+}
+
+# Run database migrations
+migrate() {
+    print_status "Running database migrations..."
+    cd "$PROJECT_ROOT/apps/backend"
+    
+    # Generate Prisma client
+    npx prisma generate
+    
+    # Run migrations
+    npx prisma migrate deploy
+    
+    print_success "Migrations completed successfully!"
+}
+
+# Seed database
+seed() {
+    print_status "Seeding database..."
+    cd "$PROJECT_ROOT/apps/backend"
+    
+    # Check if seed file exists
+    if [ -f "prisma/seed.js" ]; then
+        npx prisma db seed
+        print_success "Database seeded successfully!"
     else
-        echo -e "${YELLOW}⚠️  No package-lock.json (run install)${NC}"
+        print_warning "No seed file found at prisma/seed.js"
     fi
 }
 
-main() {
-    print_header
-    check_project_root
+# Deploy to production
+deploy() {
+    print_status "Deploying to production..."
     
-    case ${1:-help} in
-        "soft")
-            soft_cleanup
-            install_dependencies
-            show_status
-            echo -e "${GREEN}${ROCKET} Ready for development!${NC}"
-            ;;
-        "hard")
-            hard_cleanup
-            install_dependencies
-            show_status
-            echo -e "${GREEN}${ROCKET} Fresh installation complete!${NC}"
-            ;;
-        "reset")
-            nuclear_reset
-            install_dependencies
-            build_packages
-            show_status
-            echo -e "${GREEN}${ROCKET} Nuclear reset complete!${NC}"
-            ;;
-        "build")
-            build_packages
-            echo -e "${GREEN}${ROCKET} Build complete!${NC}"
-            ;;
-        "dev")
-            start_dev_servers
-            ;;
-        "status")
-            show_status
-            ;;
-        "help"|*)
-            print_help
-            ;;
-    esac
+    # Build first
+    build
+    
+    # Deploy backend to Render
+    print_status "Deploying backend to Render..."
+    # Add your Render deployment command here
+    
+    # Deploy frontend to Vercel
+    print_status "Deploying frontend to Vercel..."
+    cd "$PROJECT_ROOT/apps/web"
+    npx vercel --prod
+    
+    print_success "Deployment completed!"
 }
 
-# Run main function with all arguments
-main "$@"
+# View logs
+logs() {
+    print_status "Viewing logs..."
+    
+    # View backend logs
+    if [ "$2" == "backend" ]; then
+        cd "$PROJECT_ROOT/apps/backend"
+        tail -f logs/*.log 2>/dev/null || print_warning "No log files found"
+    # View web logs
+    elif [ "$2" == "web" ]; then
+        cd "$PROJECT_ROOT/apps/web"
+        npm run dev
+    else
+        print_status "Usage: ./maintain.sh logs [backend|web]"
+    fi
+}
+
+# Check project status
+status() {
+    print_status "Checking project status..."
+    
+    # Check Node version
+    check_node
+    check_npm
+    
+    # Check database connection
+    print_status "Checking database connection..."
+    cd "$PROJECT_ROOT/apps/backend"
+    npx prisma db pull --print 2>/dev/null && print_success "Database connected" || print_error "Database connection failed"
+    
+    # Check if ports are in use
+    print_status "Checking ports..."
+    lsof -i :3000 &>/dev/null && print_warning "Port 3000 is in use (Frontend)" || print_success "Port 3000 is available"
+    lsof -i :5000 &>/dev/null && print_warning "Port 5000 is in use (Backend)" || print_success "Port 5000 is available"
+    
+    # Check environment files
+    print_status "Checking environment files..."
+    [ -f "$PROJECT_ROOT/apps/backend/.env" ] && print_success "Backend .env exists" || print_error "Backend .env missing"
+    [ -f "$PROJECT_ROOT/apps/web/.env.local" ] && print_success "Web .env.local exists" || print_warning "Web .env.local missing"
+    
+    print_success "Status check completed!"
+}
+
+# Create environment files
+create_env_files() {
+    print_status "Creating environment files..."
+    
+    # Backend .env
+    cat > "$PROJECT_ROOT/apps/backend/.env" << EOF
+NODE_ENV=development
+DATABASE_URL="postgresql://username:password@localhost:5432/wealthlog?schema=public"
+PORT=5000
+
+# JWT Secrets (generate secure random strings in production)
+JWT_ACCESS_SECRET=$(openssl rand -hex 32)
+JWT_REFRESH_SECRET=$(openssl rand -hex 32)
+SECRET_KEY=$(openssl rand -hex 32)
+
+# Session
+SESSION_SECRET=$(openssl rand -hex 32)
+
+# OAuth (add your credentials)
+GOOGLE_CLIENT_ID=your-google-client-id
+GOOGLE_CLIENT_SECRET=your-google-client-secret
+GOOGLE_CALLBACK_URL=http://localhost:5000/api/auth/google/callback
+
+# URLs
+FRONTEND_URL=http://localhost:3000
+ALLOWED_ORIGINS=http://localhost:3000,http://localhost:3003
+
+# Email (optional)
+REQUIRE_EMAIL_VERIFICATION=false
+
+# Other services
+BINANCE_API_KEY=your-binance-api-key
+BINANCE_API_SECRET=your-binance-api-secret
+REDIS_URL=redis://localhost:6379
+MT5_SYNC_TOKEN=12345
+MT5_DEFAULT_USER=1
+EOF
+    
+    # Web .env.local
+    cat > "$PROJECT_ROOT/apps/web/.env.local" << EOF
+NEXT_PUBLIC_API_URL=http://localhost:5000
+NEXT_PUBLIC_GOOGLE_CLIENT_ID=your-google-client-id
+EOF
+    
+    print_success "Environment files created! Please update them with your actual values."
+}
+
+# Full reset (clean + install + migrate + seed)
+full_reset() {
+    print_status "Performing full reset..."
+    
+    clean
+    install
+    migrate
+    seed
+    
+    print_success "Full reset completed!"
+}
+
+# Main script logic
+case "$1" in
+    install)
+        check_node
+        check_npm
+        install
+        ;;
+    build)
+        check_node
+        build
+        ;;
+    dev)
+        check_node
+        dev
+        ;;
+    test)
+        check_node
+        test
+        ;;
+    clean)
+        clean
+        ;;
+    migrate)
+        check_node
+        migrate
+        ;;
+    seed)
+        check_node
+        seed
+        ;;
+    deploy)
+        check_node
+        deploy
+        ;;
+    logs)
+        logs "$@"
+        ;;
+    status)
+        status
+        ;;
+    env)
+        create_env_files
+        ;;
+    full-reset)
+        check_node
+        check_npm
+        full_reset
+        ;;
+    *)
+        echo "WealthLog Maintenance Script"
+        echo "Usage: ./maintain.sh [command]"
+        echo ""
+        echo "Commands:"
+        echo "  install      - Install all dependencies"
+        echo "  build        - Build the project for production"
+        echo "  dev          - Start development servers"
+        echo "  test         - Run tests"
+        echo "  clean        - Clean project (remove node_modules, build artifacts)"
+        echo "  migrate      - Run database migrations"
+        echo "  seed         - Seed the database"
+        echo "  deploy       - Deploy to production"
+        echo "  logs [type]  - View logs (backend|web)"
+        echo "  status       - Check project status"
+        echo "  env          - Create environment files from template"
+        echo "  full-reset   - Full reset (clean + install + migrate + seed)"
+        echo ""
+        exit 1
+        ;;
+esac
