@@ -2,7 +2,7 @@
 
 # WealthLog Maintenance Script
 # Usage: ./maintain.sh [command]
-# Commands: install, build, dev, test, clean, migrate, seed, deploy, logs, status, full-reset
+# Commands: setup, install, quick-install, build, dev, clean, migrate, deploy, status, help
 
 set -e
 
@@ -11,6 +11,8 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
+CYAN='\033[0;36m'
+MAGENTA='\033[0;35m'
 NC='\033[0m' # No Color
 
 # Project root
@@ -33,6 +35,12 @@ print_warning() {
     echo -e "${YELLOW}[WARNING]${NC} $1"
 }
 
+print_section() {
+    echo -e "\n${CYAN}========================================${NC}"
+    echo -e "${CYAN}  $1${NC}"
+    echo -e "${CYAN}========================================${NC}\n"
+}
+
 # Check if Node.js is installed
 check_node() {
     if ! command -v node &> /dev/null; then
@@ -51,21 +59,57 @@ check_npm() {
     print_status "npm version: $(npm --version)"
 }
 
-# Install dependencies
+# SETUP: First-time setup after cloning from git
+setup() {
+    print_section "FIRST-TIME PROJECT SETUP"
+    print_status "Setting up WealthLog for the first time..."
+    
+    check_node
+    check_npm
+    
+    # Create environment files
+    print_status "Creating environment files..."
+    create_env_files
+    
+    # Install all dependencies
+    print_status "Installing all dependencies..."
+    quick_install
+    
+    # Setup database
+    print_status "Setting up database..."
+    cd "$PROJECT_ROOT/apps/backend"
+    npx prisma generate
+    
+    print_warning "Please update the DATABASE_URL in apps/backend/.env with your PostgreSQL connection string"
+    print_warning "Then run: ./maintain.sh migrate"
+    
+    print_success "Initial setup complete!"
+    print_status "Next steps:"
+    echo "  1. Update apps/backend/.env with your database connection"
+    echo "  2. Run: ./maintain.sh migrate"
+    echo "  3. Run: ./maintain.sh dev"
+}
+
+# INSTALL: Clean installation (removes everything and reinstalls)
 install() {
-    print_status "Installing dependencies..."
+    print_section "CLEAN INSTALLATION"
+    print_status "This will remove all node_modules and reinstall everything fresh."
+    print_status "Use this when you have dependency conflicts or want a fresh start."
+    
     cd "$PROJECT_ROOT"
     
+    # Clean first
+    clean
+    
     # Install root dependencies
+    print_status "Installing root dependencies..."
     npm install
     
     # Install backend dependencies
     print_status "Installing backend dependencies..."
     cd apps/backend
     npm install
-    
-    # Install additional OAuth dependencies
-    npm install passport passport-google-oauth20 cookie-parser express-session
+    npm install passport passport-google-oauth20 cookie-parser express-session resend
     
     cd "$PROJECT_ROOT"
     
@@ -76,26 +120,63 @@ install() {
     
     cd "$PROJECT_ROOT"
     
-    # Install shared package dependencies
-    print_status "Building shared packages..."
-    npm run build:packages
+    # Build shared packages
+    if [ -d "packages/shared" ]; then
+        print_status "Building shared package..."
+        cd packages/shared
+        npm install
+        npm run build || print_warning "Shared package build failed (TypeScript might not be configured)"
+        cd "$PROJECT_ROOT"
+    fi
     
-    print_success "All dependencies installed successfully!"
+    print_success "Clean installation completed!"
 }
 
-# Build the project
+# QUICK-INSTALL: Fast installation without cleaning (fixes most issues)
+quick_install() {
+    print_section "QUICK INSTALLATION"
+    print_status "Installing/updating dependencies without cleaning."
+    print_status "Use this for quick fixes or updating dependencies."
+    
+    cd "$PROJECT_ROOT"
+    
+    # Install dependencies with force flag to resolve conflicts
+    print_status "Installing root dependencies..."
+    npm install --force
+    
+    print_status "Installing backend dependencies..."
+    cd apps/backend
+    npm install --force
+    npm install passport passport-google-oauth20 cookie-parser express-session resend
+    
+    print_status "Installing web dependencies..."
+    cd ../web
+    npm install --force
+    
+    cd "$PROJECT_ROOT"
+    
+    print_success "Quick installation completed!"
+}
+
+# BUILD: Build the project for production
 build() {
-    print_status "Building the project..."
+    print_section "PRODUCTION BUILD"
+    print_status "Building the project for production deployment."
+    
     cd "$PROJECT_ROOT"
     
     # Build shared packages first
-    print_status "Building shared packages..."
-    npm run build:packages
+    if [ -d "packages/shared" ]; then
+        print_status "Building shared package..."
+        cd packages/shared
+        npm run build || print_warning "Shared package build skipped"
+        cd "$PROJECT_ROOT"
+    fi
     
-    # Build backend (no build step for JS)
-    print_status "Preparing backend..."
+    # Generate Prisma client
+    print_status "Generating Prisma client..."
     cd apps/backend
-    npm run prisma:generate
+    npx prisma generate
     
     cd "$PROJECT_ROOT"
     
@@ -106,52 +187,59 @@ build() {
     
     cd "$PROJECT_ROOT"
     
-    print_success "Build completed successfully!"
+    print_success "Production build completed!"
 }
 
-# Run development servers
+# DEV: Run development servers
 dev() {
+    print_section "DEVELOPMENT MODE"
     print_status "Starting development servers..."
+    print_status "Backend will run on: http://localhost:5000"
+    print_status "Frontend will run on: http://localhost:3000"
+    
     cd "$PROJECT_ROOT"
     
     # Check if .env files exist
     if [ ! -f "apps/backend/.env" ]; then
-        print_warning "Backend .env file not found. Creating from template..."
-        create_env_files
+        print_error "Backend .env file not found!"
+        print_warning "Run './maintain.sh setup' first"
+        exit 1
     fi
     
-    # Run migrations first
-    migrate
-    
-    # Start all services in development mode
-    npm run dev
-}
-
-# Run tests
-test() {
-    print_status "Running tests..."
-    cd "$PROJECT_ROOT"
-    
-    # Run backend tests
-    print_status "Testing backend..."
+    # Check database
+    print_status "Checking database connection..."
     cd apps/backend
-    npm test 2>/dev/null || print_warning "No backend tests configured"
+    npx prisma generate
+    npx prisma migrate deploy || print_warning "Database not migrated. Run: ./maintain.sh migrate"
     
     cd "$PROJECT_ROOT"
     
-    # Run web tests
-    print_status "Testing web app..."
-    cd apps/web
-    npm test 2>/dev/null || print_warning "No web tests configured"
-    
-    cd "$PROJECT_ROOT"
-    
-    print_success "Tests completed!"
+    # Start services
+    if command -v turbo &> /dev/null; then
+        npm run dev
+    else
+        print_warning "Starting services without Turbo..."
+        cd apps/backend
+        npm run dev &
+        BACKEND_PID=$!
+        
+        cd ../web
+        npm run dev &
+        FRONTEND_PID=$!
+        
+        print_status "Backend PID: $BACKEND_PID"
+        print_status "Frontend PID: $FRONTEND_PID"
+        print_status "Press Ctrl+C to stop all services"
+        
+        wait
+    fi
 }
 
-# Clean project
+# CLEAN: Remove all generated files and dependencies
 clean() {
-    print_status "Cleaning project..."
+    print_section "CLEANING PROJECT"
+    print_status "Removing all node_modules, build artifacts, and lock files..."
+    
     cd "$PROJECT_ROOT"
     
     # Remove node_modules
@@ -179,161 +267,228 @@ clean() {
     print_success "Project cleaned successfully!"
 }
 
-# Run database migrations
+# MIGRATE: Run database migrations
 migrate() {
+    print_section "DATABASE MIGRATION"
     print_status "Running database migrations..."
+    
     cd "$PROJECT_ROOT/apps/backend"
     
     # Generate Prisma client
     npx prisma generate
     
-    # Run migrations
-    npx prisma migrate deploy
-    
-    print_success "Migrations completed successfully!"
-}
-
-# Seed database
-seed() {
-    print_status "Seeding database..."
-    cd "$PROJECT_ROOT/apps/backend"
-    
-    # Check if seed file exists
-    if [ -f "prisma/seed.js" ]; then
-        npx prisma db seed
-        print_success "Database seeded successfully!"
+    # Create migration if specified
+    if [ "$2" == "create" ]; then
+        print_status "Creating new migration: ${3:-migration}"
+        npx prisma migrate dev --name ${3:-"migration"}
+    elif [ "$2" == "reset" ]; then
+        print_warning "This will DELETE all data in your database!"
+        read -p "Are you sure? (y/N): " confirm
+        if [ "$confirm" == "y" ] || [ "$confirm" == "Y" ]; then
+            npx prisma migrate reset
+        fi
     else
-        print_warning "No seed file found at prisma/seed.js"
+        # Run pending migrations
+        npx prisma migrate deploy
     fi
+    
+    print_success "Migration completed!"
 }
 
-# Deploy to production
-deploy() {
-    print_status "Deploying to production..."
-    
-    # Build first
-    build
-    
-    # Deploy backend to Render
-    print_status "Deploying backend to Render..."
-    # Add your Render deployment command here
-    
-    # Deploy frontend to Vercel
-    print_status "Deploying frontend to Vercel..."
-    cd "$PROJECT_ROOT/apps/web"
-    npx vercel --prod
-    
-    print_success "Deployment completed!"
-}
-
-# View logs
-logs() {
-    print_status "Viewing logs..."
-    
-    # View backend logs
-    if [ "$2" == "backend" ]; then
-        cd "$PROJECT_ROOT/apps/backend"
-        tail -f logs/*.log 2>/dev/null || print_warning "No log files found"
-    # View web logs
-    elif [ "$2" == "web" ]; then
-        cd "$PROJECT_ROOT/apps/web"
-        npm run dev
-    else
-        print_status "Usage: ./maintain.sh logs [backend|web]"
-    fi
-}
-
-# Check project status
+# STATUS: Check project status
 status() {
-    print_status "Checking project status..."
+    print_section "PROJECT STATUS CHECK"
     
     # Check Node version
     check_node
     check_npm
     
+    # Check environment files
+    print_status "Checking environment files..."
+    [ -f "$PROJECT_ROOT/apps/backend/.env" ] && print_success "✓ Backend .env exists" || print_error "✗ Backend .env missing"
+    [ -f "$PROJECT_ROOT/apps/web/.env.local" ] && print_success "✓ Web .env.local exists" || print_warning "✗ Web .env.local missing (optional)"
+    
+    # Check package installations
+    print_status "Checking package installations..."
+    [ -d "$PROJECT_ROOT/node_modules" ] && print_success "✓ Root packages installed" || print_error "✗ Root packages not installed"
+    [ -d "$PROJECT_ROOT/apps/backend/node_modules" ] && print_success "✓ Backend packages installed" || print_error "✗ Backend packages not installed"
+    [ -d "$PROJECT_ROOT/apps/web/node_modules" ] && print_success "✓ Web packages installed" || print_error "✗ Web packages not installed"
+    
     # Check database connection
     print_status "Checking database connection..."
     cd "$PROJECT_ROOT/apps/backend"
-    npx prisma db pull --print 2>/dev/null && print_success "Database connected" || print_error "Database connection failed"
+    npx prisma db pull --print &>/dev/null && print_success "✓ Database connected" || print_error "✗ Database connection failed"
     
-    # Check if ports are in use
+    # Check ports
     print_status "Checking ports..."
-    lsof -i :3000 &>/dev/null && print_warning "Port 3000 is in use (Frontend)" || print_success "Port 3000 is available"
-    lsof -i :5000 &>/dev/null && print_warning "Port 5000 is in use (Backend)" || print_success "Port 5000 is available"
+    if command -v netstat &> /dev/null; then
+        netstat -an | grep -q ":3000 " && print_warning "⚠ Port 3000 is in use" || print_success "✓ Port 3000 available"
+        netstat -an | grep -q ":5000 " && print_warning "⚠ Port 5000 is in use" || print_success "✓ Port 5000 available"
+    fi
     
-    # Check environment files
-    print_status "Checking environment files..."
-    [ -f "$PROJECT_ROOT/apps/backend/.env" ] && print_success "Backend .env exists" || print_error "Backend .env missing"
-    [ -f "$PROJECT_ROOT/apps/web/.env.local" ] && print_success "Web .env.local exists" || print_warning "Web .env.local missing"
-    
+    cd "$PROJECT_ROOT"
     print_success "Status check completed!"
 }
 
-# Create environment files
+# CREATE ENV FILES: Generate environment file templates
 create_env_files() {
-    print_status "Creating environment files..."
+    print_status "Creating environment file templates..."
     
-    # Backend .env
-    cat > "$PROJECT_ROOT/apps/backend/.env" << EOF
+    # Backend .env - includes non-machine-specific defaults
+    cat > "$PROJECT_ROOT/apps/backend/.env" << 'EOF'
+# Environment
 NODE_ENV=development
-DATABASE_URL="postgresql://username:password@localhost:5432/wealthlog?schema=public"
 PORT=5000
 
-# JWT Secrets (generate secure random strings in production)
-JWT_ACCESS_SECRET=$(openssl rand -hex 32)
-JWT_REFRESH_SECRET=$(openssl rand -hex 32)
-SECRET_KEY=$(openssl rand -hex 32)
+# Database - UPDATE THIS WITH YOUR POSTGRESQL CONNECTION
+DATABASE_URL="postgresql://username:password@localhost:5432/wealthlog?schema=public"
 
-# Session
-SESSION_SECRET=$(openssl rand -hex 32)
+# JWT Secrets - These are secure for development, regenerate for production
+JWT_ACCESS_SECRET=d91754034e088dad31bc89e38cee37219b6ffb64e88183e057fdce0e045386b2
+JWT_REFRESH_SECRET=3045b54d89ab7602197613e62308c21a80b9c4f966e461960298522bfe5206a0
+SECRET_KEY=fe6f035d4d41fd58f4f3a8fe18849f7e35140b48e5236966afa7c1024d3d733e
 
-# OAuth (add your credentials)
-GOOGLE_CLIENT_ID=your-google-client-id
-GOOGLE_CLIENT_SECRET=your-google-client-secret
+# Session Secret
+SESSION_SECRET=9fdb36952bd8087a8172eb720532bcbd2f92d7f786723400df106d9d91da8c6b
+
+# Google OAuth - These work for localhost development
+GOOGLE_CLIENT_ID=727664342527-5s1fulpdmld3a1e2vg424k28oktugkpp.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=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
 GOOGLE_CALLBACK_URL=http://localhost:5000/api/auth/google/callback
 
 # URLs
 FRONTEND_URL=http://localhost:3000
 ALLOWED_ORIGINS=http://localhost:3000,http://localhost:3003
 
-# Email (optional)
+# Email Service (Optional - works without configuration in dev mode)
+EMAIL_SERVICE=resend
+RESEND_API_KEY=your-resend-api-key-optional
+FROM_EMAIL=noreply@wealthlog.com
 REQUIRE_EMAIL_VERIFICATION=false
 
-# Other services
-BINANCE_API_KEY=your-binance-api-key
-BINANCE_API_SECRET=your-binance-api-secret
+# Redis (Optional - only if you have Redis installed)
 REDIS_URL=redis://localhost:6379
+
+# Trading Services (Optional)
 MT5_SYNC_TOKEN=12345
 MT5_DEFAULT_USER=1
+BINANCE_API_KEY=your-binance-api-key-optional
+BINANCE_API_SECRET=your-binance-api-secret-optional
 EOF
     
     # Web .env.local
-    cat > "$PROJECT_ROOT/apps/web/.env.local" << EOF
+    cat > "$PROJECT_ROOT/apps/web/.env.local" << 'EOF'
+# API Configuration
 NEXT_PUBLIC_API_URL=http://localhost:5000
-NEXT_PUBLIC_GOOGLE_CLIENT_ID=your-google-client-id
+
+# Google OAuth Client ID (same as backend)
+NEXT_PUBLIC_GOOGLE_CLIENT_ID=727664342527-5s1fulpdmld3a1e2vg424k28oktugkpp.apps.googleusercontent.com
 EOF
     
-    print_success "Environment files created! Please update them with your actual values."
+    print_success "Environment files created!"
+    print_warning "IMPORTANT: Update DATABASE_URL in apps/backend/.env with your PostgreSQL connection"
 }
 
-# Full reset (clean + install + migrate + seed)
-full_reset() {
-    print_status "Performing full reset..."
+# DEPLOY: Deploy to production
+deploy() {
+    print_section "PRODUCTION DEPLOYMENT"
+    print_status "Preparing for production deployment..."
     
-    clean
-    install
-    migrate
-    seed
+    # Build first
+    build
     
-    print_success "Full reset completed!"
+    print_status "Ready for deployment!"
+    print_status "Deploy backend to Render: https://render.com"
+    print_status "Deploy frontend to Vercel: Run 'vercel --prod' in apps/web"
+    
+    print_warning "Remember to set production environment variables!"
+}
+
+# HELP: Show detailed help information
+show_help() {
+    echo -e "${MAGENTA}"
+    echo "╔══════════════════════════════════════════════════════════════╗"
+    echo "║              WealthLog Maintenance Script Help              ║"
+    echo "╚══════════════════════════════════════════════════════════════╝"
+    echo -e "${NC}"
+    
+    echo -e "${CYAN}COMMANDS:${NC}"
+    echo ""
+    
+    echo -e "${GREEN}setup${NC}          - First-time setup after cloning from git"
+    echo "                 Creates env files, installs dependencies, prepares database"
+    echo ""
+    
+    echo -e "${GREEN}install${NC}        - Clean installation (removes & reinstalls everything)"
+    echo "                 Use when: Major dependency issues, switching branches"
+    echo ""
+    
+    echo -e "${GREEN}quick-install${NC}  - Fast installation without cleaning"
+    echo "                 Use when: Adding new packages, fixing minor issues"
+    echo ""
+    
+    echo -e "${GREEN}build${NC}          - Build project for production"
+    echo "                 Creates optimized production builds"
+    echo ""
+    
+    echo -e "${GREEN}dev${NC}            - Start development servers"
+    echo "                 Backend: http://localhost:5000"
+    echo "                 Frontend: http://localhost:3000"
+    echo ""
+    
+    echo -e "${GREEN}clean${NC}          - Remove all build artifacts & dependencies"
+    echo "                 Cleans node_modules, build files, lock files"
+    echo ""
+    
+    echo -e "${GREEN}migrate${NC}        - Run database migrations"
+    echo "  migrate create [name] - Create new migration"
+    echo "  migrate reset        - Reset database (WARNING: deletes data)"
+    echo ""
+    
+    echo -e "${GREEN}status${NC}         - Check project health"
+    echo "                 Verifies installation, database, ports"
+    echo ""
+    
+    echo -e "${GREEN}deploy${NC}         - Prepare for production deployment"
+    echo ""
+    
+    echo -e "${CYAN}TYPICAL WORKFLOWS:${NC}"
+    echo ""
+    echo -e "${YELLOW}After cloning from git:${NC}"
+    echo "  1. ./maintain.sh setup"
+    echo "  2. Update DATABASE_URL in apps/backend/.env"
+    echo "  3. ./maintain.sh migrate"
+    echo "  4. ./maintain.sh dev"
+    echo ""
+    echo -e "${YELLOW}Daily development:${NC}"
+    echo "  ./maintain.sh dev"
+    echo ""
+    echo -e "${YELLOW}After pulling changes:${NC}"
+    echo "  1. ./maintain.sh quick-install"
+    echo "  2. ./maintain.sh migrate"
+    echo "  3. ./maintain.sh dev"
+    echo ""
+    echo -e "${YELLOW}When things break:${NC}"
+    echo "  1. ./maintain.sh clean"
+    echo "  2. ./maintain.sh install"
+    echo "  3. ./maintain.sh migrate"
+    echo ""
 }
 
 # Main script logic
 case "$1" in
+    setup)
+        setup
+        ;;
     install)
         check_node
         check_npm
         install
+        ;;
+    quick-install)
+        check_node
+        check_npm
+        quick_install
         ;;
     build)
         check_node
@@ -343,27 +498,16 @@ case "$1" in
         check_node
         dev
         ;;
-    test)
-        check_node
-        test
-        ;;
     clean)
         clean
         ;;
     migrate)
         check_node
-        migrate
-        ;;
-    seed)
-        check_node
-        seed
+        migrate "$@"
         ;;
     deploy)
         check_node
         deploy
-        ;;
-    logs)
-        logs "$@"
         ;;
     status)
         status
@@ -371,29 +515,11 @@ case "$1" in
     env)
         create_env_files
         ;;
-    full-reset)
-        check_node
-        check_npm
-        full_reset
+    help|--help|-h)
+        show_help
         ;;
     *)
-        echo "WealthLog Maintenance Script"
-        echo "Usage: ./maintain.sh [command]"
-        echo ""
-        echo "Commands:"
-        echo "  install      - Install all dependencies"
-        echo "  build        - Build the project for production"
-        echo "  dev          - Start development servers"
-        echo "  test         - Run tests"
-        echo "  clean        - Clean project (remove node_modules, build artifacts)"
-        echo "  migrate      - Run database migrations"
-        echo "  seed         - Seed the database"
-        echo "  deploy       - Deploy to production"
-        echo "  logs [type]  - View logs (backend|web)"
-        echo "  status       - Check project status"
-        echo "  env          - Create environment files from template"
-        echo "  full-reset   - Full reset (clean + install + migrate + seed)"
-        echo ""
+        show_help
         exit 1
         ;;
 esac
