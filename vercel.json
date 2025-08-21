@@ -1,5 +1,7 @@
 {
   "framework": "nextjs",
+  "rootDirectory": "wealthlogs-code",
   "outputDirectory": "apps/web/.next",
-  "buildCommand": "npx turbo run build --filter=@wealthlog/web..."
+  "buildCommand": "npm ci --workspaces --include-workspace-root && npm run build --workspace=apps/web",
+  "installCommand": "npm ci --workspaces --include-workspace-root"
 }
