@@ -1,4 +1,12 @@
 // src/index.js
+// Load environment-specific config first, then base .env as fallback
+const path = require('path');
+if (process.env.NODE_ENV === 'production') {
+  require('dotenv').config({ path: path.join(__dirname, '..', '.env.production') });
+} else {
+  require('dotenv').config({ path: path.join(__dirname, '..', '.env.development') });
+}
+// Load base .env for any missing values
 require('dotenv').config();
 
 const express = require('express');

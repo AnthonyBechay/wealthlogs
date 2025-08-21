@@ -40,9 +40,9 @@ LOG="📝"
 
 # Project paths
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-BACKEND_DIR="$PROJECT_ROOT/apps/backend"
-FRONTEND_DIR="$PROJECT_ROOT/apps/web"
-SHARED_DIR="$PROJECT_ROOT/packages/shared"
+BACKEND_DIR="$PROJECT_ROOT/wealthlogs-code/apps/backend"
+FRONTEND_DIR="$PROJECT_ROOT/wealthlogs-code/apps/web"
+SHARED_DIR="$PROJECT_ROOT/wealthlogs-code/packages/shared"
 
 # Logging configuration
 LOG_DIR="$PROJECT_ROOT/.maintain-logs"

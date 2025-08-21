@@ -3,8 +3,8 @@
   "private": true,
   "packageManager": "npm@8.19.2",
   "workspaces": [
-    "apps/*",
-    "packages/*"
+    "wealthlogs-code/apps/*",
+    "wealthlogs-code/packages/*"
   ],
   "scripts": {
     "bootstrap": "npm install",           
