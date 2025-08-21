@@ -1,0 +1,31 @@
+{
+  "name": "wealthlog-monorepo",
+  "private": true,
+  "packageManager": "npm@8.19.2",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "bootstrap": "npm install",           
+    "dev": "turbo run dev --parallel",    
+    "dev:web": "turbo run dev --filter=@wealthlog/web",
+    "dev:mobile": "turbo run dev --filter=@wealthlog/mobile",
+    "dev:backend": "turbo run dev --filter=@wealthlog/backend",
+    "build": "turbo run build",
+    "build:web": "turbo run build --filter=@wealthlog/web...",
+    "build:mobile": "turbo run build --filter=@wealthlog/mobile...",
+    "build:backend": "turbo run build --filter=@wealthlog/backend...",
+    "lint": "turbo run lint",
+    "type-check": "turbo run type-check",
+    "mobile:sync": "turbo run sync --filter=@wealthlog/mobile",
+    "mobile:ios": "turbo run ios --filter=@wealthlog/mobile",
+    "mobile:android": "turbo run android --filter=@wealthlog/mobile",
+    "mobile:build": "turbo run build:mobile --filter=@wealthlog/mobile",
+    "clean": "turbo run clean && rm -rf node_modules",
+    "clean:deps": "rm -rf node_modules apps/*/node_modules packages/*/node_modules"
+  },
+  "devDependencies": {
+    "turbo": "^2.4.4"
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "framework": "nextjs",
+  "outputDirectory": "apps/web/.next",
+  "buildCommand": "npm run build:web",
+  "installCommand": "npm ci --workspaces --include-workspace-root"
+}

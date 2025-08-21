@@ -1,0 +1,53 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "tasks": {
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": [
+        ".next/**", 
+        "dist/**",
+        "build/**"
+      ]
+    },
+    "build:web": {
+      "dependsOn": ["@wealthlog/shared#build", "@wealthlog/ui#build"]
+    },
+    "build:mobile": {
+      "dependsOn": ["@wealthlog/shared#build", "@wealthlog/ui#build"]
+    },
+    "build:backend": {
+      "dependsOn": ["@wealthlog/shared#build"]
+    },
+    "dev": {
+      "cache": false,
+      "persistent": true
+    },
+    "dev:web": {
+      "cache": false,
+      "persistent": true
+    },
+    "dev:mobile": {
+      "cache": false,
+      "persistent": true
+    },
+    "dev:backend": {
+      "cache": false,
+      "persistent": true
+    },
+    "lint": {
+      "outputs": []
+    },
+    "type-check": {
+      "outputs": []
+    },
+    "sync": {
+      "dependsOn": ["build"]
+    },
+    "ios": {
+      "dependsOn": ["sync"]
+    },
+    "android": {
+      "dependsOn": ["sync"]
+    }
+  }
+}

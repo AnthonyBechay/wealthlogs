@@ -1,0 +1,30 @@
+# Node modules
+node_modules/
+.turbo/
+
+# Build outputs
+.next/
+dist/
+build/
+
+# Environment files
+.env
+.env.local
+.env.production
+.env.development
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Package lock files in sub-packages
+apps/*/package-lock.json
+packages/*/package-lock.json
