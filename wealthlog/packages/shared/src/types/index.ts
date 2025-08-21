@@ -29,8 +29,10 @@ export interface User {
 }
 
 export interface AuthResponse {
-  token: string;
+  token?: string;        // Legacy field
+  accessToken?: string;  // New JWT auth field
   user: User;
+  message?: string;
 }
 
 export interface ApiError {
@@ -54,6 +56,7 @@ export interface FinancialAccount {
   initialBalance: number;
   lastRecalculatedAt?: string;
   brokerInstitutionId?: number;
+  lastStatusChange?: string;
 }
 
 export enum FinancialAccountType {
@@ -75,7 +78,9 @@ export interface Trade {
   id: number;
   accountId: number;
   instrumentId?: number;
+  instrument?: string;  // For frontend compatibility
   patternId?: number;
+  pattern?: string;     // For frontend compatibility
   tradeType: TradeType;
   tradeDirection?: TradeDirection;
   status: TradeStatus;
@@ -89,6 +94,7 @@ export interface Trade {
   closingBalance?: number;
   createdAt: string;
   updatedAt: string;
+  media?: any;          // For frontend compatibility
 }
 
 export enum TradeType {

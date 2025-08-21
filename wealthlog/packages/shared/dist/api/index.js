@@ -11,10 +11,12 @@ const index_1 = require("../storage/index");
 class WealthLogAPI {
     constructor(config, tokenStorage) {
         this.currentToken = null;
+        this.refreshPromise = null;
         this.tokenStorage = tokenStorage || (0, index_1.createTokenStorage)();
         this.api = axios_1.default.create({
             baseURL: config.baseURL,
             timeout: config.timeout || 30000,
+            withCredentials: true, // Important for cookies
             headers: {
                 'Content-Type': 'application/json',
             },
@@ -41,11 +43,24 @@ class WealthLogAPI {
             }
             return config;
         }, (error) => Promise.reject(error));
-        // Response interceptor
+        // Response interceptor for token refresh
         this.api.interceptors.response.use((response) => response, async (error) => {
-            if (error.response?.status === 401) {
-                // Token expired or invalid
-                await this.clearToken();
+            const originalRequest = error.config;
+            if (error.response?.status === 401 && !originalRequest._retry) {
+                originalRequest._retry = true;
+                // Check if it's a token expired error
+                if (error.response?.data?.code === 'TOKEN_EXPIRED') {
+                    try {
+                        const newToken = await this.refreshAccessToken();
+                        originalRequest.headers.Authorization = `Bearer ${newToken}`;
+                        return this.api(originalRequest);
+                    }
+                    catch (refreshError) {
+                        // Refresh failed, clear token
+                        await this.clearToken();
+                        return Promise.reject(refreshError);
+                    }
+                }
             }
             return Promise.reject(error);
         });
@@ -63,11 +78,36 @@ class WealthLogAPI {
         delete this.api.defaults.headers.common.Authorization;
         await this.tokenStorage.removeToken();
     }
-    // Auth methods
+    async refreshAccessToken() {
+        // Prevent multiple simultaneous refresh requests
+        if (this.refreshPromise) {
+            return this.refreshPromise;
+        }
+        this.refreshPromise = this.api
+            .post('/api/auth/refresh')
+            .then((response) => {
+            const token = response.data.accessToken || response.data.token;
+            if (!token) {
+                throw new Error('No token received from refresh');
+            }
+            this.setToken(token);
+            this.refreshPromise = null;
+            return token;
+        })
+            .catch((error) => {
+            this.refreshPromise = null;
+            throw error;
+        });
+        return this.refreshPromise;
+    }
+    // Auth methods - ALL should use /api prefix
     async login(credentials) {
         try {
-            const response = await this.api.post('/auth/login', credentials);
-            await this.setToken(response.data.token);
+            const response = await this.api.post('/api/auth/login', credentials);
+            const token = response.data.accessToken || response.data.token;
+            if (token) {
+                await this.setToken(token);
+            }
             return response.data;
         }
         catch (error) {
@@ -76,7 +116,7 @@ class WealthLogAPI {
     }
     async register(data) {
         try {
-            const response = await this.api.post('/auth/register', data);
+            const response = await this.api.post('/api/auth/register', data);
             return response.data;
         }
         catch (error) {
@@ -85,10 +125,9 @@ class WealthLogAPI {
     }
     async logout() {
         try {
-            await this.api.post('/auth/logout');
+            await this.api.post('/api/auth/logout');
         }
         catch (error) {
-            // Logout should always clear local token even if server call fails
             console.warn('Logout API call failed:', error);
         }
         finally {
@@ -97,8 +136,8 @@ class WealthLogAPI {
     }
     async getCurrentUser() {
         try {
-            const response = await this.api.get('/auth/me');
-            return response.data;
+            const response = await this.api.get('/api/auth/me');
+            return response.data.user || response.data;
         }
         catch (error) {
             throw new Error(error.response?.data?.error || 'Failed to get current user');
@@ -106,7 +145,7 @@ class WealthLogAPI {
     }
     async forgotPassword(email) {
         try {
-            const response = await this.api.post('/auth/forgot-password', { email });
+            const response = await this.api.post('/api/auth/forgot-password', { email });
             return response.data;
         }
         catch (error) {
@@ -115,7 +154,7 @@ class WealthLogAPI {
     }
     async resetPassword(token, password) {
         try {
-            const response = await this.api.post('/auth/reset-password', { token, password });
+            const response = await this.api.post('/api/auth/reset-password', { token, password });
             return response.data;
         }
         catch (error) {
@@ -124,17 +163,17 @@ class WealthLogAPI {
     }
     async verifyEmail(token) {
         try {
-            const response = await this.api.get(`/auth/verify-email?token=${token}`);
+            const response = await this.api.get(`/api/auth/verify-email?token=${token}`);
             return response.data;
         }
         catch (error) {
             throw new Error(error.response?.data?.error || 'Email verification failed');
         }
     }
-    // Financial Account methods
+    // Financial Account methods - ALL should use /api prefix
     async getAccounts() {
         try {
-            const response = await this.api.get('/account');
+            const response = await this.api.get('/api/account');
             return response.data;
         }
         catch (error) {
@@ -143,7 +182,7 @@ class WealthLogAPI {
     }
     async getAccount(id) {
         try {
-            const response = await this.api.get(`/account/${id}`);
+            const response = await this.api.get(`/api/account/${id}`);
             return response.data;
         }
         catch (error) {
@@ -152,7 +191,7 @@ class WealthLogAPI {
     }
     async createAccount(account) {
         try {
-            const response = await this.api.post('/account', account);
+            const response = await this.api.post('/api/account', account);
             return response.data;
         }
         catch (error) {
@@ -161,22 +200,25 @@ class WealthLogAPI {
     }
     async updateAccount(id, updates) {
         try {
-            const response = await this.api.put(`/account/${id}`, updates);
+            const response = await this.api.put(`/api/account/${id}`, updates);
             return response.data;
         }
         catch (error) {
             throw new Error(error.response?.data?.error || 'Failed to update account');
         }
     }
-    async deleteAccount(id) {
+    async deleteAccount(id, cascade) {
         try {
-            await this.api.delete(`/account/${id}`);
+            const url = cascade !== undefined
+                ? `/api/account/${id}?cascade=${cascade}`
+                : `/api/account/${id}`;
+            await this.api.delete(url);
         }
         catch (error) {
             throw new Error(error.response?.data?.error || 'Failed to delete account');
         }
     }
-    // Trade methods
+    // Trade methods - ALL should use /api prefix
     async getTrades(accountId, params) {
         try {
             const queryParams = new URLSearchParams();
@@ -189,7 +231,7 @@ class WealthLogAPI {
                     }
                 });
             }
-            const response = await this.api.get(`/trade?${queryParams.toString()}`);
+            const response = await this.api.get(`/api/trade?${queryParams.toString()}`);
             return response.data;
         }
         catch (error) {
@@ -198,7 +240,7 @@ class WealthLogAPI {
     }
     async getTrade(id) {
         try {
-            const response = await this.api.get(`/trade/${id}`);
+            const response = await this.api.get(`/api/trade/${id}`);
             return response.data;
         }
         catch (error) {
@@ -207,7 +249,7 @@ class WealthLogAPI {
     }
     async createTrade(trade) {
         try {
-            const response = await this.api.post('/trade', trade);
+            const response = await this.api.post('/api/trade', trade);
             return response.data;
         }
         catch (error) {
@@ -216,7 +258,7 @@ class WealthLogAPI {
     }
     async updateTrade(id, updates) {
         try {
-            const response = await this.api.put(`/trade/${id}`, updates);
+            const response = await this.api.put(`/api/trade/${id}`, updates);
             return response.data;
         }
         catch (error) {
@@ -225,13 +267,13 @@ class WealthLogAPI {
     }
     async deleteTrade(id) {
         try {
-            await this.api.delete(`/trade/${id}`);
+            await this.api.delete(`/api/trade/${id}`);
         }
         catch (error) {
             throw new Error(error.response?.data?.error || 'Failed to delete trade');
         }
     }
-    // Transaction methods
+    // Transaction methods - ALL should use /api prefix
     async getTransactions(accountId, params) {
         try {
             const queryParams = new URLSearchParams();
@@ -244,7 +286,7 @@ class WealthLogAPI {
                     }
                 });
             }
-            const response = await this.api.get(`/transactions?${queryParams.toString()}`);
+            const response = await this.api.get(`/api/transactions?${queryParams.toString()}`);
             return response.data;
         }
         catch (error) {
@@ -253,21 +295,165 @@ class WealthLogAPI {
     }
     async createTransaction(transaction) {
         try {
-            const response = await this.api.post('/transactions', transaction);
+            const response = await this.api.post('/api/transactions', transaction);
             return response.data;
         }
         catch (error) {
             throw new Error(error.response?.data?.error || 'Failed to create transaction');
         }
     }
-    // Dashboard methods
-    async getDashboard() {
+    // Dashboard methods - ALL should use /api prefix
+    async getDashboard(range) {
         try {
-            const response = await this.api.get('/dashboard');
+            const url = range ? `/api/dashboard/networth?range=${range}` : '/api/dashboard/networth';
+            const response = await this.api.get(url);
             return response.data;
         }
         catch (error) {
             throw new Error(error.response?.data?.error || 'Failed to get dashboard data');
+        }
+    }
+    async getDashboardSummary() {
+        try {
+            const response = await this.api.get('/api/dashboard/networth/summary');
+            return response.data;
+        }
+        catch (error) {
+            throw new Error(error.response?.data?.error || 'Failed to get dashboard summary');
+        }
+    }
+    // Settings methods - ALL should use /api prefix
+    async getTradingSettings() {
+        try {
+            const response = await this.api.get('/api/tradingSettings');
+            return response.data;
+        }
+        catch (error) {
+            throw new Error(error.response?.data?.error || 'Failed to get trading settings');
+        }
+    }
+    async updateTradingSettings(settings) {
+        try {
+            const response = await this.api.put('/api/tradingSettings', settings);
+            return response.data;
+        }
+        catch (error) {
+            throw new Error(error.response?.data?.error || 'Failed to update trading settings');
+        }
+    }
+    async getGeneralSettings() {
+        try {
+            const response = await this.api.get('/api/generalSettings');
+            return response.data;
+        }
+        catch (error) {
+            throw new Error(error.response?.data?.error || 'Failed to get general settings');
+        }
+    }
+    async updateGeneralSettings(settings) {
+        try {
+            const response = await this.api.put('/api/generalSettings', settings);
+            return response.data;
+        }
+        catch (error) {
+            throw new Error(error.response?.data?.error || 'Failed to update general settings');
+        }
+    }
+    // Real Estate methods - ALL should use /api prefix
+    async getRealEstateProperties() {
+        try {
+            const response = await this.api.get('/api/real-estate/properties');
+            return response.data;
+        }
+        catch (error) {
+            throw new Error(error.response?.data?.error || 'Failed to get properties');
+        }
+    }
+    async createRealEstateProperty(property) {
+        try {
+            const response = await this.api.post('/api/real-estate/properties', property);
+            return response.data;
+        }
+        catch (error) {
+            throw new Error(error.response?.data?.error || 'Failed to create property');
+        }
+    }
+    async updateRealEstateProperty(id, updates) {
+        try {
+            const response = await this.api.put(`/api/real-estate/properties/${id}`, updates);
+            return response.data;
+        }
+        catch (error) {
+            throw new Error(error.response?.data?.error || 'Failed to update property');
+        }
+    }
+    async deleteRealEstateProperty(id) {
+        try {
+            await this.api.delete(`/api/real-estate/properties/${id}`);
+        }
+        catch (error) {
+            throw new Error(error.response?.data?.error || 'Failed to delete property');
+        }
+    }
+    async getRealEstateExpenses() {
+        try {
+            const response = await this.api.get('/api/real-estate/expenses');
+            return response.data;
+        }
+        catch (error) {
+            throw new Error(error.response?.data?.error || 'Failed to get expenses');
+        }
+    }
+    async createRealEstateExpense(expense) {
+        try {
+            const response = await this.api.post('/api/real-estate/expenses', expense);
+            return response.data;
+        }
+        catch (error) {
+            throw new Error(error.response?.data?.error || 'Failed to create expense');
+        }
+    }
+    // Admin methods - ALL should use /api prefix
+    async getAdminRoles() {
+        try {
+            const response = await this.api.get('/api/admin/roles');
+            return response.data;
+        }
+        catch (error) {
+            throw new Error(error.response?.data?.error || 'Failed to get roles');
+        }
+    }
+    async addUserRole(userId, roleId) {
+        try {
+            const response = await this.api.post(`/api/admin/users/${userId}/addRole`, { roleId });
+            return response.data;
+        }
+        catch (error) {
+            throw new Error(error.response?.data?.error || 'Failed to add role');
+        }
+    }
+    // Status History methods - ALL should use /api prefix
+    async getAccountStatusHistory() {
+        try {
+            const response = await this.api.get('/api/account/status-history');
+            return response.data;
+        }
+        catch (error) {
+            throw new Error(error.response?.data?.error || 'Failed to get status history');
+        }
+    }
+    async updateAccountStatus(accountId, status) {
+        try {
+            const response = await this.api.patch(`/api/account/${accountId}/status`, status);
+            return response.data;
+        }
+        catch (error) {
+            // Fallback to simple update if new endpoint doesn't exist
+            if (error.response?.status === 404) {
+                const response = await this.api.patch(`/api/account/${accountId}`, { active: status.active });
+                return response.data;
+            }
+            throw new Error(error.response?.data?.error || 'Failed to update account status');
         }
     }
     // Utility methods
@@ -277,7 +463,37 @@ class WealthLogAPI {
     getToken() {
         return this.currentToken;
     }
-    // File upload method (for mobile/web compatibility)
+    // Get raw axios instance for direct calls
+    getApiInstance() {
+        return this.api;
+    }
+    // Generic methods for direct API calls (backward compatibility)
+    async get(url, config) {
+        // Ensure /api prefix if not present
+        const apiUrl = url.startsWith('/api') ? url : `/api${url.startsWith('/') ? url : '/' + url}`;
+        return this.api.get(apiUrl, config);
+    }
+    async post(url, data, config) {
+        // Ensure /api prefix if not present
+        const apiUrl = url.startsWith('/api') ? url : `/api${url.startsWith('/') ? url : '/' + url}`;
+        return this.api.post(apiUrl, data, config);
+    }
+    async put(url, data, config) {
+        // Ensure /api prefix if not present
+        const apiUrl = url.startsWith('/api') ? url : `/api${url.startsWith('/') ? url : '/' + url}`;
+        return this.api.put(apiUrl, data, config);
+    }
+    async patch(url, data, config) {
+        // Ensure /api prefix if not present
+        const apiUrl = url.startsWith('/api') ? url : `/api${url.startsWith('/') ? url : '/' + url}`;
+        return this.api.patch(apiUrl, data, config);
+    }
+    async delete(url, config) {
+        // Ensure /api prefix if not present
+        const apiUrl = url.startsWith('/api') ? url : `/api${url.startsWith('/') ? url : '/' + url}`;
+        return this.api.delete(apiUrl, config);
+    }
+    // File upload method
     async uploadFile(endpoint, file, fileName) {
         try {
             const formData = new FormData();
@@ -285,10 +501,10 @@ class WealthLogAPI {
                 formData.append('file', file);
             }
             else {
-                // Handle Blob (could be from mobile camera)
                 formData.append('file', file, fileName || 'upload.jpg');
             }
-            const response = await this.api.post(endpoint, formData, {
+            const apiUrl = endpoint.startsWith('/api') ? endpoint : `/api${endpoint.startsWith('/') ? endpoint : '/' + endpoint}`;
+            const response = await this.api.post(apiUrl, formData, {
                 headers: {
                     'Content-Type': 'multipart/form-data',
                 },

@@ -25,8 +25,10 @@ export interface User {
     lastLoginAt?: string;
 }
 export interface AuthResponse {
-    token: string;
+    token?: string;
+    accessToken?: string;
     user: User;
+    message?: string;
 }
 export interface ApiError {
     error: string;
@@ -47,6 +49,7 @@ export interface FinancialAccount {
     initialBalance: number;
     lastRecalculatedAt?: string;
     brokerInstitutionId?: number;
+    lastStatusChange?: string;
 }
 export declare enum FinancialAccountType {
     FX_COMMODITY = "FX_COMMODITY",
@@ -66,7 +69,9 @@ export interface Trade {
     id: number;
     accountId: number;
     instrumentId?: number;
+    instrument?: string;
     patternId?: number;
+    pattern?: string;
     tradeType: TradeType;
     tradeDirection?: TradeDirection;
     status: TradeStatus;
@@ -80,6 +85,7 @@ export interface Trade {
     closingBalance?: number;
     createdAt: string;
     updatedAt: string;
+    media?: any;
 }
 export declare enum TradeType {
     FX = "FX",

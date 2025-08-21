@@ -21,7 +21,7 @@ export default function AuthCallback() {
         try {
           await authService.handleGoogleCallback(token);
           router.push('/landing/landing');
-        } catch (error) {
+        } catch (error: any) {
           console.error('Failed to handle OAuth callback:', error);
           router.push('/login?error=oauth_failed');
         }

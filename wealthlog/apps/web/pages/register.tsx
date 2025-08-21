@@ -89,18 +89,18 @@ export default function Register() {
   const getErrorMessage = (err: unknown): string => {
     const error = err as ApiError;
     
-    if (error.response?.status === 409) {
+    if ((error as any).response?.status === 409) {
       return "Username or email already exists.";
     }
-    if (error.response?.status === 422) {
+    if ((error as any).response?.status === 422) {
       return "Please check your input and try again.";
     }
-    if (error.response?.status === 429) {
+    if ((error as any).response?.status === 429) {
       return "Too many registration attempts. Please try again later.";
     }
 
-    if (error.response?.data?.message) {
-      return error.response.data.message;
+    if ((error as any).response?.data?.message) {
+      return (error as any).response.data.message;
     }
     if (!navigator.onLine) {
       return "Please check your internet connection.";

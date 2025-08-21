@@ -46,20 +46,20 @@ export default function ForgotPassword() {
     const error = err as ApiError;
     
     // Vérifier d'abord le nouveau format de réponse API
-    if (error.response?.data?.error) {
-      return error.response.data.error;
+    if ((error as any).response?.data?.error) {
+      return (error as any).response.data.error;
     }
     
     // Repli sur l'ancien format
-    if (error.response?.data?.message) {
-      return error.response.data.message;
+    if ((error as any).response?.data?.message) {
+      return (error as any).response.data.message;
     }
     
     // Replis basés sur le statut
-    if (error.response?.status === 404) {
+    if ((error as any).response?.status === 404) {
       return "Aucun compte trouvé avec cette adresse e-mail.";
     }
-    if (error.response?.status === 429) {
+    if ((error as any).response?.status === 429) {
       return "Trop de demandes. Veuillez réessayer plus tard.";
     }
 

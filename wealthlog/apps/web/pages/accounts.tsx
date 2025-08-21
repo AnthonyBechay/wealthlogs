@@ -137,9 +137,9 @@ export default function AccountsPage() {
       }
 
       setLoadingState("success");
-    } catch (error) {
+    } catch (error: any) {
       console.error("Initialization failed:", error);
-      if (error.response?.status === 401) {
+      if ((error as any).response?.status === 401) {
         router.push("/login");
       } else {
         setLoadingState("error");
@@ -151,7 +151,7 @@ export default function AccountsPage() {
     try {
       const res = await api.get<FinancialAccount[]>("/account");
       setAccounts(res.data || []);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to load accounts:", error);
       throw error;
     }
@@ -161,7 +161,7 @@ export default function AccountsPage() {
     try {
       const res = await api.get<Transaction[]>("/transactions");
       setTransactions(res.data || []);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to load transactions:", error);
       throw error;
     }
@@ -171,7 +171,7 @@ export default function AccountsPage() {
     try {
       const res = await api.get<StatusChange[]>("/account/status-history");
       setStatusHistory(res.data || []);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to load status history:", error);
     }
   }, []);
@@ -312,9 +312,9 @@ export default function AccountsPage() {
       setStatusChangeComment("");
       setStatusChangeReason("MANUAL");
       
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to change status:", error);
-      alert(error.response?.data?.message || "Failed to change account status");
+      alert((error as any).response?.data?.message || "Failed to change account status");
     } finally {
       setActionLoading(null);
     }
@@ -342,10 +342,10 @@ export default function AccountsPage() {
 
       // Reload accounts
       await loadAccounts();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to create account:", error);
       setAccountFormErrors({ 
-        submit: error.response?.data?.message || "Failed to create account" 
+        submit: (error as any).response?.data?.message || "Failed to create account" 
       });
     } finally {
       setActionLoading(null);
@@ -383,9 +383,9 @@ export default function AccountsPage() {
       if (selectedAccountId === id) {
         setSelectedAccountId("ALL");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to delete account:", error);
-      alert(error.response?.data?.message || "Failed to delete account");
+      alert((error as any).response?.data?.message || "Failed to delete account");
     } finally {
       setActionLoading(null);
     }
@@ -423,10 +423,10 @@ export default function AccountsPage() {
 
       // Reload data
       await Promise.all([loadAccounts(), loadTransactions()]);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to create transaction:", error);
       setTransactionFormErrors({ 
-        submit: error.response?.data?.message || "Failed to create transaction" 
+        submit: (error as any).response?.data?.message || "Failed to create transaction" 
       });
     } finally {
       setActionLoading(null);

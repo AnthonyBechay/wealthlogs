@@ -1,555 +1,256 @@
-# WealthLog Development Guide
+# WealthLog - Personal Finance & Trading Management Platform
 
-## 🚀 Quick Start for New Developers
+A comprehensive financial management system with trading analytics, real estate tracking, and automated portfolio management.
 
-Welcome to WealthLog! This guide will get you up and running in minutes.
+## 🚀 Quick Start
 
-### First Day Setup Checklist
+### Prerequisites
+- Node.js 18+ and npm
+- PostgreSQL database
+- Git
 
-- [ ] Clone the repository
-- [ ] Install prerequisites (Node.js 20, PostgreSQL 15)
-- [ ] Run setup script: `./maintain.sh setup`
-- [ ] Configure database connection in `.env`
-- [ ] Run migrations: `./maintain.sh migrate`
-- [ ] Start development: `./maintain.sh dev`
-- [ ] Access frontend at http://localhost:3000
-- [ ] Test API at http://localhost:5000/health
-
----
-
-## 🛠️ Daily Development Commands
-
-### Most Used Commands
+### Setup in 3 Minutes
 
 ```bash
-# Start everything (90% of the time you'll use this)
+# 1. Clone the repository
+git clone https://github.com/yourusername/wealthlog.git
+cd wealthlog
+
+# 2. Initialize the project
+./maintain.sh init
+
+# 3. Update database connection in apps/backend/.env
+# Edit DATABASE_URL with your PostgreSQL connection string
+
+# 4. Setup database
+./maintain.sh db:setup
+
+# 5. Start development
 ./maintain.sh dev
-
-# After pulling changes from git
-git pull
-./maintain.sh quick-install
-./maintain.sh migrate
-
-# When something breaks
-./maintain.sh clean
-./maintain.sh install
 ```
 
-### Understanding maintain.sh
+**That's it!** 
+- Frontend: http://localhost:3000
+- Backend: http://localhost:5000
 
-The `maintain.sh` script is your Swiss Army knife for project management:
+## 🛠️ The Maintain Script - Your All-in-One Tool
+
+The `maintain.sh` script is your single command center for everything. It's smart, intuitive, and handles all complexity for you.
+
+### Essential Commands
 
 | Command | What it does | When to use |
 |---------|--------------|-------------|
-| `setup` | Initial project setup with .env files | First time only |
-| `dev` | Start frontend + backend dev servers | Every day development |
-| `install` | Clean install of all dependencies | When dependencies are broken |
-| `quick-install` | Fast dependency update | After git pull or adding packages |
-| `build` | Production build of all apps | Before deployment |
-| `clean` | Remove all node_modules and build artifacts | Complete fresh start |
-| `migrate` | Run database migrations | After schema changes |
-| `status` | Check system health and configuration | When debugging issues |
-| `test` | Run all test suites | Before committing code |
-| `lint` | Check code quality | Before creating PR |
+| `./maintain.sh init` | First-time setup | After cloning the repo |
+| `./maintain.sh dev` | Start development servers | Daily development |
+| `./maintain.sh test` | Run all tests | Before committing |
+| **`./maintain.sh deploy:check`** | **Pre-deployment validation** | **ALWAYS before pushing to production** |
+| `./maintain.sh deploy:status` | Check production health | After deployment |
 
-### Manual Commands (when maintain.sh isn't enough)
+### Before Deploying to Production
+
+**IMPORTANT:** Always run this before pushing to production:
 
 ```bash
-# Backend only
-cd apps/backend
-npm run dev           # Start backend only
-npm run build         # Build backend
-npm run test          # Test backend
-
-# Frontend only
-cd apps/web
-npm run dev           # Start frontend only
-npm run build         # Build frontend
-npm run test          # Test frontend
-
-# Database
-cd apps/backend
-npx prisma studio     # Visual database editor
-npx prisma migrate dev --name your_migration  # Create migration
-npx prisma generate   # Regenerate client
-npx prisma migrate reset  # Reset database (WARNING: deletes all data)
+./maintain.sh deploy:check
 ```
 
----
+This command will:
+- ✅ Validate your environment configuration
+- ✅ Run all tests (warns on minor issues, fails on critical)
+- ✅ Check for security issues
+- ✅ Verify build process
+- ✅ Show git status
+- ✅ Tell you if you're ready to deploy
 
-## 📂 Project Structure Explained
+### Complete Command Reference
 
-### Where to Find Things
+#### 🚀 Quick Start Commands
+```bash
+./maintain.sh init          # First-time setup
+./maintain.sh dev           # Start development
+./maintain.sh test          # Run test suite
+./maintain.sh status        # Quick health check
+```
+
+#### 📦 Deployment Commands
+```bash
+./maintain.sh deploy:check  # IMPORTANT: Run before deploying
+./maintain.sh deploy:status # Check production endpoints
+./maintain.sh build         # Build for production
+```
+
+#### 🗄️ Database Commands
+```bash
+./maintain.sh db:setup      # Initial database setup
+./maintain.sh db:migrate    # Run migrations
+./maintain.sh db:reset      # Reset database (WARNING: deletes data)
+```
+
+#### 🔧 Maintenance Commands
+```bash
+./maintain.sh fix           # Auto-fix TypeScript errors
+./maintain.sh clean         # Remove all build artifacts
+./maintain.sh help          # Show detailed help
+```
+
+## 🚢 Deployment
+
+### Automatic Deployment
+
+**Your app deploys automatically when you push to Git!**
+
+Both Render (backend) and Vercel (frontend) are connected to your Git repository. When you push to the master branch, they automatically deploy.
+
+### Deployment Workflow
+
+```bash
+# 1. ALWAYS run pre-deployment check first
+./maintain.sh deploy:check
+
+# 2. If all checks pass, commit and push
+git add .
+git commit -m "Your feature/fix description"
+git push origin master
+
+# 3. Wait 2-3 minutes, then verify
+./maintain.sh deploy:status
+```
+
+### Environment Variables
+
+#### Backend (Render)
+Set these in Render dashboard:
+```env
+DATABASE_URL=your-production-database-url
+JWT_ACCESS_SECRET=generate-secure-random-string
+JWT_REFRESH_SECRET=generate-secure-random-string
+SESSION_SECRET=generate-secure-random-string
+GOOGLE_CLIENT_ID=your-google-oauth-id
+GOOGLE_CLIENT_SECRET=your-google-oauth-secret
+FRONTEND_URL=https://wealthlogs.com
+ALLOWED_ORIGINS=https://wealthlogs.com
+NODE_ENV=production
+```
+
+#### Frontend (Vercel)
+Set these in Vercel dashboard:
+```env
+NEXT_PUBLIC_API_URL=https://wealthlog-backend-hx43.onrender.com
+NEXT_PUBLIC_GOOGLE_CLIENT_ID=your-google-oauth-id
+```
+
+## 🏗️ Project Structure
 
 ```
 wealthlog/
 ├── apps/
-│   ├── backend/          # 🔌 API Server (Express.js)
-│   │   ├── src/
-│   │   │   ├── index.js         # Server entry point
-│   │   │   ├── routes/          # API endpoints
-│   │   │   │   ├── auth/        # Authentication endpoints
-│   │   │   │   │   └── auth.js
-│   │   │   │   ├── account/     # Account management
-│   │   │   │   │   ├── account.routes.js
-│   │   │   │   │   └── transactions.routes.js
-│   │   │   │   ├── trade/       # Trading features
-│   │   │   │   │   ├── trade.routes.js
-│   │   │   │   │   ├── filter.routes.js
-│   │   │   │   │   └── mt5sync.routes.js
-│   │   │   │   ├── settings/    # User settings
-│   │   │   │   │   ├── generalSettings.routes.js
-│   │   │   │   │   ├── tradingSettings.routes.js
-│   │   │   │   │   └── tradingInsights.routes.js
-│   │   │   │   └── landing/     # Dashboard and analytics
-│   │   │   │       └── dashboard.js
-│   │   │   ├── middleware/      # Request processing
-│   │   │   │   ├── auth.middleware.js
-│   │   │   │   └── passport.config.js
-│   │   │   ├── services/        # Business logic
-│   │   │   └── lib/             # Core utilities
-│   │   │       ├── prisma.js
-│   │   │       └── logger.js
-│   │   └── prisma/
-│   │       └── schema.prisma    # Database schema
-│   │
-│   └── web/              # 🌐 Frontend (Next.js)
-│       └── src/
-│           ├── app/             # Pages and routing
-│           │   ├── auth/        # Auth pages
-│           │   │   ├── login/
-│           │   │   ├── register/
-│           │   │   ├── verify-email/
-│           │   │   ├── forgot-password/
-│           │   │   └── reset-password/
-│           │   ├── dashboard/   # Main application
-│           │   ├── portfolio/   # Portfolio management
-│           │   ├── trades/      # Trading interface
-│           │   └── settings/    # User settings
-│           ├── components/      # React components
-│           │   ├── auth/        # Auth components
-│           │   ├── dashboard/   # Dashboard components
-│           │   ├── trades/      # Trading components
-│           │   └── ui/          # Reusable UI components
-│           ├── hooks/           # Custom React hooks
-│           └── lib/            # Frontend utilities
-│
-└── packages/
-    └── shared/           # 📦 Shared code between frontend and backend
-        └── src/
-            ├── types/          # TypeScript type definitions
-            ├── constants/      # Shared constants
-            ├── utils/          # Shared utility functions
-            └── api/           # API client and types
+│   ├── backend/         # Express.js API server
+│   │   ├── src/         # Source code
+│   │   ├── prisma/      # Database schema
+│   │   └── .env         # Backend environment variables
+│   └── web/             # Next.js frontend
+│       ├── pages/       # Application pages
+│       ├── src/         # Components and utilities
+│       └── .env.local   # Frontend environment variables
+├── packages/
+│   ├── shared/          # Shared types and utilities
+│   └── ui/              # Shared UI components
+├── maintain.sh          # 🎯 Your main tool for everything
+└── package.json         # Root package configuration
 ```
 
-### Where to Add New Features
+## 🔥 Features
 
-| Feature Type | Location | Example |
-|--------------|----------|---------|
-| New API endpoint | `apps/backend/src/routes/` | Create `routes/analytics/metrics.routes.js` |
-| New page | `apps/web/src/app/` | Create `app/portfolio/[id]/page.tsx` |
-| React component | `apps/web/src/components/` | Create `components/charts/ProfitChart.tsx` |
-| Shared types | `packages/shared/src/types/` | Add to `types/trade.types.ts` |
-| Database model | `apps/backend/prisma/schema.prisma` | Add new model and run migration |
-| API service | `apps/backend/src/services/` | Create `services/notificationService.js` |
-| Custom hook | `apps/web/src/hooks/` | Create `hooks/usePortfolio.ts` |
+- **Trading Analytics**: Track trades, analyze patterns, calculate P&L
+- **Account Management**: Multiple account types (FX, Stocks, Crypto, etc.)
+- **Real Estate Tracking**: Property management and expense tracking
+- **Authentication**: JWT-based auth with Google OAuth support
+- **Dashboard**: Net worth tracking and financial overview
+- **Secure**: Environment-based configuration, JWT tokens, secure sessions
 
----
+## 🐛 Troubleshooting
 
-## 🔐 Authentication System Guide
+### Something's not working?
 
-### Current Implementation
-
-Our authentication system uses JWT tokens with refresh token rotation for maximum security.
-
-### Authentication Flow
-
-1. **Registration Flow**
-   ```
-   User registers → 
-   Email verification sent → 
-   User clicks verification link → 
-   Account activated → 
-   Auto-login with tokens
+1. **Try auto-fix first:**
+   ```bash
+   ./maintain.sh fix
    ```
 
-2. **Login Flow**
-   ```
-   User logs in → 
-   Validate credentials → 
-   Generate access token (15 min) → 
-   Generate refresh token (7 days) → 
-   Store refresh token in httpOnly cookie → 
-   Return tokens to client
+2. **If that doesn't work, clean and reinstall:**
+   ```bash
+   ./maintain.sh clean
+   ./maintain.sh init
    ```
 
-3. **Token Refresh Flow**
-   ```
-   Access token expires → 
-   Client sends refresh token → 
-   Validate refresh token → 
-   Generate new access token → 
-   Optionally rotate refresh token → 
-   Continue API calls
+3. **Check project status:**
+   ```bash
+   ./maintain.sh status
    ```
 
-### API Endpoints
+### Common Issues
 
-All authentication endpoints are under `/api/auth/`:
+| Issue | Solution |
+|-------|----------|
+| TypeScript errors | Run `./maintain.sh fix` |
+| Build failures | Run `./maintain.sh clean` then `./maintain.sh init` |
+| Database connection failed | Check DATABASE_URL in apps/backend/.env |
+| Ports already in use | Kill processes on ports 3000 and 5000 |
 
-| Endpoint | Method | Description | Auth Required |
-|----------|--------|-------------|---------------|
-| `/api/auth/register` | POST | Create new account | No |
-| `/api/auth/login` | POST | Login with email/password | No |
-| `/api/auth/logout` | POST | Logout and invalidate tokens | Yes |
-| `/api/auth/refresh` | POST | Get new access token | Refresh Token |
-| `/api/auth/verify-email` | GET | Verify email with token | No |
-| `/api/auth/forgot-password` | POST | Request password reset | No |
-| `/api/auth/reset-password` | POST | Reset password with token | No |
-| `/api/auth/me` | GET | Get current user info | Yes |
-| `/api/auth/google` | GET | Start Google OAuth | No |
-| `/api/auth/google/callback` | GET | Google OAuth callback | No |
+## 📝 Development Workflow
 
----
-
-## 🗄️ Database Management
-
-### Schema Overview
-
-The database uses PostgreSQL with Prisma ORM. Key models include:
-
-```prisma
-model User {
-  id              String    @id @default(cuid())
-  email           String    @unique
-  emailVerified   Boolean   @default(false)
-  passwordHash    String?
-  firstName       String?
-  lastName        String?
-  role            Role      @default(USER)
-  accounts        Account[]
-  trades          Trade[]
-  settings        Settings?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-}
-
-model Account {
-  id          String    @id @default(cuid())
-  name        String
-  type        AccountType
-  currency    String    @default("USD")
-  balance     Decimal   @db.Decimal(15, 2)
-  userId      String
-  user        User      @relation(fields: [userId], references: [id])
-  trades      Trade[]
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-}
-
-model Trade {
-  id          String    @id @default(cuid())
-  symbol      String
-  type        TradeType
-  volume      Decimal   @db.Decimal(15, 8)
-  openPrice   Decimal   @db.Decimal(15, 8)
-  closePrice  Decimal?  @db.Decimal(15, 8)
-  profit      Decimal?  @db.Decimal(15, 2)
-  openTime    DateTime
-  closeTime   DateTime?
-  accountId   String
-  account     Account   @relation(fields: [accountId], references: [id])
-  userId      String
-  user        User      @relation(fields: [userId], references: [id])
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-}
-```
-
-### Common Database Tasks
-
+### Daily Development
 ```bash
-# Navigate to backend directory
-cd apps/backend
-
-# View and edit data in browser
-npx prisma studio
-
-# Create a new migration after schema changes
-npx prisma migrate dev --name descriptive_name
-
-# Apply pending migrations (production)
-npx prisma migrate deploy
-
-# Reset database (WARNING: Deletes all data!)
-npx prisma migrate reset
-
-# Generate Prisma client after schema changes
-npx prisma generate
-
-# Seed database with sample data
-npx prisma db seed
+./maintain.sh dev
 ```
 
----
-
-## 🧪 Testing
-
-### Running Tests
-
+### Before Committing
 ```bash
-# All tests
 ./maintain.sh test
-
-# Backend tests only
-cd apps/backend && npm test
-
-# Frontend tests only
-cd apps/web && npm test
-
-# With coverage
-npm run test:coverage
-
-# Watch mode
-npm run test:watch
+git add .
+git commit -m "your changes"
 ```
-
-### Writing Tests
-
-**Backend API Test Example:**
-```javascript
-const request = require('supertest');
-const app = require('../../../index');
-
-describe('POST /api/auth/login', () => {
-  it('should return tokens for valid credentials', async () => {
-    const response = await request(app)
-      .post('/api/auth/login')
-      .send({
-        email: 'test@example.com',
-        password: 'Password123!'
-      });
-    
-    expect(response.status).toBe(200);
-    expect(response.body).toHaveProperty('accessToken');
-    expect(response.body).toHaveProperty('refreshToken');
-  });
-});
-```
-
-**Frontend Component Test Example:**
-```tsx
-import { render, screen } from '@testing-library/react';
-import TradeList from './TradeList';
-
-describe('TradeList', () => {
-  it('should display trades', () => {
-    const trades = [
-      { id: '1', symbol: 'EUR/USD', profit: 100 }
-    ];
-    
-    render(<TradeList trades={trades} />);
-    expect(screen.getByText('EUR/USD')).toBeInTheDocument();
-    expect(screen.getByText('$100')).toBeInTheDocument();
-  });
-});
-```
-
----
-
-## 🐛 Troubleshooting Guide
-
-### Common Issues & Solutions
-
-#### Issue: "Cannot connect to database"
-```bash
-# Check PostgreSQL is running
-sudo systemctl status postgresql  # Linux
-brew services list                # Mac
-
-# Test connection
-psql -U postgres -h localhost
-
-# Fix: Update DATABASE_URL in .env
-DATABASE_URL="postgresql://postgres:password@localhost:5432/wealthlog"
-```
-
-#### Issue: "Port 5000/3000 already in use"
-```bash
-# Find process
-lsof -i :5000           # Mac/Linux
-netstat -ano | findstr :5000  # Windows
-
-# Kill process
-kill -9 <PID>           # Mac/Linux
-taskkill /PID <PID> /F  # Windows
-```
-
-#### Issue: "Module not found" errors
-```bash
-# Solution 1: Clean install
-./maintain.sh clean
-./maintain.sh install
-
-# Solution 2: Clear caches
-rm -rf node_modules
-rm -rf apps/*/node_modules
-rm -rf packages/*/node_modules
-npm install
-```
-
-#### Issue: "Prisma client is outdated"
-```bash
-cd apps/backend
-npx prisma generate
-```
-
-#### Issue: "Migration failed"
-```bash
-# Option 1: Reset (loses data)
-npx prisma migrate reset
-
-# Option 2: Create from current state
-npx prisma db push
-```
-
----
-
-## 📝 Environment Variables
-
-### Essential Variables (Required)
-
-```env
-# apps/backend/.env
-DATABASE_URL="postgresql://user:pass@localhost:5432/wealthlog"
-JWT_SECRET="minimum-32-character-secret-key-here"
-JWT_REFRESH_SECRET="different-32-character-secret-key"
-
-# apps/web/.env
-NEXT_PUBLIC_API_URL="http://localhost:5000/api"
-```
-
-### Optional Services
-
-```env
-# Email (works without in dev)
-RESEND_API_KEY="re_xxxxxxxxxxxx"
-
-# OAuth (optional)
-GOOGLE_CLIENT_ID="xxxxx.apps.googleusercontent.com"
-GOOGLE_CLIENT_SECRET="xxxxx"
-
-# Trading platforms (optional)
-BINANCE_API_KEY="xxxxx"
-MT5_SYNC_TOKEN="xxxxx"
-```
-
----
-
-## 🚀 Deployment Checklist
 
 ### Before Deploying
-
-- [ ] Run tests: `./maintain.sh test`
-- [ ] Build locally: `./maintain.sh build`
-- [ ] Check environment variables
-- [ ] Update version in package.json
-- [ ] Create git tag
-- [ ] Update changelog
-
-### Deployment Commands
-
 ```bash
-# Backend (Render/Railway)
-cd apps/backend
-npm run build
-npm run start
-
-# Frontend (Vercel)
-cd apps/web
-npm run build
-npm run start
-
-# Docker
-docker build -t wealthlog .
-docker run -p 5000:5000 wealthlog
+./maintain.sh deploy:check  # ALWAYS run this
+git push origin master       # Auto-deploys to production
 ```
 
----
+## 🔒 Security Notes
 
-## 💡 Tips & Tricks
+- Never commit .env files
+- Regenerate all secrets for production
+- Use strong, unique passwords for database
+- Enable 2FA on GitHub, Render, and Vercel accounts
+- Review `./maintain.sh deploy:check` output for security warnings
 
-### Development Tips
+## 📚 Additional Resources
 
-1. **Use the maintain script**: It handles 90% of common tasks
-2. **Check logs**: Backend logs are in `apps/backend/logs/`
-3. **Use Prisma Studio**: Visual database editor at `npx prisma studio`
-4. **Hot reload**: Both frontend and backend auto-reload on changes
-5. **TypeScript**: Shared types in `packages/shared` prevent errors
+- [Backend API Documentation](./apps/backend/README.md)
+- [Frontend Documentation](./apps/web/README.md)
+- [Database Schema](./apps/backend/prisma/schema.prisma)
+- [Authentication Setup Guide](./docs/authentication.md)
 
-### Performance Tips
+## 🤝 Contributing
 
-1. **Database indexes**: Add indexes for frequently queried fields
-2. **Pagination**: Use cursor-based pagination for large datasets
-3. **Caching**: Redis caching for expensive queries
-4. **Lazy loading**: Dynamic imports for large components
-5. **Image optimization**: Use Next.js Image component
+1. Fork the repository
+2. Create your feature branch
+3. Run `./maintain.sh test` before committing
+4. Commit your changes
+5. Push to the branch
+6. Open a Pull Request
 
-### Security Tips
+## 📄 License
 
-1. **Never commit .env files**
-2. **Use strong JWT secrets** (32+ characters)
-3. **Validate all inputs** with Zod schemas
-4. **Rate limit API endpoints**
-5. **Keep dependencies updated**: `npm audit fix`
-
----
-
-## 📚 Learning Resources
-
-### Project-Specific Docs
-- API Documentation: `/docs/api.md`
-- Database Schema: `/docs/database.md`
-- Architecture Decisions: `/docs/architecture.md`
-
-### Technology Docs
-- [Next.js 15 Docs](https://nextjs.org/docs)
-- [Prisma ORM Guide](https://www.prisma.io/docs)
-- [Express.js Guide](https://expressjs.com/en/guide/routing.html)
-- [TurboRepo Docs](https://turbo.build/repo/docs)
+MIT License - see [LICENSE](./LICENSE) file for details
 
 ---
 
-## 🆘 Getting Help
-
-### Before Asking for Help
-1. Check this README
-2. Search existing issues
-3. Try `./maintain.sh status`
-4. Check logs in `apps/backend/logs/`
-5. Google the error message
-
-### Quick Commands When Stuck
+**Remember:** The `maintain.sh` script is your best friend. When in doubt, run:
 ```bash
-# Check system status
-./maintain.sh status
-
-# Complete fresh start
-./maintain.sh clean
-./maintain.sh install
-./maintain.sh migrate
-./maintain.sh dev
-
-# Reset database (WARNING: loses data)
-cd apps/backend
-npx prisma migrate reset
+./maintain.sh help
 ```
 
----
-
-<p align="center">
-  Happy Coding! 🚀
-  <br><br>
-  Remember: When in doubt, run <code>./maintain.sh clean && ./maintain.sh install</code>
-</p>
+It handles all the complexity so you can focus on building features! 🚀

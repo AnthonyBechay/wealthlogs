@@ -100,9 +100,9 @@ export default function RealEstatePage() {
         console.warn("Real estate expenses endpoint not available:", expensesError);
         setExpenses([]);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to authenticate:", error);
-      if (error.response?.status === 401) {
+      if ((error as any).response?.status === 401) {
         router.push("/login");
       }
     } finally {
@@ -165,9 +165,9 @@ export default function RealEstatePage() {
       }
       setShowPropertyForm(false);
       loadData();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to save property:", error);
-      if (error.response?.status === 404) {
+      if ((error as any).response?.status === 404) {
         alert("Real estate feature not yet available. Backend endpoints required.");
       } else {
         alert("Failed to save property");
@@ -182,9 +182,9 @@ export default function RealEstatePage() {
       await api.delete(`/real-estate/properties/${id}`);
       loadData();
       if (selectedProperty === id) setSelectedProperty(null);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to delete property:", error);
-      if (error.response?.status === 404) {
+      if ((error as any).response?.status === 404) {
         alert("Real estate feature not yet available. Backend endpoints required.");
       } else {
         alert("Failed to delete property");
@@ -219,9 +219,9 @@ export default function RealEstatePage() {
       await api.post("/real-estate/expenses", payload);
       setShowExpenseForm(false);
       loadData();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to add expense:", error);
-      if (error.response?.status === 404) {
+      if ((error as any).response?.status === 404) {
         alert("Real estate feature not yet available. Backend endpoints required.");
       } else {
         alert("Failed to add expense");

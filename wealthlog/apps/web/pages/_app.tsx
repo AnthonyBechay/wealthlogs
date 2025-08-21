@@ -118,7 +118,7 @@ function AppLayout({ children }: { children: React.ReactNode }) {
         if (response.data?.displayMode) {
           setThemeMode(response.data.displayMode as ThemeMode);
         }
-      } catch (error) {
+      } catch (error: any) {
         console.warn('Failed to fetch user settings:', error);
       }
     };

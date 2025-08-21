@@ -17,6 +17,7 @@ export class WealthLogAPI {
   private api: AxiosInstance;
   private tokenStorage: TokenStorage;
   private currentToken: string | null = null;
+  private refreshPromise: Promise<string> | null = null;
 
   constructor(config: ApiConfig, tokenStorage?: TokenStorage) {
     this.tokenStorage = tokenStorage || createTokenStorage();
@@ -24,6 +25,7 @@ export class WealthLogAPI {
     this.api = axios.create({
       baseURL: config.baseURL,
       timeout: config.timeout || 30000,
+      withCredentials: true, // Important for cookies
       headers: {
         'Content-Type': 'application/json',
       },
@@ -56,14 +58,29 @@ export class WealthLogAPI {
       (error) => Promise.reject(error)
     );
 
-    // Response interceptor
+    // Response interceptor for token refresh
     this.api.interceptors.response.use(
       (response) => response,
       async (error) => {
-        if (error.response?.status === 401) {
-          // Token expired or invalid
-          await this.clearToken();
+        const originalRequest = error.config;
+
+        if (error.response?.status === 401 && !originalRequest._retry) {
+          originalRequest._retry = true;
+
+          // Check if it's a token expired error
+          if (error.response?.data?.code === 'TOKEN_EXPIRED') {
+            try {
+              const newToken = await this.refreshAccessToken();
+              originalRequest.headers.Authorization = `Bearer ${newToken}`;
+              return this.api(originalRequest);
+            } catch (refreshError) {
+              // Refresh failed, clear token
+              await this.clearToken();
+              return Promise.reject(refreshError);
+            }
+          }
         }
+
         return Promise.reject(error);
       }
     );
@@ -85,11 +102,39 @@ export class WealthLogAPI {
     await this.tokenStorage.removeToken();
   }
 
-  // Auth methods
+  private async refreshAccessToken(): Promise<string> {
+    // Prevent multiple simultaneous refresh requests
+    if (this.refreshPromise) {
+      return this.refreshPromise;
+    }
+
+    this.refreshPromise = this.api
+      .post<AuthResponse>('/api/auth/refresh')
+      .then((response) => {
+        const token = response.data.accessToken || response.data.token;
+        if (!token) {
+          throw new Error('No token received from refresh');
+        }
+        this.setToken(token);
+        this.refreshPromise = null;
+        return token;
+      })
+      .catch((error) => {
+        this.refreshPromise = null;
+        throw error;
+      });
+
+    return this.refreshPromise;
+  }
+
+  // Auth methods - ALL should use /api prefix
   async login(credentials: LoginCredentials): Promise<AuthResponse> {
     try {
-      const response: AxiosResponse<AuthResponse> = await this.api.post('/auth/login', credentials);
-      await this.setToken(response.data.token);
+      const response: AxiosResponse<AuthResponse> = await this.api.post('/api/auth/login', credentials);
+      const token = response.data.accessToken || response.data.token;
+      if (token) {
+        await this.setToken(token);
+      }
       return response.data;
     } catch (error: any) {
       throw new Error(error.response?.data?.error || 'Login failed');
@@ -98,7 +143,7 @@ export class WealthLogAPI {
 
   async register(data: RegisterData): Promise<{ message: string; userId: number }> {
     try {
-      const response = await this.api.post('/auth/register', data);
+      const response = await this.api.post('/api/auth/register', data);
       return response.data;
     } catch (error: any) {
       throw new Error(error.response?.data?.error || 'Registration failed');
@@ -107,9 +152,8 @@ export class WealthLogAPI {
 
   async logout(): Promise<void> {
     try {
-      await this.api.post('/auth/logout');
+      await this.api.post('/api/auth/logout');
     } catch (error) {
-      // Logout should always clear local token even if server call fails
       console.warn('Logout API call failed:', error);
     } finally {
       await this.clearToken();
@@ -118,8 +162,8 @@ export class WealthLogAPI {
 
   async getCurrentUser(): Promise<User> {
     try {
-      const response = await this.api.get('/auth/me');
-      return response.data;
+      const response = await this.api.get('/api/auth/me');
+      return response.data.user || response.data;
     } catch (error: any) {
       throw new Error(error.response?.data?.error || 'Failed to get current user');
     }
@@ -127,7 +171,7 @@ export class WealthLogAPI {
 
   async forgotPassword(email: string): Promise<{ message: string }> {
     try {
-      const response = await this.api.post('/auth/forgot-password', { email });
+      const response = await this.api.post('/api/auth/forgot-password', { email });
       return response.data;
     } catch (error: any) {
       throw new Error(error.response?.data?.error || 'Password reset request failed');
@@ -136,7 +180,7 @@ export class WealthLogAPI {
 
   async resetPassword(token: string, password: string): Promise<{ message: string }> {
     try {
-      const response = await this.api.post('/auth/reset-password', { token, password });
+      const response = await this.api.post('/api/auth/reset-password', { token, password });
       return response.data;
     } catch (error: any) {
       throw new Error(error.response?.data?.error || 'Password reset failed');
@@ -145,17 +189,17 @@ export class WealthLogAPI {
 
   async verifyEmail(token: string): Promise<{ message: string }> {
     try {
-      const response = await this.api.get(`/auth/verify-email?token=${token}`);
+      const response = await this.api.get(`/api/auth/verify-email?token=${token}`);
       return response.data;
     } catch (error: any) {
       throw new Error(error.response?.data?.error || 'Email verification failed');
     }
   }
 
-  // Financial Account methods
+  // Financial Account methods - ALL should use /api prefix
   async getAccounts(): Promise<FinancialAccount[]> {
     try {
-      const response = await this.api.get('/account');
+      const response = await this.api.get('/api/account');
       return response.data;
     } catch (error: any) {
       throw new Error(error.response?.data?.error || 'Failed to get accounts');
@@ -164,7 +208,7 @@ export class WealthLogAPI {
 
   async getAccount(id: number): Promise<FinancialAccount> {
     try {
-      const response = await this.api.get(`/account/${id}`);
+      const response = await this.api.get(`/api/account/${id}`);
       return response.data;
     } catch (error: any) {
       throw new Error(error.response?.data?.error || 'Failed to get account');
@@ -173,7 +217,7 @@ export class WealthLogAPI {
 
   async createAccount(account: Partial<FinancialAccount>): Promise<FinancialAccount> {
     try {
-      const response = await this.api.post('/account', account);
+      const response = await this.api.post('/api/account', account);
       return response.data;
     } catch (error: any) {
       throw new Error(error.response?.data?.error || 'Failed to create account');
@@ -182,22 +226,25 @@ export class WealthLogAPI {
 
   async updateAccount(id: number, updates: Partial<FinancialAccount>): Promise<FinancialAccount> {
     try {
-      const response = await this.api.put(`/account/${id}`, updates);
+      const response = await this.api.put(`/api/account/${id}`, updates);
       return response.data;
     } catch (error: any) {
       throw new Error(error.response?.data?.error || 'Failed to update account');
     }
   }
 
-  async deleteAccount(id: number): Promise<void> {
+  async deleteAccount(id: number, cascade?: boolean): Promise<void> {
     try {
-      await this.api.delete(`/account/${id}`);
+      const url = cascade !== undefined 
+        ? `/api/account/${id}?cascade=${cascade}`
+        : `/api/account/${id}`;
+      await this.api.delete(url);
     } catch (error: any) {
       throw new Error(error.response?.data?.error || 'Failed to delete account');
     }
   }
 
-  // Trade methods
+  // Trade methods - ALL should use /api prefix
   async getTrades(accountId?: number, params?: Record<string, any>): Promise<PaginatedResponse<Trade>> {
     try {
       const queryParams = new URLSearchParams();
@@ -210,7 +257,7 @@ export class WealthLogAPI {
         });
       }
 
-      const response = await this.api.get(`/trade?${queryParams.toString()}`);
+      const response = await this.api.get(`/api/trade?${queryParams.toString()}`);
       return response.data;
     } catch (error: any) {
       throw new Error(error.response?.data?.error || 'Failed to get trades');
@@ -219,7 +266,7 @@ export class WealthLogAPI {
 
   async getTrade(id: number): Promise<Trade> {
     try {
-      const response = await this.api.get(`/trade/${id}`);
+      const response = await this.api.get(`/api/trade/${id}`);
       return response.data;
     } catch (error: any) {
       throw new Error(error.response?.data?.error || 'Failed to get trade');
@@ -228,7 +275,7 @@ export class WealthLogAPI {
 
   async createTrade(trade: Partial<Trade>): Promise<Trade> {
     try {
-      const response = await this.api.post('/trade', trade);
+      const response = await this.api.post('/api/trade', trade);
       return response.data;
     } catch (error: any) {
       throw new Error(error.response?.data?.error || 'Failed to create trade');
@@ -237,7 +284,7 @@ export class WealthLogAPI {
 
   async updateTrade(id: number, updates: Partial<Trade>): Promise<Trade> {
     try {
-      const response = await this.api.put(`/trade/${id}`, updates);
+      const response = await this.api.put(`/api/trade/${id}`, updates);
       return response.data;
     } catch (error: any) {
       throw new Error(error.response?.data?.error || 'Failed to update trade');
@@ -246,13 +293,13 @@ export class WealthLogAPI {
 
   async deleteTrade(id: number): Promise<void> {
     try {
-      await this.api.delete(`/trade/${id}`);
+      await this.api.delete(`/api/trade/${id}`);
     } catch (error: any) {
       throw new Error(error.response?.data?.error || 'Failed to delete trade');
     }
   }
 
-  // Transaction methods
+  // Transaction methods - ALL should use /api prefix
   async getTransactions(accountId?: number, params?: Record<string, any>): Promise<PaginatedResponse<Transaction>> {
     try {
       const queryParams = new URLSearchParams();
@@ -265,7 +312,7 @@ export class WealthLogAPI {
         });
       }
 
-      const response = await this.api.get(`/transactions?${queryParams.toString()}`);
+      const response = await this.api.get(`/api/transactions?${queryParams.toString()}`);
       return response.data;
     } catch (error: any) {
       throw new Error(error.response?.data?.error || 'Failed to get transactions');
@@ -274,20 +321,164 @@ export class WealthLogAPI {
 
   async createTransaction(transaction: Partial<Transaction>): Promise<Transaction> {
     try {
-      const response = await this.api.post('/transactions', transaction);
+      const response = await this.api.post('/api/transactions', transaction);
       return response.data;
     } catch (error: any) {
       throw new Error(error.response?.data?.error || 'Failed to create transaction');
     }
   }
 
-  // Dashboard methods
-  async getDashboard(): Promise<any> {
+  // Dashboard methods - ALL should use /api prefix
+  async getDashboard(range?: string): Promise<any> {
     try {
-      const response = await this.api.get('/dashboard');
+      const url = range ? `/api/dashboard/networth?range=${range}` : '/api/dashboard/networth';
+      const response = await this.api.get(url);
       return response.data;
     } catch (error: any) {
       throw new Error(error.response?.data?.error || 'Failed to get dashboard data');
+    }
+  }
+
+  async getDashboardSummary(): Promise<any> {
+    try {
+      const response = await this.api.get('/api/dashboard/networth/summary');
+      return response.data;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.error || 'Failed to get dashboard summary');
+    }
+  }
+
+  // Settings methods - ALL should use /api prefix
+  async getTradingSettings(): Promise<any> {
+    try {
+      const response = await this.api.get('/api/tradingSettings');
+      return response.data;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.error || 'Failed to get trading settings');
+    }
+  }
+
+  async updateTradingSettings(settings: any): Promise<any> {
+    try {
+      const response = await this.api.put('/api/tradingSettings', settings);
+      return response.data;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.error || 'Failed to update trading settings');
+    }
+  }
+
+  async getGeneralSettings(): Promise<any> {
+    try {
+      const response = await this.api.get('/api/generalSettings');
+      return response.data;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.error || 'Failed to get general settings');
+    }
+  }
+
+  async updateGeneralSettings(settings: any): Promise<any> {
+    try {
+      const response = await this.api.put('/api/generalSettings', settings);
+      return response.data;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.error || 'Failed to update general settings');
+    }
+  }
+
+  // Real Estate methods - ALL should use /api prefix
+  async getRealEstateProperties(): Promise<any[]> {
+    try {
+      const response = await this.api.get('/api/real-estate/properties');
+      return response.data;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.error || 'Failed to get properties');
+    }
+  }
+
+  async createRealEstateProperty(property: any): Promise<any> {
+    try {
+      const response = await this.api.post('/api/real-estate/properties', property);
+      return response.data;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.error || 'Failed to create property');
+    }
+  }
+
+  async updateRealEstateProperty(id: number, updates: any): Promise<any> {
+    try {
+      const response = await this.api.put(`/api/real-estate/properties/${id}`, updates);
+      return response.data;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.error || 'Failed to update property');
+    }
+  }
+
+  async deleteRealEstateProperty(id: number): Promise<void> {
+    try {
+      await this.api.delete(`/api/real-estate/properties/${id}`);
+    } catch (error: any) {
+      throw new Error(error.response?.data?.error || 'Failed to delete property');
+    }
+  }
+
+  async getRealEstateExpenses(): Promise<any[]> {
+    try {
+      const response = await this.api.get('/api/real-estate/expenses');
+      return response.data;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.error || 'Failed to get expenses');
+    }
+  }
+
+  async createRealEstateExpense(expense: any): Promise<any> {
+    try {
+      const response = await this.api.post('/api/real-estate/expenses', expense);
+      return response.data;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.error || 'Failed to create expense');
+    }
+  }
+
+  // Admin methods - ALL should use /api prefix
+  async getAdminRoles(): Promise<any[]> {
+    try {
+      const response = await this.api.get('/api/admin/roles');
+      return response.data;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.error || 'Failed to get roles');
+    }
+  }
+
+  async addUserRole(userId: number, roleId: number): Promise<any> {
+    try {
+      const response = await this.api.post(`/api/admin/users/${userId}/addRole`, { roleId });
+      return response.data;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.error || 'Failed to add role');
+    }
+  }
+
+  // Status History methods - ALL should use /api prefix
+  async getAccountStatusHistory(): Promise<any[]> {
+    try {
+      const response = await this.api.get('/api/account/status-history');
+      return response.data;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.error || 'Failed to get status history');
+    }
+  }
+
+  async updateAccountStatus(accountId: number, status: { active: boolean; reason?: string; comment?: string }): Promise<any> {
+    try {
+      const response = await this.api.patch(`/api/account/${accountId}/status`, status);
+      return response.data;
+    } catch (error: any) {
+      // Fallback to simple update if new endpoint doesn't exist
+      if (error.response?.status === 404) {
+        const response = await this.api.patch(`/api/account/${accountId}`, { active: status.active });
+        return response.data;
+      }
+      throw new Error(error.response?.data?.error || 'Failed to update account status');
     }
   }
 
@@ -300,7 +491,43 @@ export class WealthLogAPI {
     return this.currentToken;
   }
 
-  // File upload method (for mobile/web compatibility)
+  // Get raw axios instance for direct calls
+  getApiInstance(): AxiosInstance {
+    return this.api;
+  }
+
+  // Generic methods for direct API calls (backward compatibility)
+  async get<T = any>(url: string, config?: AxiosRequestConfig): Promise<AxiosResponse<T>> {
+    // Ensure /api prefix if not present
+    const apiUrl = url.startsWith('/api') ? url : `/api${url.startsWith('/') ? url : '/' + url}`;
+    return this.api.get<T>(apiUrl, config);
+  }
+
+  async post<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<AxiosResponse<T>> {
+    // Ensure /api prefix if not present
+    const apiUrl = url.startsWith('/api') ? url : `/api${url.startsWith('/') ? url : '/' + url}`;
+    return this.api.post<T>(apiUrl, data, config);
+  }
+
+  async put<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<AxiosResponse<T>> {
+    // Ensure /api prefix if not present
+    const apiUrl = url.startsWith('/api') ? url : `/api${url.startsWith('/') ? url : '/' + url}`;
+    return this.api.put<T>(apiUrl, data, config);
+  }
+
+  async patch<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<AxiosResponse<T>> {
+    // Ensure /api prefix if not present
+    const apiUrl = url.startsWith('/api') ? url : `/api${url.startsWith('/') ? url : '/' + url}`;
+    return this.api.patch<T>(apiUrl, data, config);
+  }
+
+  async delete<T = any>(url: string, config?: AxiosRequestConfig): Promise<AxiosResponse<T>> {
+    // Ensure /api prefix if not present
+    const apiUrl = url.startsWith('/api') ? url : `/api${url.startsWith('/') ? url : '/' + url}`;
+    return this.api.delete<T>(apiUrl, config);
+  }
+
+  // File upload method
   async uploadFile(endpoint: string, file: File | Blob, fileName?: string): Promise<any> {
     try {
       const formData = new FormData();
@@ -308,11 +535,11 @@ export class WealthLogAPI {
       if (file instanceof File) {
         formData.append('file', file);
       } else {
-        // Handle Blob (could be from mobile camera)
         formData.append('file', file, fileName || 'upload.jpg');
       }
 
-      const response = await this.api.post(endpoint, formData, {
+      const apiUrl = endpoint.startsWith('/api') ? endpoint : `/api${endpoint.startsWith('/') ? endpoint : '/' + endpoint}`;
+      const response = await this.api.post(apiUrl, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
