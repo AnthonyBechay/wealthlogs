@@ -1,10 +1,8 @@
 //  apps/web/pages/reset-password.tsx
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
-import { createWealthLogAPI } from '@wealthlog/shared';
+import { api } from '../src/lib/api';
 import Link from 'next/link';
-
-const api = createWealthLogAPI();
 
 interface ResetPasswordForm {
   password: string;

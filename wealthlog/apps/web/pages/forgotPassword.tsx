@@ -1,10 +1,8 @@
 // apps/web/pages/forgot-password.tsx
 import { useState } from "react";
 import { useRouter } from "next/router";
-import { createWealthLogAPI } from "@wealthlog/shared";
+import { api } from "../src/lib/api";
 import Link from "next/link";
-
-const api = createWealthLogAPI();
 
 // Types pour une meilleure sécurité de type
 interface ForgotPasswordForm {

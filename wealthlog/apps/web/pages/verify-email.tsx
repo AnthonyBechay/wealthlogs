@@ -1,7 +1,7 @@
 // apps/web/pages/verify-email.tsx
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
-import { api } from '@wealthlog/shared';
+import { api } from '../src/lib/api';
 import Link from 'next/link';
 
 export default function VerifyEmail() {
@@ -24,13 +24,8 @@ export default function VerifyEmail() {
     if (!token) return;
 
     try {
-      const response = await api.get(`/auth/verify-email?token=${token}`);
-      
-      if (response.data?.success) {
-        setIsSuccess(true);
-      } else {
-        setError('Ce lien de vérification est invalide ou a expiré.');
-      }
+      await api.verifyEmail(token as string);
+      setIsSuccess(true);
     } catch (err: any) {
       console.error('Erreur de vérification d\'email:', err);
       setError(err.response?.data?.error || 'Ce lien de vérification est invalide ou a expiré.');

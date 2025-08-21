@@ -389,12 +389,113 @@ EOF
     print_warning "IMPORTANT: Update DATABASE_URL in apps/backend/.env with your PostgreSQL connection"
 }
 
+# TEST: Run tests and TypeScript checks
+test() {
+    print_section "RUNNING TESTS"
+    print_status "Running TypeScript checks and tests..."
+    
+    cd "$PROJECT_ROOT"
+    
+    local failed=0
+    
+    # Test shared package TypeScript
+    if [ -d "packages/shared" ]; then
+        print_status "Testing @wealthlog/shared TypeScript..."
+        cd packages/shared
+        if npx tsc --noEmit 2>&1; then
+            print_success "✓ @wealthlog/shared TypeScript check passed"
+        else
+            print_error "✗ @wealthlog/shared TypeScript check failed"
+            failed=1
+        fi
+        cd "$PROJECT_ROOT"
+    fi
+    
+    # Test UI package TypeScript
+    if [ -d "packages/ui" ]; then
+        print_status "Testing @wealthlog/ui TypeScript..."
+        cd packages/ui
+        if npx tsc --noEmit 2>&1; then
+            print_success "✓ @wealthlog/ui TypeScript check passed"
+        else
+            print_error "✗ @wealthlog/ui TypeScript check failed"
+            failed=1
+        fi
+        cd "$PROJECT_ROOT"
+    fi
+    
+    # Test web app TypeScript
+    print_status "Testing web app TypeScript..."
+    cd apps/web
+    if npx tsc --noEmit 2>&1; then
+        print_success "✓ Web app TypeScript check passed"
+    else
+        print_error "✗ Web app TypeScript check failed"
+        failed=1
+    fi
+    
+    # Run web tests if they exist
+    if [ -f "package.json" ] && grep -q "\"test\":" "package.json"; then
+        print_status "Running web app tests..."
+        npm test || failed=1
+    fi
+    
+    cd "$PROJECT_ROOT"
+    
+    # Test backend
+    print_status "Testing backend..."
+    cd apps/backend
+    if [ -f "package.json" ] && grep -q "\"test\":" "package.json"; then
+        npm test || failed=1
+    else
+        print_warning "No backend tests configured"
+    fi
+    
+    cd "$PROJECT_ROOT"
+    
+    if [ $failed -eq 0 ]; then
+        print_success "All tests passed!"
+    else
+        print_error "Some tests failed!"
+        exit 1
+    fi
+}
+
+# LINT: Check code quality
+lint() {
+    print_section "CODE QUALITY CHECK"
+    print_status "Running linters..."
+    
+    cd "$PROJECT_ROOT"
+    
+    # Check if ESLint is configured
+    if [ -f ".eslintrc.js" ] || [ -f ".eslintrc.json" ] || [ -f ".eslintrc.yml" ]; then
+        print_status "Running ESLint..."
+        npx eslint . --ext .js,.jsx,.ts,.tsx || print_warning "ESLint found issues"
+    else
+        print_warning "ESLint not configured"
+    fi
+    
+    # Check if Prettier is configured
+    if [ -f ".prettierrc" ] || [ -f ".prettierrc.json" ] || [ -f ".prettierrc.js" ]; then
+        print_status "Checking Prettier formatting..."
+        npx prettier --check . || print_warning "Prettier found formatting issues"
+    else
+        print_warning "Prettier not configured"
+    fi
+    
+    print_success "Lint check completed!"
+}
+
 # DEPLOY: Deploy to production
 deploy() {
     print_section "PRODUCTION DEPLOYMENT"
     print_status "Preparing for production deployment..."
     
-    # Build first
+    # Run tests first
+    test
+    
+    # Build
     build
     
     print_status "Ready for deployment!"
@@ -449,7 +550,16 @@ show_help() {
     echo "                 Verifies installation, database, ports"
     echo ""
     
+    echo -e "${GREEN}test${NC}           - Run TypeScript checks and tests"
+    echo "                 Validates TypeScript and runs test suites"
+    echo ""
+    
+    echo -e "${GREEN}lint${NC}           - Check code quality"
+    echo "                 Runs ESLint and Prettier checks"
+    echo ""
+    
     echo -e "${GREEN}deploy${NC}         - Prepare for production deployment"
+    echo "                 Runs tests, builds, and prepares for deploy"
     echo ""
     
     echo -e "${CYAN}TYPICAL WORKFLOWS:${NC}"
@@ -504,6 +614,14 @@ case "$1" in
     migrate)
         check_node
         migrate "$@"
+        ;;
+    test)
+        check_node
+        test
+        ;;
+    lint)
+        check_node
+        lint
         ;;
     deploy)
         check_node
