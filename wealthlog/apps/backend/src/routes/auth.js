@@ -148,14 +148,15 @@ router.post('/login', async (req, res) => {
 
     // Return token + some user info in JSON
     return res.json({
-      token,
+      accessToken: token,  // Changed from 'token' to 'accessToken' to match frontend
       user: {
         id: user.id,
         username: user.username,
         email: user.email,
         firstName: user.firstName,
         lastName: user.lastName,
-        roles: user.roles.map(r => r.name)
+        roles: user.roles.map(r => r.name),
+        emailVerified: user.emailVerified
       }
     });
   } catch (error) {
@@ -481,9 +482,51 @@ router.post('/resend-verification', async (req, res) => {
     });
   }
 });
-// /ME endpoint (test to see if user is logged in)
-router.get('/me', (req, res) => {
-  return res.json({ message: 'This route requires Auth. If you see this, you are authenticated.' });
+// Import authenticate middleware
+const { authenticate } = require('../middleware/auth.middleware');
+
+// /ME endpoint - Get current user info (protected route)
+router.get('/me', authenticate, async (req, res) => {
+  try {
+    // Check if the auth middleware added user to the request
+    if (!req.user || !req.user.userId) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+
+    // Fetch user data from database
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.userId },
+      include: { roles: true },
+      select: {
+        id: true,
+        username: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        emailVerified: true,
+        roles: true
+      }
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    return res.json({
+      user: {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        roles: user.roles.map(r => r.name),
+        emailVerified: user.emailVerified
+      }
+    });
+  } catch (error) {
+    console.error('[ME] Error:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
 module.exports = router;

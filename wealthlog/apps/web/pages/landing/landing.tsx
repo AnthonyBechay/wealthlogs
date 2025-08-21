@@ -167,9 +167,7 @@ function usePerformanceData(range: RangeType) {
   // Fetch net worth data with SWR
   const { data: netWorthData, isLoading: netWorthLoading, error: netWorthError } = useSWR(
     `networth:${range}`,
-    () => fetch(`${api.getToken() ? '/api' : ''}/dashboard/networth?range=${range}`, {
-      headers: api.getToken() ? { 'Authorization': `Bearer ${api.getToken()}` } : {}
-    }).then(r => r.json()),
+    () => api.getDashboard(range),
     {
       refreshInterval: 30000, // Auto refresh every 30s
       revalidateOnFocus: true,
@@ -179,9 +177,7 @@ function usePerformanceData(range: RangeType) {
   // Fetch summary data
   const { data: summaryData, isLoading: summaryLoading, error: summaryError } = useSWR(
     "networth:summary",
-    () => fetch(`${api.getToken() ? '/api' : ''}/dashboard/networth/summary`, {
-      headers: api.getToken() ? { 'Authorization': `Bearer ${api.getToken()}` } : {}
-    }).then(r => r.json()),
+    () => api.getDashboardSummary(),
     {
       refreshInterval: 30000,
       revalidateOnFocus: true,
