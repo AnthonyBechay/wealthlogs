@@ -224,6 +224,49 @@ router.post('/reset-password', async (req, res) => {
   }
 });
 
+// ============= DEBUG ENDPOINT (Remove in production) =============
+
+/**
+ * GET /api/auth/debug
+ * Debug endpoint to check auth configuration
+ */
+router.get('/debug', (req, res) => {
+  const authHeader = req.headers.authorization;
+  const hasAuthHeader = !!authHeader;
+  const hasBearerToken = authHeader && authHeader.startsWith('Bearer ');
+  
+  res.json({
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV,
+    cors: {
+      allowedOrigins: process.env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || [],
+      frontendUrl: process.env.FRONTEND_URL
+    },
+    request: {
+      origin: req.headers.origin,
+      referer: req.headers.referer,
+      method: req.method,
+      url: req.url
+    },
+    auth: {
+      hasAuthHeader,
+      hasBearerToken,
+      authHeaderLength: authHeader?.length || 0
+    },
+    cookies: {
+      hasCookies: !!req.cookies,
+      cookieNames: req.cookies ? Object.keys(req.cookies) : [],
+      hasRefreshToken: !!req.cookies?.refresh_token,
+      hasAccessToken: !!req.cookies?.access_token
+    },
+    cookieSettings: {
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+      domain: process.env.COOKIE_DOMAIN || 'not set'
+    }
+  });
+});
+
 // ============= GOOGLE OAUTH =============
 
 /**

@@ -53,6 +53,11 @@ LATEST_LOG="$LOG_DIR/latest.log"
 PROD_BACKEND_URL="https://wealthlog-backend-hx43.onrender.com"
 PROD_FRONTEND_URL="https://wealthlogs.com"
 
+# Test credentials (for auth testing)
+TEST_USERNAME="testuser"
+TEST_PASSWORD="TestPass123!"
+TEST_EMAIL="test@example.com"
+
 # ================================================================================
 # LOGGING FUNCTIONS
 # ================================================================================
@@ -839,6 +844,138 @@ cmd_status() {
     fi
 }
 
+# AUTH:TEST - Test authentication flow
+cmd_auth_test() {
+    print_header "      AUTHENTICATION TESTING      "
+    
+    local env="$1"
+    local api_url
+    
+    if [ "$env" = "prod" ] || [ "$env" = "production" ]; then
+        api_url="$PROD_BACKEND_URL"
+        print_status "Testing PRODUCTION authentication"
+    else
+        api_url="http://localhost:5000"
+        print_status "Testing LOCAL authentication"
+    fi
+    
+    print_section "Testing Auth Debug Endpoint"
+    
+    # Test debug endpoint
+    print_test "Checking auth configuration..."
+    DEBUG_RESPONSE=$(curl -s "$api_url/api/auth/debug" 2>/dev/null || echo '{"error": "Connection failed"}')
+    
+    if echo "$DEBUG_RESPONSE" | grep -q "environment"; then
+        print_success "Debug endpoint accessible"
+        echo "$DEBUG_RESPONSE" | python3 -m json.tool 2>/dev/null || echo "$DEBUG_RESPONSE"
+        log "Debug response: $DEBUG_RESPONSE"
+    else
+        print_error "Debug endpoint not accessible"
+        log "Debug failed: $DEBUG_RESPONSE"
+    fi
+    
+    print_section "Testing Login Flow"
+    
+    # Try to login
+    print_test "Attempting login..."
+    LOGIN_RESPONSE=$(curl -s -X POST "$api_url/api/auth/login" \
+        -H "Content-Type: application/json" \
+        -H "Accept: application/json" \
+        -d '{"username": "'"$TEST_USERNAME"'", "password": "'"$TEST_PASSWORD"'"}' \
+        2>/dev/null || echo '{"error": "Connection failed"}')
+    
+    # Extract access token
+    ACCESS_TOKEN=$(echo "$LOGIN_RESPONSE" | grep -o '"accessToken":"[^"]*' | cut -d'"' -f4)
+    
+    if [ -n "$ACCESS_TOKEN" ]; then
+        print_success "Login successful!"
+        print_status "Access token received (length: ${#ACCESS_TOKEN})"
+        log "Login successful, token length: ${#ACCESS_TOKEN}"
+    else
+        print_warning "Login failed or user doesn't exist"
+        echo -e "${GRAY}Response: $LOGIN_RESPONSE${NC}"
+        log "Login response: $LOGIN_RESPONSE"
+        
+        # Try to register
+        print_test "Attempting to register test user..."
+        REGISTER_RESPONSE=$(curl -s -X POST "$api_url/api/auth/register" \
+            -H "Content-Type: application/json" \
+            -d '{
+                "username": "'"$TEST_USERNAME"'",
+                "email": "'"$TEST_EMAIL"'",
+                "password": "'"$TEST_PASSWORD"'",
+                "firstName": "Test",
+                "lastName": "User"
+            }' 2>/dev/null)
+        
+        if echo "$REGISTER_RESPONSE" | grep -q "userId"; then
+            print_success "Test user registered"
+            
+            # Try login again
+            LOGIN_RESPONSE=$(curl -s -X POST "$api_url/api/auth/login" \
+                -H "Content-Type: application/json" \
+                -d '{"username": "'"$TEST_USERNAME"'", "password": "'"$TEST_PASSWORD"'"}' \
+                2>/dev/null)
+            ACCESS_TOKEN=$(echo "$LOGIN_RESPONSE" | grep -o '"accessToken":"[^"]*' | cut -d'"' -f4)
+        fi
+    fi
+    
+    if [ -n "$ACCESS_TOKEN" ]; then
+        print_section "Testing Protected Routes"
+        
+        # Test /api/auth/me
+        print_test "Testing /api/auth/me endpoint..."
+        ME_RESPONSE=$(curl -s -X GET "$api_url/api/auth/me" \
+            -H "Authorization: Bearer $ACCESS_TOKEN" \
+            2>/dev/null)
+        
+        if echo "$ME_RESPONSE" | grep -q "user"; then
+            print_success "Protected route accessible with token"
+            log "Me endpoint response: $ME_RESPONSE"
+        else
+            print_error "Protected route failed"
+            echo -e "${GRAY}Response: $ME_RESPONSE${NC}"
+        fi
+        
+        # Test dashboard endpoint
+        print_test "Testing /api/dashboard/networth/summary..."
+        DASHBOARD_RESPONSE=$(curl -s -X GET "$api_url/api/dashboard/networth/summary" \
+            -H "Authorization: Bearer $ACCESS_TOKEN" \
+            -H "Accept: application/json" \
+            2>/dev/null)
+        
+        if echo "$DASHBOARD_RESPONSE" | grep -q "error"; then
+            print_error "Dashboard endpoint failed"
+            echo -e "${GRAY}Response: $DASHBOARD_RESPONSE${NC}"
+        else
+            print_success "Dashboard endpoint accessible"
+        fi
+    fi
+    
+    print_section "Testing CORS Configuration"
+    
+    # Test CORS preflight
+    print_test "Testing CORS preflight request..."
+    CORS_RESPONSE=$(curl -s -X OPTIONS "$api_url/api/dashboard/networth/summary" \
+        -H "Origin: $PROD_FRONTEND_URL" \
+        -H "Access-Control-Request-Method: GET" \
+        -H "Access-Control-Request-Headers: authorization" \
+        -I 2>/dev/null | head -n 20)
+    
+    if echo "$CORS_RESPONSE" | grep -q "access-control-allow-origin"; then
+        print_success "CORS headers present"
+        echo "$CORS_RESPONSE" | grep -i "access-control" | while read -r line; do
+            echo -e "${GRAY}  → $line${NC}"
+        done
+    else
+        print_warning "CORS headers might be missing"
+    fi
+    
+    echo ""
+    print_success "Authentication test complete!"
+    show_log_info
+}
+
 # DEPLOY:STATUS - Check production status
 cmd_deploy_status() {
     print_header "      PRODUCTION STATUS CHECK      "
@@ -893,6 +1030,11 @@ cmd_help() {
     echo -e "  ${GREEN}deploy:check${NC}  ${YELLOW}[IMPORTANT]${NC} Run before pushing to production"
     echo -e "  ${GREEN}deploy:status${NC} Check if production is working"
     echo -e "  ${GREEN}build${NC}         Build for production"
+    echo ""
+    
+    echo -e "${CYAN}━━━ AUTHENTICATION ━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "  ${GREEN}auth:test${NC}      Test local authentication flow"
+    echo -e "  ${GREEN}auth:test prod${NC} Test production authentication"
     echo ""
     
     echo -e "${CYAN}━━━ DATABASE ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
@@ -958,6 +1100,10 @@ case "$1" in
     deploy:check|deploy-check|precheck|pre-deploy) cmd_deploy_check ;;
     deploy:status|deploy-status|prod-status) cmd_deploy_status ;;
     build) cmd_build ;;
+    
+    # Authentication Testing
+    auth:test|auth-test) cmd_auth_test "$2" ;;
+    auth:test:prod|auth-test-prod) cmd_auth_test "prod" ;;
     
     # Database
     db:setup|db-setup) cmd_db setup ;;

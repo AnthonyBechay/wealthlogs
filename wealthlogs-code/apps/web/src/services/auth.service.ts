@@ -45,10 +45,11 @@ class AuthService {
   constructor() {
     this.api = axios.create({
       baseURL: API_URL,
-      withCredentials: true, // Important for cookies
+      withCredentials: true, // CRITICAL: Always send cookies
       headers: {
         'Content-Type': 'application/json',
       },
+      timeout: 30000, // 30 seconds timeout
     });
 
     this.setupInterceptors();
@@ -68,9 +69,23 @@ class AuthService {
     // Request interceptor to add auth header
     this.api.interceptors.request.use(
       (config) => {
+        // Always ensure withCredentials is true
+        config.withCredentials = true;
+        
         if (this.accessToken) {
           config.headers.Authorization = `Bearer ${this.accessToken}`;
         }
+        
+        // Log requests in development
+        if (process.env.NODE_ENV === 'development') {
+          console.log('API Request:', {
+            url: config.url,
+            method: config.method,
+            hasAuth: !!config.headers.Authorization,
+            withCredentials: config.withCredentials
+          });
+        }
+        
         return config;
       },
       (error) => Promise.reject(error)
@@ -82,19 +97,35 @@ class AuthService {
       async (error) => {
         const originalRequest = error.config;
 
+        // Log errors in production for debugging
+        if (error.response?.status === 401) {
+          console.error('Auth Error:', {
+            url: originalRequest?.url,
+            status: error.response.status,
+            code: error.response?.data?.code,
+            message: error.response?.data?.error
+          });
+        }
+
         if (error.response?.status === 401 && !originalRequest._retry) {
           originalRequest._retry = true;
 
-          // Check if it's a token expired error
-          if (error.response?.data?.code === 'TOKEN_EXPIRED') {
+          // Check if it's a token expired error or no token error
+          if (error.response?.data?.code === 'TOKEN_EXPIRED' || 
+              error.response?.data?.code === 'NO_TOKEN') {
             try {
               const newToken = await this.refreshAccessToken();
               originalRequest.headers.Authorization = `Bearer ${newToken}`;
+              // Ensure credentials are sent on retry
+              originalRequest.withCredentials = true;
               return this.api(originalRequest);
             } catch (refreshError) {
+              console.error('Token refresh failed:', refreshError);
               // Refresh failed, redirect to login
               this.logout();
-              window.location.href = '/login';
+              if (typeof window !== 'undefined') {
+                window.location.href = '/login';
+              }
               return Promise.reject(refreshError);
             }
           }
@@ -219,8 +250,27 @@ class AuthService {
   getApiInstance(): AxiosInstance {
     return this.api;
   }
+
+  // Debug method for production troubleshooting
+  async debugAuth(): Promise<any> {
+    try {
+      const response = await this.api.get('/api/auth/debug');
+      console.log('Auth Debug Info:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Debug request failed:', error);
+      throw error;
+    }
+  }
 }
 
 // Export singleton instance
 const authService = new AuthService();
+
+// Add debug helper in development/staging
+if (typeof window !== 'undefined' && process.env.NODE_ENV !== 'production') {
+  (window as any).authDebug = () => authService.debugAuth();
+  (window as any).authService = authService;
+}
+
 export default authService;

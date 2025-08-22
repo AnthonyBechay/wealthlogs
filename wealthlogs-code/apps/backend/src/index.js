@@ -1,13 +1,20 @@
 // src/index.js
-// Load environment-specific config first, then base .env as fallback
+// Load environment configuration
 const path = require('path');
-if (process.env.NODE_ENV === 'production') {
-  require('dotenv').config({ path: path.join(__dirname, '..', '.env.production') });
-} else {
-  require('dotenv').config({ path: path.join(__dirname, '..', '.env.development') });
+
+// In development, load .env.development if it exists, otherwise .env
+if (process.env.NODE_ENV !== 'production') {
+  const fs = require('fs');
+  const devEnvPath = path.join(__dirname, '..', '.env.development');
+  const envPath = path.join(__dirname, '..', '.env');
+  
+  if (fs.existsSync(devEnvPath)) {
+    require('dotenv').config({ path: devEnvPath });
+  } else if (fs.existsSync(envPath)) {
+    require('dotenv').config({ path: envPath });
+  }
 }
-// Load base .env for any missing values
-require('dotenv').config();
+// In production, environment variables are set directly in Render/hosting platform
 
 const express = require('express');
 const cors = require('cors');
@@ -46,13 +53,15 @@ app.use(cors({
     if (allowedOrigins.indexOf(origin) !== -1) {
       callback(null, true);
     } else {
+      console.warn(`CORS blocked origin: ${origin}`);
       callback(new Error('Not allowed by CORS'));
     }
   },
-  credentials: true, // Allow cookies
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  exposedHeaders: ['X-Total-Count', 'X-Page', 'X-Per-Page']
+  credentials: true, // CRITICAL: Allow cookies
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  exposedHeaders: ['X-Total-Count', 'X-Page', 'X-Per-Page'],
+  maxAge: 86400 // Cache preflight for 24 hours
 }));
 
 // Compression

@@ -22,10 +22,26 @@ function authenticate(req, res, next) {
       token = req.cookies.access_token;
     }
 
+    // Log for debugging in production
+    if (process.env.NODE_ENV === 'production' && !token) {
+      console.log('Auth Debug:', {
+        hasAuthHeader: !!authHeader,
+        hasCookies: !!req.cookies,
+        cookieNames: req.cookies ? Object.keys(req.cookies) : [],
+        origin: req.headers.origin,
+        referer: req.headers.referer
+      });
+    }
+
     if (!token) {
       return res.status(401).json({ 
         error: ERROR_MESSAGES.UNAUTHORIZED,
-        code: 'NO_TOKEN'
+        code: 'NO_TOKEN',
+        debug: process.env.NODE_ENV !== 'production' ? {
+          hasAuthHeader: !!authHeader,
+          hasCookies: !!req.cookies,
+          cookieNames: req.cookies ? Object.keys(req.cookies) : []
+        } : undefined
       });
     }
 

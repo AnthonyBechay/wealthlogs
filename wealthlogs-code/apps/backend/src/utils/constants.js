@@ -13,7 +13,11 @@ module.exports = {
     secure: process.env.NODE_ENV === 'production',
     sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax', // 'none' required for cross-domain cookies
     maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-    path: '/'
+    path: '/',
+    // Add domain setting for production if provided
+    ...(process.env.NODE_ENV === 'production' && process.env.COOKIE_DOMAIN && {
+      domain: process.env.COOKIE_DOMAIN
+    })
   },
 
   // Rate limiting
