@@ -284,8 +284,8 @@ EOF
     
     print_section "Installing Dependencies"
     
-    # Root dependencies
-    cd "$PROJECT_ROOT"
+    # Root dependencies (in wealthlogs-code)
+    cd "$PROJECT_ROOT/wealthlogs-code"
     print_status "Installing root dependencies..."
     npm install --force >> "$LOG_FILE" 2>&1 &
     spinner
@@ -773,10 +773,11 @@ cmd_start() {
                 npx prisma migrate deploy >> "$LOG_FILE" 2>&1
             fi
             
-            cd "$PROJECT_ROOT"
+            # Change to wealthlogs-code directory for turbo to work
+            cd "$PROJECT_ROOT/wealthlogs-code"
             
-            # Start with npm run dev (uses turbo if available)
-            log "Starting development servers..."
+            # Start with npm run dev (uses turbo)
+            log "Starting development servers from wealthlogs-code..."
             npm run dev
             ;;
             
