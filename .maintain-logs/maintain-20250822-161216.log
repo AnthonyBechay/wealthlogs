@@ -1,0 +1,17 @@
+=========================================
+WealthLog Maintenance Log
+Date: Fri, Aug 22, 2025  4:12:16 PM
+Command: auth:test
+=========================================
+
+[2025-08-22 16:12:16] ===       AUTHENTICATION TESTING       ===
+[2025-08-22 16:12:16] INFO: Testing LOCAL authentication
+[2025-08-22 16:12:17] --- Testing Auth Debug Endpoint ---
+[2025-08-22 16:12:17] TEST: Checking auth configuration...
+[2025-08-22 16:12:19] ERROR: Debug endpoint not accessible
+[2025-08-22 16:12:19] Debug failed: {"error": "Connection failed"}
+[2025-08-22 16:12:19] --- Testing Login Flow ---
+[2025-08-22 16:12:20] TEST: Attempting login...
+[2025-08-22 16:12:22] WARNING: Login failed or user doesn't exist
+[2025-08-22 16:12:22] Login response: {"error": "Connection failed"}
+[2025-08-22 16:12:22] TEST: Attempting to register test user...

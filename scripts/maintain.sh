@@ -11,6 +11,23 @@
 set -e  # Exit on error for safety
 
 # ================================================================================
+# INITIALIZATION
+# ================================================================================
+
+# Get script directory (works even with symlinks)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Load configuration file if it exists
+CONFIG_FILE="$SCRIPT_DIR/config.env"
+if [ -f "$CONFIG_FILE" ]; then
+    source "$CONFIG_FILE"
+else
+    echo "Warning: Configuration file not found at $CONFIG_FILE"
+    echo "Creating default configuration..."
+    # Will create default config later in the script
+fi
+
+# ================================================================================
 # CONFIGURATION
 # ================================================================================
 
@@ -39,10 +56,13 @@ CLOCK="⏰"
 LOG="📝"
 
 # Project paths
-PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-BACKEND_DIR="$PROJECT_ROOT/wealthlogs-code/apps/backend"
-FRONTEND_DIR="$PROJECT_ROOT/wealthlogs-code/apps/web"
-SHARED_DIR="$PROJECT_ROOT/wealthlogs-code/packages/shared"
+# Determine project root (script is now in scripts/ directory)
+PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+
+# Set application paths (use custom paths if defined in config)
+BACKEND_DIR="${CUSTOM_BACKEND_DIR:-$PROJECT_ROOT/wealthlogs-code/apps/backend}"
+FRONTEND_DIR="${CUSTOM_FRONTEND_DIR:-$PROJECT_ROOT/wealthlogs-code/apps/web}"
+SHARED_DIR="${CUSTOM_SHARED_DIR:-$PROJECT_ROOT/wealthlogs-code/packages/shared}"
 
 # Logging configuration
 LOG_DIR="$PROJECT_ROOT/.maintain-logs"
@@ -53,10 +73,10 @@ LATEST_LOG="$LOG_DIR/latest.log"
 PROD_BACKEND_URL="https://wealthlog-backend-hx43.onrender.com"
 PROD_FRONTEND_URL="https://wealthlogs.com"
 
-# Test credentials (for auth testing)
-TEST_USERNAME="bech"
-TEST_PASSWORD="123"
-TEST_EMAIL="test@example.com"
+# Test credentials (from config or defaults)
+TEST_USERNAME="${TEST_USERNAME:-bech}"
+TEST_PASSWORD="${TEST_PASSWORD:-123}"
+TEST_EMAIL="${TEST_EMAIL:-test@example.com}"
 
 # ================================================================================
 # LOGGING FUNCTIONS
@@ -661,35 +681,156 @@ cmd_logs() {
 # Other commands remain the same but with logging added...
 # (I'll keep the essential ones and add logging)
 
-# DEV: Start development servers
+# START: Start individual or all services
+cmd_start() {
+    local service="${1:-all}"
+    
+    case "$service" in
+        backend)
+            print_header "Starting Backend Server"
+            
+            # Check port availability
+            if lsof -i:${DEV_BACKEND_PORT:-5000} >/dev/null 2>&1; then
+                print_warning "Port ${DEV_BACKEND_PORT:-5000} is in use"
+                read -p "Kill existing process? (y/N): " kill_confirm
+                if [ "$kill_confirm" = "y" ]; then
+                    kill -9 $(lsof -t -i:${DEV_BACKEND_PORT:-5000}) 2>/dev/null || true
+                    print_success "Port ${DEV_BACKEND_PORT:-5000} freed"
+                else
+                    print_error "Cannot start backend, port in use"
+                    exit 1
+                fi
+            fi
+            
+            cd "$BACKEND_DIR"
+            
+            # Check environment file
+            if [ ! -f ".env" ]; then
+                print_warning "Backend .env not found, creating from config..."
+                create_backend_env
+            fi
+            
+            # Start backend
+            print_status "Starting backend on port ${DEV_BACKEND_PORT:-5000}..."
+            print_status "URL: http://localhost:${DEV_BACKEND_PORT:-5000}"
+            npm run dev
+            ;;
+            
+        frontend|web)
+            print_header "Starting Frontend Server"
+            
+            # Check port availability
+            if lsof -i:${DEV_FRONTEND_PORT:-3000} >/dev/null 2>&1; then
+                print_warning "Port ${DEV_FRONTEND_PORT:-3000} is in use"
+                read -p "Kill existing process? (y/N): " kill_confirm
+                if [ "$kill_confirm" = "y" ]; then
+                    kill -9 $(lsof -t -i:${DEV_FRONTEND_PORT:-3000}) 2>/dev/null || true
+                    print_success "Port ${DEV_FRONTEND_PORT:-3000} freed"
+                else
+                    print_error "Cannot start frontend, port in use"
+                    exit 1
+                fi
+            fi
+            
+            cd "$FRONTEND_DIR"
+            
+            # Check environment file
+            if [ ! -f ".env.local" ]; then
+                print_warning "Frontend .env.local not found, creating..."
+                create_frontend_env
+            fi
+            
+            # Start frontend
+            print_status "Starting frontend on port ${DEV_FRONTEND_PORT:-3000}..."
+            print_status "URL: http://localhost:${DEV_FRONTEND_PORT:-3000}"
+            npm run dev
+            ;;
+            
+        all|both)
+            print_header "Starting All Services"
+            
+            # Check environment
+            if [ ! -f "$BACKEND_DIR/.env" ]; then
+                print_warning "Backend .env not found, creating from config..."
+                create_backend_env
+            fi
+            
+            if [ ! -f "$FRONTEND_DIR/.env.local" ]; then
+                print_warning "Frontend .env.local not found, creating..."
+                create_frontend_env
+            fi
+            
+            print_status "Backend: http://localhost:${DEV_BACKEND_PORT:-5000}"
+            print_status "Frontend: http://localhost:${DEV_FRONTEND_PORT:-3000}"
+            echo ""
+            
+            cd "$PROJECT_ROOT"
+            
+            # Check if database is ready
+            cd "$BACKEND_DIR"
+            if ! npx prisma migrate status >> "$LOG_FILE" 2>&1; then
+                print_warning "Database not migrated. Running migrations..."
+                npx prisma migrate deploy >> "$LOG_FILE" 2>&1
+            fi
+            
+            cd "$PROJECT_ROOT"
+            
+            # Start with npm run dev (uses turbo if available)
+            log "Starting development servers..."
+            npm run dev
+            ;;
+            
+        *)
+            print_error "Unknown service: $service"
+            echo "Usage: ./maintain.sh start [backend|frontend|all]"
+            exit 1
+            ;;
+    esac
+}
+
+# Helper function to create backend .env from config
+create_backend_env() {
+    cat > "$BACKEND_DIR/.env" << EOF
+# Environment
+NODE_ENV=development
+PORT=${DEV_BACKEND_PORT:-5000}
+
+# Database
+DATABASE_URL="postgresql://${DB_USERNAME:-postgres}:${DB_PASSWORD:-password}@${DB_HOST:-localhost}:${DB_PORT:-5432}/${DB_NAME:-wealthlog}?schema=public"
+
+# JWT Secrets
+JWT_ACCESS_SECRET=${JWT_ACCESS_SECRET:-$(openssl rand -hex 32 2>/dev/null || echo "dev_access_secret")}
+JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET:-$(openssl rand -hex 32 2>/dev/null || echo "dev_refresh_secret")}
+SESSION_SECRET=${SESSION_SECRET:-$(openssl rand -hex 32 2>/dev/null || echo "dev_session_secret")}
+SECRET_KEY=${JWT_ACCESS_SECRET:-$(openssl rand -hex 32 2>/dev/null || echo "dev_access_secret")}
+
+# Google OAuth
+GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-your-google-client-id.apps.googleusercontent.com}
+GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-your-google-client-secret}
+GOOGLE_CALLBACK_URL=http://localhost:${DEV_BACKEND_PORT:-5000}/api/auth/google/callback
+
+# URLs
+FRONTEND_URL=http://localhost:${DEV_FRONTEND_PORT:-3000}
+ALLOWED_ORIGINS=http://localhost:${DEV_FRONTEND_PORT:-3000}
+
+# Optional
+REQUIRE_EMAIL_VERIFICATION=false
+EOF
+    print_success "Created backend .env file"
+}
+
+# Helper function to create frontend .env.local from config
+create_frontend_env() {
+    cat > "$FRONTEND_DIR/.env.local" << EOF
+NEXT_PUBLIC_API_URL=http://localhost:${DEV_BACKEND_PORT:-5000}
+NEXT_PUBLIC_GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-your-google-client-id.apps.googleusercontent.com}
+EOF
+    print_success "Created frontend .env.local file"
+}
+
+# DEV: Alias for start all
 cmd_dev() {
-    print_header "         STARTING DEVELOPMENT SERVERS         "
-    
-    # Check environment
-    if [ ! -f "$BACKEND_DIR/.env" ]; then
-        print_error "Backend .env not found!"
-        print_warning "Run: ./maintain.sh init"
-        exit 1
-    fi
-    
-    print_status "Backend: http://localhost:5000"
-    print_status "Frontend: http://localhost:3000"
-    echo ""
-    
-    cd "$PROJECT_ROOT"
-    
-    # Check if database is ready
-    cd "$BACKEND_DIR"
-    if ! npx prisma migrate status >> "$LOG_FILE" 2>&1; then
-        print_warning "Database not migrated. Running migrations..."
-        npx prisma migrate deploy >> "$LOG_FILE" 2>&1
-    fi
-    
-    cd "$PROJECT_ROOT"
-    
-    # Start with npm run dev (uses turbo if available)
-    log "Starting development servers..."
-    npm run dev
+    cmd_start "all"
 }
 
 # BUILD: Build for production
@@ -1021,7 +1162,10 @@ cmd_help() {
     
     echo -e "${CYAN}━━━ QUICK START ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo -e "  ${GREEN}init${NC}          Setup/update packages (use for new packages too!)"
-    echo -e "  ${GREEN}dev${NC}           Start development servers"
+    echo -e "  ${GREEN}dev${NC}           Start all development servers"
+    echo -e "  ${GREEN}start backend${NC} Start backend server only"
+    echo -e "  ${GREEN}start frontend${NC} Start frontend server only"
+    echo -e "  ${GREEN}start all${NC}     Start all servers (same as dev)"
     echo -e "  ${GREEN}test${NC}          Run tests (with detailed logging)"
     echo -e "  ${GREEN}fix${NC}           Auto-fix common issues"
     echo ""
@@ -1093,7 +1237,8 @@ fi
 case "$1" in
     # Quick start
     init|install|update) cmd_init ;;
-    dev|start) cmd_dev ;;
+    dev) cmd_dev ;;
+    start) cmd_start "$2" ;;
     test) cmd_test ;;
     
     # Deployment
