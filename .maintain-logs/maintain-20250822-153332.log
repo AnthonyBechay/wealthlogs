@@ -1,0 +1,27 @@
+=========================================
+WealthLog Maintenance Log
+Date: Fri, Aug 22, 2025  3:33:33 PM
+Command: auth:test prod
+=========================================
+
+[2025-08-22 15:33:33] ===       AUTHENTICATION TESTING       ===
+[2025-08-22 15:33:33] INFO: Testing PRODUCTION authentication
+[2025-08-22 15:33:33] --- Testing Auth Debug Endpoint ---
+[2025-08-22 15:33:33] TEST: Checking auth configuration...
+[2025-08-22 15:33:33] ERROR: Debug endpoint not accessible
+[2025-08-22 15:33:34] Debug failed: {"error":"Route not found","path":"/api/auth/debug","method":"GET","timestamp":"2025-08-22T12:33:33.263Z"}
+[2025-08-22 15:33:34] --- Testing Login Flow ---
+[2025-08-22 15:33:34] TEST: Attempting login...
+[2025-08-22 15:33:34] SUCCESS: Login successful!
+[2025-08-22 15:33:34] INFO: Access token received (length: 243)
+[2025-08-22 15:33:35] Login successful, token length: 243
+[2025-08-22 15:33:35] --- Testing Protected Routes ---
+[2025-08-22 15:33:35] TEST: Testing /api/auth/me endpoint...
+[2025-08-22 15:33:35] SUCCESS: Protected route accessible with token
+[2025-08-22 15:33:35] Me endpoint response: {"user":{"id":1,"username":"bech","email":"a@f.c","firstName":"a","lastName":"a","phone":"","roles":["MEMBER"],"emailVerified":true,"createdAt":"2025-05-13T15:31:20.918Z","lastLoginAt":"2025-08-22T12:33:34.187Z"}}
+[2025-08-22 15:33:35] TEST: Testing /api/dashboard/networth/summary...
+[2025-08-22 15:33:36] ERROR: Dashboard endpoint failed
+[2025-08-22 15:33:36] --- Testing CORS Configuration ---
+[2025-08-22 15:33:36] TEST: Testing CORS preflight request...
+[2025-08-22 15:33:36] SUCCESS: CORS headers present
+[2025-08-22 15:33:36] SUCCESS: Authentication test complete!

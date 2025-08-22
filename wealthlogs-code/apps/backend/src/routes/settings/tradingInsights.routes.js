@@ -2,11 +2,12 @@ const express = require('express');
 const router = express.Router();
 const { prisma } = require('../../lib/prisma');
 const logger = require('../../lib/logger');
+const { authenticate } = require('../../middleware/auth.middleware');
 
 // Get trading insights for the authenticated user
-router.get('/', async (req, res) => {
+router.get('/', authenticate, async (req, res) => {
   try {
-    const userId = req.user.id;
+    const userId = req.user.userId;
 
     // Get user's trading statistics
     const trades = await prisma.trade.findMany({
@@ -124,9 +125,9 @@ router.get('/', async (req, res) => {
 });
 
 // Get detailed performance metrics
-router.get('/performance', async (req, res) => {
+router.get('/performance', authenticate, async (req, res) => {
   try {
-    const userId = req.user.id;
+    const userId = req.user.userId;
     const { startDate, endDate, accountId } = req.query;
 
     const where = { userId };
@@ -200,9 +201,9 @@ router.get('/performance', async (req, res) => {
 });
 
 // Get risk analysis
-router.get('/risk', async (req, res) => {
+router.get('/risk', authenticate, async (req, res) => {
   try {
-    const userId = req.user.id;
+    const userId = req.user.userId;
     
     const trades = await prisma.trade.findMany({
       where: { userId },

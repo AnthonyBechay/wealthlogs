@@ -54,8 +54,8 @@ PROD_BACKEND_URL="https://wealthlog-backend-hx43.onrender.com"
 PROD_FRONTEND_URL="https://wealthlogs.com"
 
 # Test credentials (for auth testing)
-TEST_USERNAME="testuser"
-TEST_PASSWORD="TestPass123!"
+TEST_USERNAME="bech"
+TEST_PASSWORD="123"
 TEST_EMAIL="test@example.com"
 
 # ================================================================================

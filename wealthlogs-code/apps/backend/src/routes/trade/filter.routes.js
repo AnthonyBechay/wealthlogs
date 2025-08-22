@@ -2,7 +2,7 @@
 const express = require("express");
 const router = express.Router();
 const { prisma } = require("../../lib/prisma");
-const { authenticate } = require("../../middleware/authenticate");
+const { authenticate } = require("../../middleware/auth.middleware");
 
 function getTradeSession(utcDate) {
     if (!utcDate) return "N/A";
