@@ -2,356 +2,328 @@
 
 ## Overview
 
-The WealthLog maintenance script (`maintain.sh`) is a comprehensive tool for managing development, testing, deployment, and maintenance tasks for the WealthLog application. It provides a unified interface for all common operations with detailed logging and error handling.
+The WealthLog maintenance script (`maintain.sh`) is a comprehensive tool designed to streamline development, testing, deployment, and maintenance of the WealthLog platform. Version 4.0 includes mobile app support, configuration management, and enhanced logging.
 
-## Installation & Setup
+## Features
 
-### 1. Initial Setup
+- 🚀 **Quick Setup** - Initialize project with one command
+- ⚙️ **Configuration Management** - Centralized config with validation
+- 📱 **Mobile Support** - Build and run iOS/Android apps
+- 🔍 **Comprehensive Testing** - Automated test suite with detailed reporting
+- 📝 **Advanced Logging** - All commands generate detailed logs
+- 🔧 **Auto-fix** - Automatically fix common issues
+- 🏗️ **Build Management** - Production builds for all platforms
+- 🗄️ **Database Tools** - Migration, studio, and management
+- 🚨 **Pre-deployment Checks** - Validate before deploying
+- 📊 **System Diagnostics** - Health checks and monitoring
 
-The maintenance script is located in the `scripts/` directory:
+## Installation
 
 ```bash
-cd /path/to/wealthlogs
+# Make the script executable
 chmod +x scripts/maintain.sh
 
-# Create an alias for easier access (optional)
-alias maintain='./scripts/maintain.sh'
+# Create initial configuration
+./scripts/maintain.sh config create
+
+# Initialize the project
+./scripts/maintain.sh init
 ```
 
-### 2. Configuration
+## Configuration
 
-Edit the configuration file at `scripts/config.env`:
+The script uses `scripts/config.env` for all configuration. This centralizes environment variables and settings.
+
+### Edit Configuration
 
 ```bash
 ./scripts/maintain.sh config edit
 ```
 
-Key configuration settings:
-- **Database credentials** - PostgreSQL connection details
-- **Test user** - Default user for authentication testing
-- **Production URLs** - Your deployed application URLs
-- **Development ports** - Local server ports
-- **Google OAuth** - Client ID and secret from Google Cloud Console
+### Key Configuration Sections
 
-### 3. First Run
+1. **Database Configuration**
+   - PostgreSQL connection details
+   - Username, password, database name
 
-```bash
-# Initialize the project (install dependencies)
-./scripts/maintain.sh init
+2. **JWT & Security**
+   - Access and refresh token secrets
+   - Session secrets
+   - All automatically used in .env files
 
-# Setup database
-./scripts/maintain.sh db:setup
+3. **Google OAuth**
+   - Client ID and secret
+   - Callback URLs
 
-# Start development servers
-./scripts/maintain.sh dev
-```
+4. **Production URLs**
+   - Backend and frontend URLs
+   - Used for deployment checks
+
+5. **Mobile App Settings**
+   - Bundle ID and app name
+   - Platform-specific paths
 
 ## Command Reference
 
-### Service Management
+### 🚀 Quick Start Commands
 
-#### Start Services
-
-```bash
-# Start all services (frontend + backend)
-./scripts/maintain.sh dev
-./scripts/maintain.sh start all
-
-# Start backend only
-./scripts/maintain.sh start backend
-
-# Start frontend only
-./scripts/maintain.sh start frontend
-```
-
-**Features:**
-- Automatic port conflict detection
-- Option to kill existing processes
-- Environment file creation if missing
-- Database migration check
-
-#### Stop Services
-
-```bash
-# Stop all services
-./scripts/maintain.sh stop all
-
-# Stop specific service
-./scripts/maintain.sh stop backend
-./scripts/maintain.sh stop frontend
-```
-
-### Project Setup
-
-#### Initialize/Update
-
+#### Initialize Project
 ```bash
 ./scripts/maintain.sh init
 ```
-
-**What it does:**
-- Installs/updates all dependencies
-- Creates environment files if missing
+- Installs all dependencies
+- Creates environment files from config
 - Builds shared packages
 - Generates Prisma client
-- Detects if it's a fresh install or update
 
-### Database Management
+#### Start Development
+```bash
+./scripts/maintain.sh dev
+```
+Starts all services (frontend + backend) using Turborepo.
+
+#### Start Individual Services
+```bash
+./scripts/maintain.sh start backend   # Port 5000
+./scripts/maintain.sh start frontend  # Port 3000
+./scripts/maintain.sh start mobile    # Port 5173
+```
+
+### ⚙️ Configuration Commands
+
+#### Edit Configuration
+```bash
+./scripts/maintain.sh config edit
+```
+Opens configuration file in your default editor.
+
+#### Validate Configuration
+```bash
+./scripts/maintain.sh config validate
+```
+Checks for missing or invalid configuration values.
+
+#### Show Configuration
+```bash
+./scripts/maintain.sh config show
+```
+Displays current configuration (hides sensitive values).
+
+### 📱 Mobile App Commands
+
+#### Build Mobile Apps
+```bash
+./scripts/maintain.sh mobile build ios
+./scripts/maintain.sh mobile build android
+./scripts/maintain.sh mobile build both
+```
+Builds mobile apps and opens in respective IDEs.
+
+#### Run Mobile Apps
+```bash
+./scripts/maintain.sh mobile run ios
+./scripts/maintain.sh mobile run android
+```
+Runs apps on connected devices or emulators.
+
+#### Sync Capacitor
+```bash
+./scripts/maintain.sh mobile sync
+```
+Syncs web assets with native projects.
+
+#### Mobile Development Server
+```bash
+./scripts/maintain.sh mobile dev
+```
+Starts Vite development server for mobile.
+
+### 🗄️ Database Commands
 
 #### Setup Database
-
 ```bash
 ./scripts/maintain.sh db:setup
 ```
-
 Creates database and runs initial migrations.
 
-#### Run Migrations
-
-```bash
-# Run pending migrations
-./scripts/maintain.sh db:migrate
-
-# Create named migration
-./scripts/maintain.sh db:migrate "add_user_fields"
+Shows SQL commands to create database:
+```sql
+CREATE USER abechay WITH PASSWORD 'password';
+CREATE DATABASE wealthlog OWNER abechay;
+GRANT ALL PRIVILEGES ON DATABASE wealthlog TO abechay;
 ```
 
-#### Reset Database
+#### Run Migrations
+```bash
+./scripts/maintain.sh db:migrate
+./scripts/maintain.sh db:migrate "migration_name"
+```
 
+#### Open Prisma Studio
+```bash
+./scripts/maintain.sh db:studio
+```
+Opens GUI for database management (port 5555).
+
+#### Reset Database
 ```bash
 ./scripts/maintain.sh db:reset
 ```
+⚠️ **Warning:** Deletes all data!
 
-⚠️ **Warning:** This deletes all data!
-
-#### Other Database Commands
-
-```bash
-# Open Prisma Studio (GUI)
-./scripts/maintain.sh db:studio
-
-# Backup database
-./scripts/maintain.sh db:backup
-
-# Restore from backup
-./scripts/maintain.sh db:restore backup-file.sql
-
-# Seed database with sample data
-./scripts/maintain.sh db:seed
-```
-
-### Testing
+### 🧪 Testing Commands
 
 #### Run Test Suite
-
 ```bash
 ./scripts/maintain.sh test
 ```
-
-**Tests include:**
-- Shared package build
-- TypeScript validation
-- Production build test
-- Prisma schema validation
-- API route configuration
+Runs comprehensive tests:
+- Configuration validation
+- TypeScript compilation
+- Build tests
+- API route validation
+- Mobile app builds
 
 #### Test Authentication
-
 ```bash
-# Test local authentication
-./scripts/maintain.sh auth:test
-
-# Test production authentication
-./scripts/maintain.sh auth:test prod
+./scripts/maintain.sh auth:test       # Local
+./scripts/maintain.sh auth:test prod  # Production
 ```
+Tests authentication flow and protected routes.
 
-**Tests performed:**
-- Login flow
-- Token generation
-- Protected routes
-- CORS configuration
-
-### Deployment
+### 🚀 Deployment Commands
 
 #### Pre-deployment Check
-
 ```bash
 ./scripts/maintain.sh deploy:check
 ```
-
-**Validates:**
+**Always run before deploying!** Validates:
 - Environment configuration
 - Test suite passes
 - No exposed secrets
-- Git status
+- Clean git status
 - Build success
 
 #### Check Production Status
-
 ```bash
 ./scripts/maintain.sh deploy:status
 ```
-
-Tests if production servers are responding.
+Tests production endpoints and availability.
 
 #### Build for Production
-
 ```bash
 ./scripts/maintain.sh build
 ```
+Builds all applications for production.
 
-### Maintenance
-
-#### Auto-fix Common Issues
-
-```bash
-./scripts/maintain.sh fix
-```
-
-**Fixes:**
-- Missing type definitions
-- TypeScript errors
-- API route prefixes
-- Package rebuilds
+### 🔧 Maintenance Commands
 
 #### System Diagnostics
-
 ```bash
 ./scripts/maintain.sh doctor
 ```
+Comprehensive system health check:
+- Requirements verification
+- Project structure validation
+- Configuration check
+- Database connection test
 
-**Checks:**
-- System requirements
-- Project structure
-- Environment files
-- Database connection
-- Port availability
-- Dependencies
-- Common issues
-
-#### Check Status
-
+#### Quick Status Check
 ```bash
 ./scripts/maintain.sh status
 ```
+Shows:
+- Package installation status
+- Environment files
+- Database connection
+- Port availability
+- Log file count
 
-Quick health check of the system.
+#### Auto-fix Issues
+```bash
+./scripts/maintain.sh fix
+```
+Automatically fixes:
+- TypeScript errors
+- Missing type definitions
+- API route configuration
+- Environment file issues
 
 #### Clean Project
-
 ```bash
 ./scripts/maintain.sh clean
 ```
-
 Removes:
 - node_modules directories
 - Build artifacts
 - Lock files
-- Temporary files
+- Old environment files
 
-### Configuration Management
+### 📝 Logging Commands
 
-#### Edit Configuration
-
+#### View Latest Log
 ```bash
-./scripts/maintain.sh config edit
-```
-
-Opens configuration file in default editor.
-
-#### Show Configuration
-
-```bash
-./scripts/maintain.sh config show
-```
-
-Displays current configuration (hides sensitive values).
-
-#### Validate Configuration
-
-```bash
-./scripts/maintain.sh config validate
-```
-
-Tests database connection and validates settings.
-
-#### Reset Configuration
-
-```bash
-./scripts/maintain.sh config reset
-```
-
-Resets to default configuration.
-
-### Logging
-
-#### View Logs
-
-```bash
-# View latest log
 ./scripts/maintain.sh logs
+```
 
-# List all logs
+#### View Backend Logs
+```bash
+./scripts/maintain.sh logs backend
+```
+
+#### View Frontend Logs
+```bash
+./scripts/maintain.sh logs frontend
+```
+
+#### List All Logs
+```bash
 ./scripts/maintain.sh logs list
+```
 
-# Clean old logs
+#### Clean Old Logs
+```bash
 ./scripts/maintain.sh logs clean
-
-# Follow logs in real-time
-tail -f .maintain-logs/latest.log
 ```
-
-## Configuration File Reference
-
-The `scripts/config.env` file contains all configuration:
-
-### Database Settings
-```bash
-DB_USERNAME="postgres"       # PostgreSQL username
-DB_PASSWORD="password"        # PostgreSQL password
-DB_NAME="wealthlog"          # Database name
-DB_HOST="localhost"          # Database host
-DB_PORT="5432"               # Database port
-```
-
-### Development Settings
-```bash
-DEV_FRONTEND_PORT=3000       # Next.js port
-DEV_BACKEND_PORT=5000        # Express port
-```
-
-### Production URLs
-```bash
-PROD_BACKEND_URL="https://your-backend.onrender.com"
-PROD_FRONTEND_URL="https://your-frontend.vercel.app"
-```
-
-### Google OAuth
-```bash
-GOOGLE_CLIENT_ID="your-client-id.apps.googleusercontent.com"
-GOOGLE_CLIENT_SECRET="your-client-secret"
-```
-
-### Feature Flags
-```bash
-ENABLE_AUTH_TEST=true        # Enable auth testing commands
-ENABLE_DB_RESET=true         # Enable database reset
-ENABLE_DEPLOY_COMMANDS=true  # Enable deployment commands
-ENABLE_AUTO_BACKUP=false     # Auto-backup before destructive ops
-```
+Keeps only the last 10 log files.
 
 ## Workflows
+
+### First-time Setup
+
+```bash
+# 1. Clone repository
+git clone https://github.com/yourusername/wealthlogs.git
+cd wealthlogs
+
+# 2. Initialize project
+./scripts/maintain.sh init
+
+# 3. Edit configuration
+./scripts/maintain.sh config edit
+
+# 4. Create database
+./scripts/maintain.sh db:setup
+
+# 5. Start development
+./scripts/maintain.sh dev
+```
 
 ### Daily Development
 
 ```bash
-# Morning setup
-./scripts/maintain.sh status          # Check system status
-./scripts/maintain.sh start backend   # Start backend only
-./scripts/maintain.sh start frontend  # Start frontend in another terminal
-
-# Or start everything at once
+# Start all services
 ./scripts/maintain.sh dev
+
+# Or start specific service
+./scripts/maintain.sh start backend
+./scripts/maintain.sh start frontend
+
+# Run tests
+./scripts/maintain.sh test
+
+# Check status
+./scripts/maintain.sh status
 ```
 
 ### Before Deploying
@@ -360,22 +332,19 @@ ENABLE_AUTO_BACKUP=false     # Auto-backup before destructive ops
 # 1. Run deployment check
 ./scripts/maintain.sh deploy:check
 
-# 2. Fix any issues
-./scripts/maintain.sh fix
+# 2. Create feature branch
+git checkout -b feature/your-feature
 
-# 3. Test again
-./scripts/maintain.sh test
-
-# 4. Build production
-./scripts/maintain.sh build
-
-# 5. Deploy (automatic via git push)
+# 3. Commit changes
 git add .
-git commit -m "Deploy: your message"
-git push origin main
+git commit -m "feat: your feature"
 
-# 6. Verify deployment
-./scripts/maintain.sh deploy:status
+# 4. Push to GitHub
+git push origin feature/your-feature
+
+# 5. Create PR to staging branch
+# 6. After merge, test on staging
+# 7. Create PR from staging to main
 ```
 
 ### Troubleshooting
@@ -395,24 +364,30 @@ git push origin main
 ./scripts/maintain.sh init
 ```
 
-### Database Recovery
+### Mobile Development
 
 ```bash
-# Create backup
-./scripts/maintain.sh db:backup
+# 1. Build web assets
+./scripts/maintain.sh build
 
-# If something goes wrong, restore
-./scripts/maintain.sh db:restore backups/wealthlog-20240101-120000.sql
+# 2. Sync with Capacitor
+./scripts/maintain.sh mobile sync
+
+# 3. Build for platform
+./scripts/maintain.sh mobile build ios
+./scripts/maintain.sh mobile build android
+
+# 4. Run on device
+./scripts/maintain.sh mobile run ios
 ```
 
-## Logging
+## Logging System
 
 All commands generate detailed logs stored in `.maintain-logs/`:
 
-- **Log location:** `.maintain-logs/maintain-YYYYMMDD-HHMMSS.log`
-- **Latest log symlink:** `.maintain-logs/latest.log`
-- **Retention:** 30 days by default (configurable)
-- **Auto-cleanup:** Old logs are automatically removed
+- **Log Location:** `.maintain-logs/maintain-YYYYMMDD-HHMMSS.log`
+- **Latest Log:** `.maintain-logs/latest.log` (symlink)
+- **Retention:** Keeps last 10 logs by default
 
 ### Log Levels
 
@@ -420,47 +395,37 @@ All commands generate detailed logs stored in `.maintain-logs/`:
 - **SUCCESS:** Successful operations
 - **WARNING:** Non-critical issues
 - **ERROR:** Critical failures
-- **DEBUG:** Detailed debugging info
+- **BUILD:** Build operations
+- **TEST:** Test results
+- **MOBILE:** Mobile app operations
+- **CONFIG:** Configuration changes
+
+## Environment Files
+
+The script automatically creates and manages environment files:
+
+### Backend (.env)
+- Created in `apps/backend/.env`
+- Uses values from `config.env`
+- Includes all JWT secrets, database URL, OAuth settings
+
+### Frontend (.env.local)
+- Created in `apps/web/.env.local`
+- Includes API URL and public OAuth client ID
+
+### Mobile (.env)
+- Created in `apps/mobile/.env`
+- Includes Vite-specific environment variables
 
 ## Error Handling
 
 The script includes comprehensive error handling:
 
-1. **Exit on error:** Script stops on critical failures
-2. **Validation:** Checks prerequisites before operations
-3. **Rollback:** Some operations support rollback on failure
-4. **Recovery suggestions:** Provides fix recommendations
-
-## Advanced Features
-
-### Custom Paths
-
-Override default paths in `config.env`:
-
-```bash
-CUSTOM_BACKEND_DIR="/custom/path/to/backend"
-CUSTOM_FRONTEND_DIR="/custom/path/to/frontend"
-CUSTOM_SHARED_DIR="/custom/path/to/shared"
-```
-
-### Parallel Builds
-
-Enable/disable in configuration:
-
-```bash
-BUILD_PARALLEL=true
-BUILD_CACHE=true
-```
-
-### Notifications
-
-Configure deployment notifications:
-
-```bash
-NOTIFY_ON_DEPLOY=true
-NOTIFY_EMAIL="your@email.com"
-NOTIFY_WEBHOOK="https://hooks.slack.com/..."
-```
+1. **Port Conflicts:** Offers to kill existing processes
+2. **Missing Dependencies:** Installs automatically
+3. **Database Issues:** Provides setup instructions
+4. **Build Failures:** Generates detailed logs
+5. **Configuration Errors:** Validates and suggests fixes
 
 ## Best Practices
 
@@ -468,67 +433,92 @@ NOTIFY_WEBHOOK="https://hooks.slack.com/..."
 2. **Keep configuration file updated**
 3. **Check logs when issues occur**
 4. **Use `doctor` for diagnostics**
-5. **Create backups before database operations**
-6. **Test authentication after deployment**
-7. **Use individual service starts for development**
-8. **Clean project periodically**
+5. **Run `test` after making changes**
+6. **Use feature branches for development**
+7. **Keep mobile app synced with web changes**
 
-## Troubleshooting
+## Troubleshooting Guide
 
-### Port Already in Use
+### Common Issues and Solutions
 
+#### Port Already in Use
 ```bash
-# The script will ask to kill the process
-# Or manually:
-lsof -i:3000  # Find process
-kill -9 <PID>  # Kill process
+# Script will ask to kill process, or manually:
+lsof -i:3000
+kill -9 <PID>
 ```
 
-### Database Connection Failed
-
+#### Database Connection Failed
 1. Check PostgreSQL is running
 2. Verify credentials in `config.env`
 3. Run `./scripts/maintain.sh config validate`
+4. Create database: `./scripts/maintain.sh db:setup`
 
-### Build Failures
+#### TypeScript Errors
+```bash
+# Auto-fix common issues
+./scripts/maintain.sh fix
 
-1. Check TypeScript errors: `./scripts/maintain.sh test`
-2. Try auto-fix: `./scripts/maintain.sh fix`
-3. Clean and rebuild: `./scripts/maintain.sh clean && ./scripts/maintain.sh init`
+# Or manually install types
+cd apps/web
+npm install --save-dev @types/papaparse @types/node
+```
 
-### Authentication Not Working
+#### Build Failures
+```bash
+# Clean and rebuild
+./scripts/maintain.sh clean
+./scripts/maintain.sh init
+./scripts/maintain.sh build
+```
 
-1. Check environment variables are set
-2. Verify JWT secrets match between frontend and backend
-3. Test with: `./scripts/maintain.sh auth:test`
+#### Mobile App Not Building
+1. Ensure Xcode (iOS) or Android Studio (Android) is installed
+2. Run `./scripts/maintain.sh mobile sync`
+3. Check Capacitor configuration
+4. View logs for specific errors
 
-## Updates & Maintenance
+## Advanced Features
 
-The script is self-documenting and includes:
+### Custom Paths
+You can override default paths in `config.env`:
+```bash
+CUSTOM_BACKEND_DIR="/custom/path/to/backend"
+CUSTOM_FRONTEND_DIR="/custom/path/to/frontend"
+CUSTOM_MOBILE_DIR="/custom/path/to/mobile"
+```
 
-- Version information in the header
-- Inline comments for complex operations
-- Help command with examples
-- Configuration validation
+### Feature Flags
+Enable/disable features in `config.env`:
+```bash
+ENABLE_AUTH_TEST=true
+ENABLE_DB_RESET=true
+ENABLE_DEPLOY_COMMANDS=true
+ENABLE_AUTO_BACKUP=false
+```
 
-To update the script:
-1. Keep the original structure
-2. Add new commands in the appropriate section
-3. Update help text
-4. Test thoroughly before committing
-
-## Support
-
-For issues:
-1. Check this documentation
-2. Run `./scripts/maintain.sh help`
-3. Check logs in `.maintain-logs/`
-4. Run diagnostics with `./scripts/maintain.sh doctor`
+### Rate Limiting
+Configure in backend for production:
+- Login attempts: 5 per 15 minutes
+- API calls: Configurable per endpoint
 
 ## Version History
 
-- **v4.0** - Added individual service management, configuration file
-- **v3.1** - Enhanced logging, better error handling
-- **v3.0** - Added auth testing, deployment checks
-- **v2.0** - Database management, fix command
-- **v1.0** - Initial version with basic commands
+- **v4.0** - Mobile support, config management
+- **v3.1** - Enhanced logging, better diagnostics
+- **v3.0** - Added authentication testing
+- **v2.0** - Database management, deployment checks
+- **v1.0** - Initial release
+
+## Support
+
+For issues or questions:
+1. Check this documentation
+2. Run `./scripts/maintain.sh doctor`
+3. Check logs: `./scripts/maintain.sh logs`
+4. Review main documentation: [../README.md](../README.md)
+5. Check specific docs in [../docs/](../docs/)
+
+---
+
+Built with ❤️ for the WealthLog development team

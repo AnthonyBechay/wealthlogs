@@ -22,11 +22,12 @@
 - [Architecture](#-architecture)
 - [Technology Stack](#-technology-stack)
 - [Getting Started](#-getting-started)
-- [Development](#-development)
+- [Development Workflow](#-development-workflow)
 - [Deployment](#-deployment)
 - [Maintenance Script](#-maintenance-script)
 - [API Documentation](#-api-documentation)
 - [Contributing](#-contributing)
+- [Documentation](#-documentation)
 - [License](#-license)
 
 ## ✨ Features
@@ -56,11 +57,11 @@
 - Bill reminders and recurring expenses
 
 ### 🔐 **Security & Authentication**
-- JWT-based authentication
+- JWT-based authentication with access/refresh tokens
 - Google OAuth integration
-- Two-factor authentication (coming soon)
-- Role-based access control
+- Role-based access control (RBAC)
 - Secure session management
+- Email verification system
 
 ### 📱 **Cross-Platform**
 - Responsive web application
@@ -77,28 +78,29 @@ graph TB
         B --> C[TailwindCSS]
         B --> D[Recharts]
         A --> E[API Client]
+        F[Capacitor Mobile] --> B
     end
     
     subgraph "Backend"
-        F[Express.js Server] --> G[REST API]
-        G --> H[Auth Middleware]
-        G --> I[Business Logic]
-        I --> J[Prisma ORM]
+        G[Express.js Server] --> H[REST API]
+        H --> I[Auth Middleware]
+        H --> J[Business Logic]
+        J --> K[Prisma ORM]
     end
     
     subgraph "Database"
-        J --> K[PostgreSQL]
-        L[Redis Cache] --> F
+        K --> L[PostgreSQL]
+        M[Redis Cache] --> G
     end
     
     subgraph "External Services"
-        M[Google OAuth] --> H
-        N[Email Service] --> F
-        O[Market Data API] --> I
+        N[Google OAuth] --> I
+        O[Email Service] --> G
+        P[Market Data API] --> J
     end
     
-    E --> G
-    A --> M
+    E --> H
+    A --> N
 ```
 
 ### Project Structure
@@ -107,7 +109,7 @@ graph TB
 wealthlogs/
 ├── 📁 wealthlogs-code/          # Main application code
 │   ├── 📁 apps/                 # Applications
-│   │   ├── 📱 backend/          # Express.js API server
+│   │   ├── 🔧 backend/          # Express.js API server
 │   │   │   ├── src/
 │   │   │   │   ├── routes/      # API routes
 │   │   │   │   ├── middleware/  # Express middleware
@@ -128,18 +130,17 @@ wealthlogs/
 │   ├── config.env               # Configuration file
 │   └── README.md               # Script documentation
 ├── 📁 docs/                     # Documentation
-│   ├── guides/                  # Setup and usage guides
-│   ├── api/                     # API documentation
-│   └── architecture/            # System design docs
-├── 📋 turbo.json                # Turborepo configuration
-├── 📋 vercel.json               # Vercel deployment config
-└── 📋 package.json              # Root package configuration
+│   ├── CLAUDE_REFERENCE.md     # Quick reference for Claude AI
+│   ├── authentication-flow.md   # Auth system documentation
+│   ├── auth-system.md          # Detailed auth documentation
+│   └── deployment-env.md       # Deployment environment guide
+└── README.md                    # This file
 ```
 
 ## 💻 Technology Stack
 
 ### Frontend
-- **Framework:** Next.js 14 with App Router
+- **Framework:** Next.js 14 with Pages Router
 - **UI Library:** React 18
 - **Styling:** TailwindCSS 3.0
 - **Charts:** Recharts
@@ -147,6 +148,7 @@ wealthlogs/
 - **Forms:** React Hook Form
 - **HTTP Client:** Axios
 - **Type Safety:** TypeScript 5.0
+- **Mobile:** Capacitor
 
 ### Backend
 - **Runtime:** Node.js 18 LTS
@@ -164,10 +166,11 @@ wealthlogs/
 
 ### DevOps
 - **Monorepo:** Turborepo
-- **Deployment:** Vercel (Frontend) + Render (Backend)
+- **Frontend Deployment:** Vercel (auto-deploy on push)
+- **Backend Deployment:** Render (auto-deploy on push)
 - **CI/CD:** GitHub Actions
-- **Monitoring:** Sentry
-- **Analytics:** Google Analytics
+- **Monitoring:** Built-in logging system
+- **Scripts:** Custom maintenance script
 
 ## 🚀 Getting Started
 
@@ -175,166 +178,241 @@ wealthlogs/
 
 - Node.js 18+ and npm 9+
 - PostgreSQL 14+
-- Redis (optional, for caching)
 - Git
+- Redis (optional, for caching)
 
-### Quick Setup
+### 1. Clone the Repository
 
-1. **Clone the repository**
 ```bash
 git clone https://github.com/yourusername/wealthlogs.git
 cd wealthlogs
 ```
 
-2. **Run the setup script**
+### 2. Create PostgreSQL Database
+
+```sql
+# Connect to PostgreSQL as superuser
+psql -U postgres
+
+# Create database and user
+CREATE USER abechay WITH PASSWORD '12345678';
+CREATE DATABASE wealthlog OWNER abechay;
+GRANT ALL PRIVILEGES ON DATABASE wealthlog TO abechay;
+\q
+```
+
+> **Note:** Replace `abechay` and `12345678` with your preferred username and password. Update these in the configuration file later.
+
+### 3. Initialize the Project
+
 ```bash
+# Make the maintenance script executable
 chmod +x scripts/maintain.sh
+
+# Initialize the project (installs dependencies and creates config)
 ./scripts/maintain.sh init
 ```
 
-3. **Configure environment**
+### 4. Configure Your Environment
+
 ```bash
+# Edit the configuration file
 ./scripts/maintain.sh config edit
-# Update database credentials and other settings
+
+# Update these values:
+# - DB_USERNAME and DB_PASSWORD (if different from above)
+# - GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET (for OAuth)
+# - Any other settings specific to your environment
 ```
 
-4. **Setup database**
+### 5. Setup Database Schema
+
 ```bash
+# Create database tables and run migrations
 ./scripts/maintain.sh db:setup
 ```
 
-5. **Start development servers**
+### 6. Start Development Servers
+
 ```bash
+# Start all services (frontend + backend)
 ./scripts/maintain.sh dev
+
+# Or start individually:
+./scripts/maintain.sh start backend   # Backend only (port 5000)
+./scripts/maintain.sh start frontend  # Frontend only (port 3000)
 ```
 
 Your application will be available at:
-- Frontend: http://localhost:3000
-- Backend: http://localhost:5000
+- **Frontend:** http://localhost:3000
+- **Backend API:** http://localhost:5000
+- **Database GUI:** Run `./scripts/maintain.sh db:studio` (port 5555)
 
-## 🔧 Development
+### 7. Test Login
 
-### Start Individual Services
+Use these test credentials:
+- **Username:** bech
+- **Password:** 123
 
-```bash
-# Start backend only
-./scripts/maintain.sh start backend
+## 🔄 Development Workflow
 
-# Start frontend only
-./scripts/maintain.sh start frontend
+### Branching Strategy
 
-# Start all services
-./scripts/maintain.sh start all
+We use a Git Flow inspired branching strategy:
+
+```
+main (production)
+  └── staging (pre-production testing)
+       └── feature/your-feature-name (development)
 ```
 
-### Database Management
+### Development Process
 
+1. **Create a feature branch from staging:**
 ```bash
-# Run migrations
-./scripts/maintain.sh db:migrate
-
-# Open Prisma Studio
-./scripts/maintain.sh db:studio
-
-# Reset database (caution!)
-./scripts/maintain.sh db:reset
+git checkout staging
+git pull origin staging
+git checkout -b feature/your-feature-name
 ```
 
-### Testing
-
+2. **Make your changes and test locally:**
 ```bash
-# Run test suite
+# Run tests
 ./scripts/maintain.sh test
 
-# Test authentication
-./scripts/maintain.sh auth:test
+# Check for issues
+./scripts/maintain.sh doctor
 ```
 
-### Building
-
+3. **Commit your changes:**
 ```bash
-# Build for production
-./scripts/maintain.sh build
+git add .
+git commit -m "feat: description of your feature"
 ```
+
+4. **Push and create Pull Request:**
+```bash
+git push origin feature/your-feature-name
+# Open PR to staging branch on GitHub
+```
+
+5. **After PR is merged to staging:**
+   - Test on staging environment
+   - If everything works, create PR from staging to main
+
+6. **Deployment happens automatically:**
+   - Vercel deploys frontend on push to main
+   - Render deploys backend on push to main
+
+### Commit Message Convention
+
+Use conventional commits:
+- `feat:` New feature
+- `fix:` Bug fix
+- `docs:` Documentation changes
+- `style:` Code style changes
+- `refactor:` Code refactoring
+- `test:` Test changes
+- `chore:` Maintenance tasks
 
 ## 🌐 Deployment
 
-### Frontend (Vercel)
+### Pre-deployment Checklist
+
+Always run before deploying:
+```bash
+./scripts/maintain.sh deploy:check
+```
+
+This validates:
+- ✅ Environment configuration
+- ✅ Test suite passes
+- ✅ No exposed secrets
+- ✅ Build success
+- ✅ Git status clean
+
+### Frontend Deployment (Vercel)
 
 1. **Connect GitHub repository to Vercel**
 
-2. **Set environment variables:**
+2. **Set environment variables in Vercel dashboard:**
 ```env
-NEXT_PUBLIC_API_URL=https://your-backend.onrender.com
+NEXT_PUBLIC_API_URL=https://wealthlog-backend-hx43.onrender.com
 NEXT_PUBLIC_GOOGLE_CLIENT_ID=your-google-client-id
 ```
 
-3. **Deploy:**
-```bash
-vercel --prod
-```
+3. **Deployment is automatic on push to main branch**
 
-### Backend (Render)
+### Backend Deployment (Render)
 
 1. **Create a new Web Service on Render**
 
-2. **Set environment variables:**
+2. **Set environment variables in Render dashboard:**
 ```env
 NODE_ENV=production
 DATABASE_URL=postgresql://...
 JWT_ACCESS_SECRET=your-secret
 JWT_REFRESH_SECRET=your-secret
-FRONTEND_URL=https://your-frontend.vercel.app
+SECRET_KEY=your-secret
+SESSION_SECRET=your-secret
+FRONTEND_URL=https://wealthlogs.com
+ALLOWED_ORIGINS=https://wealthlogs.com,https://www.wealthlogs.com
 ```
 
-3. **Deploy:**
-```bash
-git push origin main
-```
+3. **Deployment is automatic on push to main branch**
 
-### Pre-deployment Checklist
+### Post-deployment Verification
 
 ```bash
-# Run deployment check
-./scripts/maintain.sh deploy:check
+# Check production status
+./scripts/maintain.sh deploy:status
 
-# This validates:
-# ✅ Environment configuration
-# ✅ Test suite passes
-# ✅ No exposed secrets
-# ✅ Build success
-# ✅ Git status clean
+# Test production authentication
+./scripts/maintain.sh auth:test prod
 ```
 
 ## 🛠 Maintenance Script
 
-The project includes a comprehensive maintenance script for all common operations:
+The project includes a comprehensive maintenance script (`scripts/maintain.sh`) for all common operations.
 
 ### Key Commands
 
 | Command | Description |
 |---------|-------------|
+| **Setup & Config** |
 | `init` | Initialize/update project |
+| `config edit` | Edit configuration |
+| `config validate` | Validate configuration |
+| **Development** |
 | `dev` | Start all development servers |
 | `start [service]` | Start specific service |
 | `test` | Run test suite |
-| `build` | Build for production |
-| `deploy:check` | Pre-deployment validation |
 | `fix` | Auto-fix common issues |
-| `doctor` | System diagnostics |
+| **Database** |
+| `db:setup` | Create database with migrations |
+| `db:migrate` | Run pending migrations |
+| `db:studio` | Open Prisma Studio GUI |
+| `db:reset` | Reset database (⚠️ deletes data) |
+| **Mobile App** |
+| `mobile build [platform]` | Build mobile app |
+| `mobile run [platform]` | Run on device/emulator |
+| `mobile sync` | Sync Capacitor |
+| **Deployment** |
+| `deploy:check` | Pre-deployment validation |
+| `deploy:status` | Check production status |
+| `build` | Build for production |
+| **Maintenance** |
+| `doctor` | Run system diagnostics |
+| `status` | Quick health check |
+| `logs` | View logs |
 | `clean` | Clean build artifacts |
 
-### Configuration
+For complete documentation, run:
+```bash
+./scripts/maintain.sh help
+```
 
-Edit `scripts/config.env` to customize:
-- Database credentials
-- Server ports
-- Production URLs
-- Feature flags
-
-### Documentation
-
-See [scripts/README.md](scripts/README.md) for complete documentation.
+Or see [scripts/README.md](scripts/README.md)
 
 ## 📚 API Documentation
 
@@ -347,6 +425,9 @@ See [scripts/README.md](scripts/README.md) for complete documentation.
 | GET | `/api/auth/me` | Get current user |
 | POST | `/api/auth/refresh` | Refresh token |
 | POST | `/api/auth/logout` | Logout user |
+| GET | `/api/auth/verify-email` | Verify email |
+| POST | `/api/auth/forgot-password` | Request password reset |
+| POST | `/api/auth/reset-password` | Reset password |
 
 ### Dashboard Endpoints
 
@@ -366,25 +447,48 @@ See [scripts/README.md](scripts/README.md) for complete documentation.
 | PUT | `/api/account/:id` | Update account |
 | DELETE | `/api/account/:id` | Delete account |
 
-For complete API documentation, see [docs/api/](docs/api/).
+For complete API documentation, see [docs/api/](docs/api/)
 
 ## 🤝 Contributing
 
-We welcome contributions! Please follow these steps:
+We welcome contributions! Please follow our development workflow:
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+1. **Fork the repository**
+2. **Create a feature branch from staging**
+3. **Make your changes with proper testing**
+4. **Follow our commit message convention**
+5. **Create a Pull Request to staging branch**
+6. **Ensure all checks pass**
 
 ### Development Guidelines
 
-- Follow TypeScript best practices
-- Write tests for new features
-- Update documentation
-- Use conventional commits
-- Run `./scripts/maintain.sh test` before committing
+- ✅ Write tests for new features
+- ✅ Update documentation
+- ✅ Follow TypeScript best practices
+- ✅ Use the maintenance script for testing
+- ✅ Ensure mobile compatibility
+- ✅ Keep security in mind
+
+## 📖 Documentation
+
+Detailed documentation is available in the `docs/` directory:
+
+- **[Quick Reference](docs/CLAUDE_REFERENCE.md)** - Quick reference guide
+- **[Authentication System](docs/auth-system.md)** - Complete auth documentation
+- **[Authentication Flow](docs/authentication-flow.md)** - Auth flow details
+- **[Deployment Guide](docs/deployment-env.md)** - Environment setup
+- **[Maintenance Script](scripts/README.md)** - Script documentation
+
+## 🔒 Security
+
+- JWT tokens with 15-minute access tokens and 7-day refresh tokens
+- Automatic token rotation
+- Password hashing with bcrypt
+- Rate limiting on sensitive endpoints
+- CORS configuration
+- SQL injection prevention via Prisma
+- XSS protection
+- HTTPS only in production
 
 ## 📄 License
 

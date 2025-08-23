@@ -1154,6 +1154,79 @@ cmd_deploy_status() {
     print_success "Production status check complete"
 }
 
+# DOCTOR - System diagnostics
+cmd_doctor() {
+    print_header "       SYSTEM DIAGNOSTICS       "
+    
+    local issues=0
+    
+    print_section "Checking System Requirements"
+    check_requirements
+    
+    print_section "Checking Project Structure"
+    
+    # Check critical directories
+    [ -d "$BACKEND_DIR" ] && print_success "Backend directory exists" || { print_error "Backend directory missing"; issues=$((issues + 1)); }
+    [ -d "$FRONTEND_DIR" ] && print_success "Frontend directory exists" || { print_error "Frontend directory missing"; issues=$((issues + 1)); }
+    [ -d "$SHARED_DIR" ] && print_success "Shared directory exists" || { print_error "Shared directory missing"; issues=$((issues + 1)); }
+    [ -d "$MOBILE_DIR" ] && print_success "Mobile directory exists" || print_warning "Mobile directory missing (optional)"
+    
+    print_section "Checking Configuration"
+    
+    if [ -f "$CONFIG_FILE" ]; then
+        source "$CONFIG_FILE"
+        
+        # Check critical config values
+        if [ -n "$JWT_ACCESS_SECRET" ] && [ "$JWT_ACCESS_SECRET" != "" ]; then
+            print_success "JWT secrets configured"
+        else
+            print_error "JWT secrets not configured"
+            issues=$((issues + 1))
+        fi
+        
+        if [ "$DB_PASSWORD" != "password" ] && [ -n "$DB_PASSWORD" ]; then
+            print_success "Database password configured"
+        else
+            print_warning "Using default database password"
+        fi
+    else
+        print_error "Configuration file missing"
+        issues=$((issues + 1))
+    fi
+    
+    print_section "Checking Dependencies"
+    
+    # Check package.json files
+    [ -f "$BACKEND_DIR/package.json" ] && print_success "Backend package.json exists" || { print_error "Backend package.json missing"; issues=$((issues + 1)); }
+    [ -f "$FRONTEND_DIR/package.json" ] && print_success "Frontend package.json exists" || { print_error "Frontend package.json missing"; issues=$((issues + 1)); }
+    
+    print_section "Checking Database Connection"
+    
+    cd "$BACKEND_DIR"
+    if npx prisma db pull --print 2>&1 | grep -q "success" || npx prisma migrate status 2>&1 | grep -q "Database schema is up to date"; then
+        print_success "Database connection working"
+    else
+        print_warning "Database connection issues - check configuration"
+    fi
+    
+    # Summary
+    echo ""
+    if [ $issues -eq 0 ]; then
+        print_header "    ${CHECK} SYSTEM HEALTHY!    "
+        print_success "No issues detected"
+    else
+        print_header "    ${WARN} ISSUES FOUND    "
+        print_error "Found $issues issue(s)"
+        echo ""
+        echo -e "${YELLOW}Suggested fixes:${NC}"
+        echo -e "  1. Run: ${CYAN}./maintain.sh config edit${NC} to configure settings"
+        echo -e "  2. Run: ${CYAN}./maintain.sh init${NC} to initialize project"
+        echo -e "  3. Run: ${CYAN}./maintain.sh fix${NC} to auto-fix issues"
+    fi
+    
+    show_log_info
+}
+
 # HELP - Show detailed help
 cmd_help() {
     print_header "        WEALTHLOG MAINTENANCE HELP        "
@@ -1162,56 +1235,84 @@ cmd_help() {
     echo ""
     
     echo -e "${CYAN}━━━ QUICK START ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo -e "  ${GREEN}init${NC}          Setup/update packages (use for new packages too!)"
+    echo -e "  ${GREEN}init${NC}          Setup/update packages and environment"
     echo -e "  ${GREEN}dev${NC}           Start all development servers"
     echo -e "  ${GREEN}start backend${NC} Start backend server only"
     echo -e "  ${GREEN}start frontend${NC} Start frontend server only"
-    echo -e "  ${GREEN}start all${NC}     Start all servers (same as dev)"
-    echo -e "  ${GREEN}test${NC}          Run tests (with detailed logging)"
+    echo -e "  ${GREEN}start mobile${NC}  Start mobile development"
+    echo -e "  ${GREEN}test${NC}          Run comprehensive tests"
     echo -e "  ${GREEN}fix${NC}           Auto-fix common issues"
     echo ""
     
+    echo -e "${CYAN}━━━ CONFIGURATION ━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "  ${GREEN}config edit${NC}     Edit configuration file"
+    echo -e "  ${GREEN}config validate${NC} Validate configuration"
+    echo -e "  ${GREEN}config show${NC}     Show current configuration"
+    echo -e "  ${GREEN}config create${NC}   Create default configuration"
+    echo ""
+    
+    echo -e "${CYAN}━━━ MOBILE APP ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "  ${GREEN}mobile build ios${NC}     Build iOS app"
+    echo -e "  ${GREEN}mobile build android${NC} Build Android app"
+    echo -e "  ${GREEN}mobile build both${NC}    Build both platforms"
+    echo -e "  ${GREEN}mobile run ios${NC}       Run iOS app"
+    echo -e "  ${GREEN}mobile run android${NC}   Run Android app"
+    echo -e "  ${GREEN}mobile sync${NC}          Sync Capacitor"
+    echo -e "  ${GREEN}mobile dev${NC}           Start mobile dev server"
+    echo ""
+    
     echo -e "${CYAN}━━━ DEPLOYMENT ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo -e "  ${GREEN}deploy:check${NC}  ${YELLOW}[IMPORTANT]${NC} Run before pushing to production"
-    echo -e "  ${GREEN}deploy:status${NC} Check if production is working"
-    echo -e "  ${GREEN}build${NC}         Build for production"
+    echo -e "  ${GREEN}deploy:check${NC}  ${YELLOW}[IMPORTANT]${NC} Pre-deployment validation"
+    echo -e "  ${GREEN}deploy:status${NC} Check production status"
+    echo -e "  ${GREEN}build${NC}         Build all for production"
     echo ""
     
     echo -e "${CYAN}━━━ AUTHENTICATION ━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo -e "  ${GREEN}auth:test${NC}      Test local authentication flow"
+    echo -e "  ${GREEN}auth:test${NC}      Test local authentication"
     echo -e "  ${GREEN}auth:test prod${NC} Test production authentication"
     echo ""
     
     echo -e "${CYAN}━━━ DATABASE ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo -e "  ${GREEN}db:setup${NC}      Create database with initial migration"
+    echo -e "  ${GREEN}db:setup${NC}      Create database with migrations"
     echo -e "  ${GREEN}db:migrate${NC}    Run pending migrations"
+    echo -e "  ${GREEN}db:studio${NC}     Open Prisma Studio GUI"
     echo -e "  ${GREEN}db:reset${NC}      Reset database ${RED}(deletes all data!)${NC}"
     echo ""
     
     echo -e "${CYAN}━━━ MAINTENANCE ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo -e "  ${GREEN}logs${NC}          View latest log file"
-    echo -e "  ${GREEN}logs list${NC}     List all log files"
-    echo -e "  ${GREEN}logs clean${NC}    Clean old log files"
-    echo -e "  ${GREEN}clean${NC}         Remove all build artifacts"
+    echo -e "  ${GREEN}doctor${NC}        Run system diagnostics"
     echo -e "  ${GREEN}status${NC}        Quick health check"
+    echo -e "  ${GREEN}logs${NC}          View latest log"
+    echo -e "  ${GREEN}logs backend${NC}  View backend logs"
+    echo -e "  ${GREEN}logs frontend${NC} View frontend logs"
+    echo -e "  ${GREEN}logs list${NC}     List all logs"
+    echo -e "  ${GREEN}logs clean${NC}    Clean old logs"
+    echo -e "  ${GREEN}clean${NC}         Remove all build artifacts"
     echo ""
     
     echo -e "${CYAN}━━━ WORKFLOWS ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo ""
-    echo -e "${WHITE}Installing new packages:${NC}"
-    echo -e "  ${YELLOW}./maintain.sh init${NC}  ${GRAY}(updates all dependencies)${NC}"
+    echo -e "${WHITE}First-time setup:${NC}"
+    echo -e "  1. ${YELLOW}./maintain.sh init${NC}        ${GRAY}# Install dependencies${NC}"
+    echo -e "  2. ${YELLOW}./maintain.sh config edit${NC} ${GRAY}# Configure settings${NC}"
+    echo -e "  3. ${YELLOW}./maintain.sh db:setup${NC}    ${GRAY}# Create database${NC}"
+    echo -e "  4. ${YELLOW}./maintain.sh dev${NC}         ${GRAY}# Start development${NC}"
     echo ""
-    echo -e "${WHITE}Before deploying to production:${NC}"
-    echo -e "  1. ${YELLOW}./maintain.sh deploy:check${NC}  ${GREEN}← Always run this first!${NC}"
-    echo -e "  2. ${YELLOW}git add . && git commit -m 'your message'${NC}"
-    echo -e "  3. ${YELLOW}git push origin master${NC}"
-    echo -e "  4. ${YELLOW}./maintain.sh deploy:status${NC}  ${GRAY}(wait 2-3 min)${NC}"
+    echo -e "${WHITE}Before deploying:${NC}"
+    echo -e "  1. ${YELLOW}./maintain.sh deploy:check${NC} ${GREEN}← Always run first!${NC}"
+    echo -e "  2. ${YELLOW}git checkout -b feature/name${NC} ${GRAY}# Create feature branch${NC}"
+    echo -e "  3. ${YELLOW}git add . && git commit${NC}"
+    echo -e "  4. ${YELLOW}git push origin feature/name${NC}"
+    echo -e "  5. ${GRAY}Open PR to staging branch on GitHub${NC}"
+    echo -e "  6. ${GRAY}After merge, test on staging${NC}"
+    echo -e "  7. ${GRAY}If good, PR from staging to main${NC}"
     echo ""
     echo -e "${WHITE}When something breaks:${NC}"
-    echo -e "  1. ${YELLOW}./maintain.sh logs${NC}     ${GRAY}(check detailed logs)${NC}"
-    echo -e "  2. ${YELLOW}./maintain.sh fix${NC}      ${GRAY}(try auto-fix)${NC}"
-    echo -e "  3. ${YELLOW}./maintain.sh clean${NC}    ${GRAY}(clean everything)${NC}"
-    echo -e "  4. ${YELLOW}./maintain.sh init${NC}     ${GRAY}(reinstall)${NC}"
+    echo -e "  1. ${YELLOW}./maintain.sh doctor${NC}   ${GRAY}# Run diagnostics${NC}"
+    echo -e "  2. ${YELLOW}./maintain.sh logs${NC}     ${GRAY}# Check logs${NC}"
+    echo -e "  3. ${YELLOW}./maintain.sh fix${NC}      ${GRAY}# Try auto-fix${NC}"
+    echo -e "  4. ${YELLOW}./maintain.sh clean${NC}    ${GRAY}# Clean everything${NC}"
+    echo -e "  5. ${YELLOW}./maintain.sh init${NC}     ${GRAY}# Reinstall${NC}"
     echo ""
     
     echo -e "${MAGENTA}━━━ LOGGING ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
@@ -1222,7 +1323,8 @@ cmd_help() {
     echo -e "List all logs:   ${YELLOW}./maintain.sh logs list${NC}"
     echo ""
     
-    echo -e "${GRAY}Version 3.1 | With detailed logging | Built with ❤️  for WealthLog${NC}"
+    echo -e "${GRAY}Version 4.0 | With Mobile Support & Config Management${NC}"
+    echo -e "${GRAY}Built with ❤️  for WealthLog${NC}"
 }
 
 # ================================================================================
@@ -1242,6 +1344,12 @@ case "$1" in
     start) cmd_start "$2" ;;
     test) cmd_test ;;
     
+    # Configuration
+    config) cmd_config "$2" ;;
+    
+    # Mobile
+    mobile) cmd_mobile "$2" "$3" ;;
+    
     # Deployment
     deploy:check|deploy-check|precheck|pre-deploy) cmd_deploy_check ;;
     deploy:status|deploy-status|prod-status) cmd_deploy_status ;;
@@ -1254,12 +1362,14 @@ case "$1" in
     # Database
     db:setup|db-setup) cmd_db setup ;;
     db:migrate|db-migrate|migrate) cmd_db migrate "$2" ;;
+    db:studio|db-studio|studio) cmd_db studio ;;
     db:reset|db-reset) cmd_db reset ;;
     
     # Maintenance
     fix|quickfix|quick-fix) cmd_fix ;;
     clean) cmd_clean ;;
     status) cmd_status ;;
+    doctor) cmd_doctor ;;
     
     # Logs
     logs) cmd_logs "$2" ;;
