@@ -67,52 +67,42 @@ init_all_dependencies() {
     
     local errors=0
     
-    # Install root dependencies
+    # Install root dependencies first (includes turbo)
     if [ -f "$PROJECT_ROOT/wealthlogs-code/package.json" ]; then
+        cd "$PROJECT_ROOT/wealthlogs-code"
         if ! check_dependencies_installed "$PROJECT_ROOT/wealthlogs-code"; then
-            install_dependencies "$PROJECT_ROOT/wealthlogs-code" "Root" || errors=$((errors + 1))
+            print_status "Installing root dependencies (this includes all workspace packages)..."
+            if npm install >> "$LOG_FILE" 2>&1; then
+                print_success "Root dependencies installed"
+            else
+                print_error "Root dependencies installation failed"
+                errors=$((errors + 1))
+            fi
         else
             print_success "Root dependencies already installed"
+            # Even if installed, run npm install to ensure all workspaces are linked
+            print_status "Ensuring all workspace packages are linked..."
+            npm install >> "$LOG_FILE" 2>&1
         fi
     fi
     
-    # Install backend dependencies
-    if [ -d "$BACKEND_DIR" ]; then
-        if ! check_dependencies_installed "$BACKEND_DIR"; then
-            install_dependencies "$BACKEND_DIR" "Backend" || errors=$((errors + 1))
-        else
-            print_success "Backend dependencies already installed"
+    # Install common package dependencies if needed
+    if [ -d "$PROJECT_ROOT/wealthlogs-code/packages/common" ]; then
+        if [ ! -d "$PROJECT_ROOT/wealthlogs-code/packages/common/node_modules" ]; then
+            cd "$PROJECT_ROOT/wealthlogs-code/packages/common"
+            print_status "Setting up common package..."
+            npm install >> "$LOG_FILE" 2>&1
+            print_success "Common package ready"
         fi
     fi
     
-    # Install frontend dependencies
-    if [ -d "$FRONTEND_DIR" ]; then
-        if ! check_dependencies_installed "$FRONTEND_DIR"; then
-            install_dependencies "$FRONTEND_DIR" "Frontend" || errors=$((errors + 1))
-        else
-            print_success "Frontend dependencies already installed"
-        fi
-        # Ensure TypeScript is installed
-        ensure_typescript "$FRONTEND_DIR"
-    fi
-    
-    # Install shared dependencies
+    # Build shared package if needed
     if [ -d "$SHARED_DIR" ]; then
-        if ! check_dependencies_installed "$SHARED_DIR"; then
-            install_dependencies "$SHARED_DIR" "Shared" || errors=$((errors + 1))
-        else
-            print_success "Shared dependencies already installed"
-        fi
-        # Ensure TypeScript is installed
-        ensure_typescript "$SHARED_DIR"
-    fi
-    
-    # Install mobile dependencies if exists
-    if [ -d "$MOBILE_DIR" ]; then
-        if ! check_dependencies_installed "$MOBILE_DIR"; then
-            install_dependencies "$MOBILE_DIR" "Mobile" || errors=$((errors + 1))
-        else
-            print_success "Mobile dependencies already installed"
+        cd "$SHARED_DIR"
+        if [ -f "package.json" ]; then
+            print_status "Building shared package..."
+            npm run build >> "$LOG_FILE" 2>&1 || true
+            print_success "Shared package built"
         fi
     fi
     

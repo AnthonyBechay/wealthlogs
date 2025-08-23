@@ -1,0 +1,258 @@
+{
+  "app": {
+    "title": "WealthLog",
+    "description": "Votre Solution de Gestion de Patrimoine Personnel",
+    "loading": "Chargement...",
+    "error": "Une erreur s'est produite",
+    "retry": "Réessayer",
+    "back": "Retour",
+    "continue": "Continuer",
+    "cancel": "Annuler",
+    "save": "Enregistrer",
+    "delete": "Supprimer",
+    "edit": "Modifier",
+    "view": "Voir",
+    "add": "Ajouter",
+    "search": "Rechercher",
+    "filter": "Filtrer",
+    "export": "Exporter",
+    "import": "Importer",
+    "settings": "Paramètres",
+    "logout": "Déconnexion",
+    "login": "Connexion",
+    "register": "S'inscrire",
+    "welcome": "Bienvenue",
+    "dashboard": "Tableau de bord",
+    "profile": "Profil"
+  },
+  "navigation": {
+    "home": "Accueil",
+    "dashboard": "Tableau de bord",
+    "accounts": "Comptes",
+    "transactions": "Transactions",
+    "portfolio": "Portefeuille",
+    "reports": "Rapports",
+    "settings": "Paramètres",
+    "help": "Aide",
+    "about": "À propos"
+  },
+  "auth": {
+    "login": {
+      "title": "Se connecter",
+      "subtitle": "Bienvenue sur WealthLog",
+      "email": "Adresse e-mail",
+      "password": "Mot de passe",
+      "rememberMe": "Se souvenir de moi",
+      "forgotPassword": "Mot de passe oublié?",
+      "submit": "Se connecter",
+      "noAccount": "Pas de compte?",
+      "signUp": "S'inscrire",
+      "or": "ou",
+      "continueWith": "Continuer avec",
+      "error": {
+        "invalidCredentials": "Email ou mot de passe invalide",
+        "accountLocked": "Le compte est verrouillé",
+        "networkError": "Erreur réseau, veuillez réessayer"
+      }
+    },
+    "register": {
+      "title": "Créer un compte",
+      "subtitle": "Commencez à gérer votre patrimoine aujourd'hui",
+      "firstName": "Prénom",
+      "lastName": "Nom",
+      "email": "Adresse e-mail",
+      "password": "Mot de passe",
+      "confirmPassword": "Confirmer le mot de passe",
+      "terms": "J'accepte les conditions générales",
+      "submit": "Créer un compte",
+      "haveAccount": "Vous avez déjà un compte?",
+      "signIn": "Se connecter",
+      "error": {
+        "emailExists": "L'email existe déjà",
+        "passwordMismatch": "Les mots de passe ne correspondent pas",
+        "weakPassword": "Le mot de passe est trop faible",
+        "termsRequired": "Vous devez accepter les conditions"
+      }
+    },
+    "logout": {
+      "title": "Déconnexion",
+      "message": "Êtes-vous sûr de vouloir vous déconnecter?",
+      "confirm": "Se déconnecter",
+      "cancel": "Annuler"
+    }
+  },
+  "dashboard": {
+    "title": "Tableau de bord",
+    "welcome": "Bon retour, {{name}}!",
+    "overview": "Aperçu",
+    "netWorth": "Valeur nette",
+    "totalAssets": "Actifs totaux",
+    "totalLiabilities": "Passifs totaux",
+    "monthlyIncome": "Revenu mensuel",
+    "monthlyExpenses": "Dépenses mensuelles",
+    "recentTransactions": "Transactions récentes",
+    "quickActions": "Actions rapides",
+    "addTransaction": "Ajouter une transaction",
+    "addAccount": "Ajouter un compte",
+    "viewReports": "Voir les rapports",
+    "noData": "Aucune donnée disponible"
+  },
+  "accounts": {
+    "title": "Comptes",
+    "addAccount": "Ajouter un compte",
+    "editAccount": "Modifier le compte",
+    "deleteAccount": "Supprimer le compte",
+    "accountName": "Nom du compte",
+    "accountType": "Type de compte",
+    "balance": "Solde",
+    "currency": "Devise",
+    "institution": "Institution",
+    "accountNumber": "Numéro de compte",
+    "types": {
+      "checking": "Compte courant",
+      "savings": "Compte épargne",
+      "credit": "Carte de crédit",
+      "investment": "Investissement",
+      "loan": "Prêt",
+      "mortgage": "Hypothèque",
+      "other": "Autre"
+    },
+    "noAccounts": "Aucun compte trouvé",
+    "addFirstAccount": "Ajoutez votre premier compte pour commencer"
+  },
+  "transactions": {
+    "title": "Transactions",
+    "addTransaction": "Ajouter une transaction",
+    "editTransaction": "Modifier la transaction",
+    "deleteTransaction": "Supprimer la transaction",
+    "date": "Date",
+    "description": "Description",
+    "category": "Catégorie",
+    "amount": "Montant",
+    "account": "Compte",
+    "type": "Type",
+    "types": {
+      "income": "Revenu",
+      "expense": "Dépense",
+      "transfer": "Transfert"
+    },
+    "categories": {
+      "food": "Alimentation",
+      "transport": "Transport",
+      "shopping": "Shopping",
+      "entertainment": "Divertissement",
+      "bills": "Factures",
+      "healthcare": "Santé",
+      "education": "Éducation",
+      "salary": "Salaire",
+      "investment": "Investissement",
+      "other": "Autre"
+    },
+    "noTransactions": "Aucune transaction trouvée",
+    "filters": {
+      "all": "Tout",
+      "income": "Revenus",
+      "expense": "Dépenses",
+      "dateRange": "Plage de dates",
+      "category": "Catégorie",
+      "account": "Compte"
+    }
+  },
+  "portfolio": {
+    "title": "Portefeuille",
+    "totalValue": "Valeur totale",
+    "todayChange": "Changement aujourd'hui",
+    "allocation": "Allocation",
+    "performance": "Performance",
+    "holdings": "Avoirs",
+    "addHolding": "Ajouter un avoir",
+    "symbol": "Symbole",
+    "name": "Nom",
+    "quantity": "Quantité",
+    "price": "Prix",
+    "value": "Valeur",
+    "change": "Changement",
+    "changePercent": "Changement %",
+    "noHoldings": "Aucun avoir trouvé"
+  },
+  "reports": {
+    "title": "Rapports",
+    "monthlyReport": "Rapport mensuel",
+    "yearlyReport": "Rapport annuel",
+    "customReport": "Rapport personnalisé",
+    "incomeExpense": "Revenus vs Dépenses",
+    "cashFlow": "Flux de trésorerie",
+    "netWorthTrend": "Tendance de la valeur nette",
+    "categoryBreakdown": "Répartition par catégorie",
+    "generateReport": "Générer un rapport",
+    "exportPDF": "Exporter en PDF",
+    "exportExcel": "Exporter en Excel",
+    "period": "Période",
+    "from": "De",
+    "to": "À"
+  },
+  "settings": {
+    "title": "Paramètres",
+    "profile": "Profil",
+    "security": "Sécurité",
+    "preferences": "Préférences",
+    "notifications": "Notifications",
+    "language": "Langue",
+    "currency": "Devise",
+    "theme": "Thème",
+    "themes": {
+      "light": "Clair",
+      "dark": "Sombre",
+      "system": "Système"
+    },
+    "changePassword": "Changer le mot de passe",
+    "twoFactor": "Authentification à deux facteurs",
+    "privacy": "Confidentialité",
+    "dataExport": "Exporter les données",
+    "deleteAccount": "Supprimer le compte",
+    "saved": "Paramètres enregistrés avec succès"
+  },
+  "validation": {
+    "required": "Ce champ est requis",
+    "email": "Veuillez entrer un email valide",
+    "minLength": "Doit contenir au moins {{min}} caractères",
+    "maxLength": "Doit contenir au maximum {{max}} caractères",
+    "number": "Doit être un nombre",
+    "positive": "Doit être un nombre positif",
+    "date": "Veuillez entrer une date valide",
+    "futureDate": "La date ne peut pas être dans le futur",
+    "pastDate": "La date ne peut pas être dans le passé"
+  },
+  "errors": {
+    "generic": "Une erreur s'est produite",
+    "network": "Erreur réseau, veuillez vérifier votre connexion",
+    "unauthorized": "Vous n'êtes pas autorisé à effectuer cette action",
+    "notFound": "La ressource demandée n'a pas été trouvée",
+    "serverError": "Erreur serveur, veuillez réessayer plus tard",
+    "validationError": "Veuillez vérifier vos entrées et réessayer"
+  },
+  "success": {
+    "saved": "Enregistré avec succès",
+    "deleted": "Supprimé avec succès",
+    "updated": "Mis à jour avec succès",
+    "created": "Créé avec succès",
+    "copied": "Copié dans le presse-papiers"
+  },
+  "confirm": {
+    "delete": "Êtes-vous sûr de vouloir supprimer ceci?",
+    "unsavedChanges": "Vous avez des modifications non enregistrées. Êtes-vous sûr de vouloir partir?",
+    "logout": "Êtes-vous sûr de vouloir vous déconnecter?"
+  },
+  "empty": {
+    "noData": "Aucune donnée disponible",
+    "noResults": "Aucun résultat trouvé",
+    "tryAgain": "Essayez d'ajuster vos filtres ou termes de recherche"
+  },
+  "loading": {
+    "pleaseWait": "Veuillez patienter...",
+    "loading": "Chargement...",
+    "saving": "Enregistrement...",
+    "deleting": "Suppression...",
+    "processing": "Traitement..."
+  }
+}

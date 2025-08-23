@@ -201,28 +201,33 @@ GRANT ALL PRIVILEGES ON DATABASE wealthlog TO abechay;
 \q
 ```
 
-> **Note:** Replace `abechay` and `12345678` with your preferred username and password. Update these in the configuration file later.
+> **Note:** Replace `abechay` and `12345678` with your preferred username and password. You'll update these in the configuration file in the next steps.
 
-### 3. Initialize the Project
+### 3. Configure Database Settings
 
 ```bash
-# Make the maintenance script executable
-chmod +x scripts/maintain.sh
+# Copy the example configuration
+cp scripts/config.env.example scripts/config.env
 
-# Initialize the project (installs dependencies and creates config)
-./scripts/maintain.sh init
+# Edit the configuration file with your database credentials
+# Update DB_USERNAME and DB_PASSWORD to match what you created above
+nano scripts/config.env  # or use your preferred editor
 ```
 
-### 4. Configure Your Environment
+### 4. Initialize the Project
 
 ```bash
-# Edit the configuration file
-./scripts/maintain.sh config edit
+# Make the maintenance script executable (Unix/Mac/Linux)
+chmod +x scripts/maintain.sh
 
-# Update these values:
-# - DB_USERNAME and DB_PASSWORD (if different from above)
-# - GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET (for OAuth)
-# - Any other settings specific to your environment
+# On Windows, use Git Bash or WSL to run:
+./scripts/maintain.sh init
+
+# This will:
+# - Install all dependencies (root, backend, frontend, shared)
+# - Create environment files from config
+# - Build shared packages
+# - Generate Prisma client
 ```
 
 ### 5. Setup Database Schema

@@ -1,0 +1,258 @@
+{
+  "app": {
+    "title": "WealthLog",
+    "description": "Your Personal Wealth Management Solution",
+    "loading": "Loading...",
+    "error": "An error occurred",
+    "retry": "Retry",
+    "back": "Back",
+    "continue": "Continue",
+    "cancel": "Cancel",
+    "save": "Save",
+    "delete": "Delete",
+    "edit": "Edit",
+    "view": "View",
+    "add": "Add",
+    "search": "Search",
+    "filter": "Filter",
+    "export": "Export",
+    "import": "Import",
+    "settings": "Settings",
+    "logout": "Logout",
+    "login": "Login",
+    "register": "Register",
+    "welcome": "Welcome",
+    "dashboard": "Dashboard",
+    "profile": "Profile"
+  },
+  "navigation": {
+    "home": "Home",
+    "dashboard": "Dashboard",
+    "accounts": "Accounts",
+    "transactions": "Transactions",
+    "portfolio": "Portfolio",
+    "reports": "Reports",
+    "settings": "Settings",
+    "help": "Help",
+    "about": "About"
+  },
+  "auth": {
+    "login": {
+      "title": "Sign In",
+      "subtitle": "Welcome back to WealthLog",
+      "email": "Email Address",
+      "password": "Password",
+      "rememberMe": "Remember me",
+      "forgotPassword": "Forgot password?",
+      "submit": "Sign In",
+      "noAccount": "Don't have an account?",
+      "signUp": "Sign up",
+      "or": "or",
+      "continueWith": "Continue with",
+      "error": {
+        "invalidCredentials": "Invalid email or password",
+        "accountLocked": "Account is locked",
+        "networkError": "Network error, please try again"
+      }
+    },
+    "register": {
+      "title": "Create Account",
+      "subtitle": "Start managing your wealth today",
+      "firstName": "First Name",
+      "lastName": "Last Name",
+      "email": "Email Address",
+      "password": "Password",
+      "confirmPassword": "Confirm Password",
+      "terms": "I agree to the Terms and Conditions",
+      "submit": "Create Account",
+      "haveAccount": "Already have an account?",
+      "signIn": "Sign in",
+      "error": {
+        "emailExists": "Email already exists",
+        "passwordMismatch": "Passwords do not match",
+        "weakPassword": "Password is too weak",
+        "termsRequired": "You must accept the terms"
+      }
+    },
+    "logout": {
+      "title": "Sign Out",
+      "message": "Are you sure you want to sign out?",
+      "confirm": "Sign Out",
+      "cancel": "Cancel"
+    }
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "welcome": "Welcome back, {{name}}!",
+    "overview": "Overview",
+    "netWorth": "Net Worth",
+    "totalAssets": "Total Assets",
+    "totalLiabilities": "Total Liabilities",
+    "monthlyIncome": "Monthly Income",
+    "monthlyExpenses": "Monthly Expenses",
+    "recentTransactions": "Recent Transactions",
+    "quickActions": "Quick Actions",
+    "addTransaction": "Add Transaction",
+    "addAccount": "Add Account",
+    "viewReports": "View Reports",
+    "noData": "No data available"
+  },
+  "accounts": {
+    "title": "Accounts",
+    "addAccount": "Add Account",
+    "editAccount": "Edit Account",
+    "deleteAccount": "Delete Account",
+    "accountName": "Account Name",
+    "accountType": "Account Type",
+    "balance": "Balance",
+    "currency": "Currency",
+    "institution": "Institution",
+    "accountNumber": "Account Number",
+    "types": {
+      "checking": "Checking",
+      "savings": "Savings",
+      "credit": "Credit Card",
+      "investment": "Investment",
+      "loan": "Loan",
+      "mortgage": "Mortgage",
+      "other": "Other"
+    },
+    "noAccounts": "No accounts found",
+    "addFirstAccount": "Add your first account to get started"
+  },
+  "transactions": {
+    "title": "Transactions",
+    "addTransaction": "Add Transaction",
+    "editTransaction": "Edit Transaction",
+    "deleteTransaction": "Delete Transaction",
+    "date": "Date",
+    "description": "Description",
+    "category": "Category",
+    "amount": "Amount",
+    "account": "Account",
+    "type": "Type",
+    "types": {
+      "income": "Income",
+      "expense": "Expense",
+      "transfer": "Transfer"
+    },
+    "categories": {
+      "food": "Food & Dining",
+      "transport": "Transportation",
+      "shopping": "Shopping",
+      "entertainment": "Entertainment",
+      "bills": "Bills & Utilities",
+      "healthcare": "Healthcare",
+      "education": "Education",
+      "salary": "Salary",
+      "investment": "Investment",
+      "other": "Other"
+    },
+    "noTransactions": "No transactions found",
+    "filters": {
+      "all": "All",
+      "income": "Income",
+      "expense": "Expense",
+      "dateRange": "Date Range",
+      "category": "Category",
+      "account": "Account"
+    }
+  },
+  "portfolio": {
+    "title": "Portfolio",
+    "totalValue": "Total Value",
+    "todayChange": "Today's Change",
+    "allocation": "Allocation",
+    "performance": "Performance",
+    "holdings": "Holdings",
+    "addHolding": "Add Holding",
+    "symbol": "Symbol",
+    "name": "Name",
+    "quantity": "Quantity",
+    "price": "Price",
+    "value": "Value",
+    "change": "Change",
+    "changePercent": "Change %",
+    "noHoldings": "No holdings found"
+  },
+  "reports": {
+    "title": "Reports",
+    "monthlyReport": "Monthly Report",
+    "yearlyReport": "Yearly Report",
+    "customReport": "Custom Report",
+    "incomeExpense": "Income vs Expense",
+    "cashFlow": "Cash Flow",
+    "netWorthTrend": "Net Worth Trend",
+    "categoryBreakdown": "Category Breakdown",
+    "generateReport": "Generate Report",
+    "exportPDF": "Export as PDF",
+    "exportExcel": "Export as Excel",
+    "period": "Period",
+    "from": "From",
+    "to": "To"
+  },
+  "settings": {
+    "title": "Settings",
+    "profile": "Profile",
+    "security": "Security",
+    "preferences": "Preferences",
+    "notifications": "Notifications",
+    "language": "Language",
+    "currency": "Currency",
+    "theme": "Theme",
+    "themes": {
+      "light": "Light",
+      "dark": "Dark",
+      "system": "System"
+    },
+    "changePassword": "Change Password",
+    "twoFactor": "Two-Factor Authentication",
+    "privacy": "Privacy",
+    "dataExport": "Export Data",
+    "deleteAccount": "Delete Account",
+    "saved": "Settings saved successfully"
+  },
+  "validation": {
+    "required": "This field is required",
+    "email": "Please enter a valid email",
+    "minLength": "Must be at least {{min}} characters",
+    "maxLength": "Must be no more than {{max}} characters",
+    "number": "Must be a number",
+    "positive": "Must be a positive number",
+    "date": "Please enter a valid date",
+    "futureDate": "Date cannot be in the future",
+    "pastDate": "Date cannot be in the past"
+  },
+  "errors": {
+    "generic": "Something went wrong",
+    "network": "Network error, please check your connection",
+    "unauthorized": "You are not authorized to perform this action",
+    "notFound": "The requested resource was not found",
+    "serverError": "Server error, please try again later",
+    "validationError": "Please check your input and try again"
+  },
+  "success": {
+    "saved": "Saved successfully",
+    "deleted": "Deleted successfully",
+    "updated": "Updated successfully",
+    "created": "Created successfully",
+    "copied": "Copied to clipboard"
+  },
+  "confirm": {
+    "delete": "Are you sure you want to delete this?",
+    "unsavedChanges": "You have unsaved changes. Are you sure you want to leave?",
+    "logout": "Are you sure you want to logout?"
+  },
+  "empty": {
+    "noData": "No data available",
+    "noResults": "No results found",
+    "tryAgain": "Try adjusting your filters or search terms"
+  },
+  "loading": {
+    "pleaseWait": "Please wait...",
+    "loading": "Loading...",
+    "saving": "Saving...",
+    "deleting": "Deleting...",
+    "processing": "Processing..."
+  }
+}

@@ -1,0 +1,69 @@
+=========================================
+WealthLog Maintenance Log
+Date: Sat, Aug 23, 2025  5:40:50 PM
+Command: init
+=========================================
+
+[2025-08-23 17:40:50] ===          INITIALIZING WEALTHLOG PROJECT          ===
+[2025-08-23 17:40:52] INFO: System: windows | Node: v22.14.0 | npm: 11.1.0 | Git: 2.48.1.windows.1
+[2025-08-23 17:40:53] --- Creating Environment Files ---
+[2025-08-23 17:40:53] ===     EXPORTING CONFIGURATION     ===
+[2025-08-23 17:40:53] --- Creating Backend .env ---
+[2025-08-23 17:40:53] SUCCESS: Backend .env created
+[2025-08-23 17:40:53] --- Creating Frontend .env.local ---
+[2025-08-23 17:40:53] SUCCESS: Frontend .env.local created
+[2025-08-23 17:40:53] --- Creating Mobile .env ---
+[2025-08-23 17:40:53] SUCCESS: Mobile .env created
+[2025-08-23 17:40:53] SUCCESS: Configuration exported to all apps!
+[2025-08-23 17:40:53] ===     INSTALLING ALL DEPENDENCIES     ===
+[2025-08-23 17:40:53] INFO: Installing root dependencies (this includes all workspace packages)...
+npm warn deprecated inflight@1.0.6: This module is not supported, and leaks memory. Do not use it. Check out lru-cache if you want a good and tested way to coalesce async requests by a key value, which is much more comprehensive and powerful.
+npm warn deprecated npmlog@5.0.1: This package is no longer supported.
+npm warn deprecated rimraf@3.0.2: Rimraf versions prior to v4 are no longer supported
+npm warn deprecated glob@7.2.3: Glob versions prior to v9 are no longer supported
+npm warn deprecated are-we-there-yet@2.0.0: This package is no longer supported.
+npm warn deprecated multer@1.4.5-lts.2: Multer 1.x is impacted by a number of vulnerabilities, which have been patched in 2.x. You should upgrade to the latest 2.x version.
+npm warn deprecated gauge@3.0.2: This package is no longer supported.
+
+added 834 packages, and audited 841 packages in 5m
+
+197 packages are looking for funding
+  run `npm fund` for details
+
+3 vulnerabilities (2 moderate, 1 critical)
+
+To address all issues (including breaking changes), run:
+  npm audit fix --force
+
+Run `npm audit` for details.
+[2025-08-23 17:45:38] SUCCESS: Root dependencies installed
+[2025-08-23 17:45:38] INFO: Setting up common package...
+
+up to date, audited 841 packages in 6s
+
+197 packages are looking for funding
+  run `npm fund` for details
+
+found 0 vulnerabilities
+[2025-08-23 17:45:45] SUCCESS: Common package ready
+[2025-08-23 17:45:45] INFO: Building shared package...
+
+> @wealthlog/shared@0.0.1 build
+> tsc
+
+[2025-08-23 17:45:50] SUCCESS: Shared package built
+[2025-08-23 17:45:50] --- Building Shared Package ---
+[2025-08-23 17:45:50] WARNING: TypeScript not found - skipping build
+[2025-08-23 17:45:50] --- Setting Up Database Client ---
+[2025-08-23 17:45:50] INFO: Generating Prisma client...
+Environment variables loaded from .env
+Prisma schema loaded from prisma\schema.prisma
+
+✔ Generated Prisma Client (v6.14.0) to .\..\..\node_modules\@prisma\client in 638ms
+
+Start by importing your Prisma Client (See: https://pris.ly/d/importing-client)
+
+Tip: Interested in query caching in just a few lines of code? Try Accelerate today! https://pris.ly/tip-3-accelerate
+
+[2025-08-23 17:46:04] SUCCESS: Prisma client generated
+[2025-08-23 17:46:04] ===           INITIALIZATION COMPLETE!           ===

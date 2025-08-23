@@ -152,8 +152,8 @@ cmd_doctor() {
             fi
         done
     else
-        print_error "Backend .env: Not found"
-        errors=$((errors + 1))
+        print_warning "Backend .env: Not found (run './maintain.sh init' to create)"
+        warnings=$((warnings + 1))
     fi
     
     # Check frontend .env.local

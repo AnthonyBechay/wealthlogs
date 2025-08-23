@@ -1,0 +1,21 @@
+{
+  "name": "@wealthlog/common",
+  "version": "1.0.0",
+  "description": "Common resources for WealthLog application",
+  "main": "index.js",
+  "private": true,
+  "scripts": {
+    "build": "echo 'No build required for common package'"
+  },
+  "files": [
+    "locales/**/*"
+  ],
+  "keywords": [
+    "wealthlog",
+    "common",
+    "locales",
+    "i18n"
+  ],
+  "author": "WealthLog Team",
+  "license": "MIT"
+}

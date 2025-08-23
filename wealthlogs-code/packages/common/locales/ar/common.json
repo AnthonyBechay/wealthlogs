@@ -1,0 +1,258 @@
+{
+  "app": {
+    "title": "WealthLog",
+    "description": "حل إدارة الثروة الشخصية الخاص بك",
+    "loading": "جاري التحميل...",
+    "error": "حدث خطأ",
+    "retry": "إعادة المحاولة",
+    "back": "رجوع",
+    "continue": "متابعة",
+    "cancel": "إلغاء",
+    "save": "حفظ",
+    "delete": "حذف",
+    "edit": "تعديل",
+    "view": "عرض",
+    "add": "إضافة",
+    "search": "بحث",
+    "filter": "تصفية",
+    "export": "تصدير",
+    "import": "استيراد",
+    "settings": "الإعدادات",
+    "logout": "تسجيل الخروج",
+    "login": "تسجيل الدخول",
+    "register": "التسجيل",
+    "welcome": "مرحباً",
+    "dashboard": "لوحة التحكم",
+    "profile": "الملف الشخصي"
+  },
+  "navigation": {
+    "home": "الرئيسية",
+    "dashboard": "لوحة التحكم",
+    "accounts": "الحسابات",
+    "transactions": "المعاملات",
+    "portfolio": "المحفظة",
+    "reports": "التقارير",
+    "settings": "الإعدادات",
+    "help": "المساعدة",
+    "about": "حول"
+  },
+  "auth": {
+    "login": {
+      "title": "تسجيل الدخول",
+      "subtitle": "مرحباً بك في WealthLog",
+      "email": "البريد الإلكتروني",
+      "password": "كلمة المرور",
+      "rememberMe": "تذكرني",
+      "forgotPassword": "نسيت كلمة المرور؟",
+      "submit": "تسجيل الدخول",
+      "noAccount": "ليس لديك حساب؟",
+      "signUp": "إنشاء حساب",
+      "or": "أو",
+      "continueWith": "المتابعة مع",
+      "error": {
+        "invalidCredentials": "البريد الإلكتروني أو كلمة المرور غير صحيحة",
+        "accountLocked": "الحساب مقفل",
+        "networkError": "خطأ في الشبكة، يرجى المحاولة مرة أخرى"
+      }
+    },
+    "register": {
+      "title": "إنشاء حساب",
+      "subtitle": "ابدأ بإدارة ثروتك اليوم",
+      "firstName": "الاسم الأول",
+      "lastName": "اسم العائلة",
+      "email": "البريد الإلكتروني",
+      "password": "كلمة المرور",
+      "confirmPassword": "تأكيد كلمة المرور",
+      "terms": "أوافق على الشروط والأحكام",
+      "submit": "إنشاء حساب",
+      "haveAccount": "لديك حساب بالفعل؟",
+      "signIn": "تسجيل الدخول",
+      "error": {
+        "emailExists": "البريد الإلكتروني موجود بالفعل",
+        "passwordMismatch": "كلمات المرور غير متطابقة",
+        "weakPassword": "كلمة المرور ضعيفة جداً",
+        "termsRequired": "يجب الموافقة على الشروط"
+      }
+    },
+    "logout": {
+      "title": "تسجيل الخروج",
+      "message": "هل أنت متأكد من تسجيل الخروج؟",
+      "confirm": "تسجيل الخروج",
+      "cancel": "إلغاء"
+    }
+  },
+  "dashboard": {
+    "title": "لوحة التحكم",
+    "welcome": "مرحباً بعودتك، {{name}}!",
+    "overview": "نظرة عامة",
+    "netWorth": "صافي الثروة",
+    "totalAssets": "إجمالي الأصول",
+    "totalLiabilities": "إجمالي الالتزامات",
+    "monthlyIncome": "الدخل الشهري",
+    "monthlyExpenses": "المصروفات الشهرية",
+    "recentTransactions": "المعاملات الأخيرة",
+    "quickActions": "إجراءات سريعة",
+    "addTransaction": "إضافة معاملة",
+    "addAccount": "إضافة حساب",
+    "viewReports": "عرض التقارير",
+    "noData": "لا توجد بيانات متاحة"
+  },
+  "accounts": {
+    "title": "الحسابات",
+    "addAccount": "إضافة حساب",
+    "editAccount": "تعديل الحساب",
+    "deleteAccount": "حذف الحساب",
+    "accountName": "اسم الحساب",
+    "accountType": "نوع الحساب",
+    "balance": "الرصيد",
+    "currency": "العملة",
+    "institution": "المؤسسة",
+    "accountNumber": "رقم الحساب",
+    "types": {
+      "checking": "جاري",
+      "savings": "توفير",
+      "credit": "بطاقة ائتمان",
+      "investment": "استثمار",
+      "loan": "قرض",
+      "mortgage": "رهن عقاري",
+      "other": "أخرى"
+    },
+    "noAccounts": "لم يتم العثور على حسابات",
+    "addFirstAccount": "أضف حسابك الأول للبدء"
+  },
+  "transactions": {
+    "title": "المعاملات",
+    "addTransaction": "إضافة معاملة",
+    "editTransaction": "تعديل المعاملة",
+    "deleteTransaction": "حذف المعاملة",
+    "date": "التاريخ",
+    "description": "الوصف",
+    "category": "الفئة",
+    "amount": "المبلغ",
+    "account": "الحساب",
+    "type": "النوع",
+    "types": {
+      "income": "دخل",
+      "expense": "مصروف",
+      "transfer": "تحويل"
+    },
+    "categories": {
+      "food": "الطعام والمطاعم",
+      "transport": "المواصلات",
+      "shopping": "التسوق",
+      "entertainment": "الترفيه",
+      "bills": "الفواتير والمرافق",
+      "healthcare": "الرعاية الصحية",
+      "education": "التعليم",
+      "salary": "الراتب",
+      "investment": "الاستثمار",
+      "other": "أخرى"
+    },
+    "noTransactions": "لم يتم العثور على معاملات",
+    "filters": {
+      "all": "الكل",
+      "income": "الدخل",
+      "expense": "المصروفات",
+      "dateRange": "نطاق التاريخ",
+      "category": "الفئة",
+      "account": "الحساب"
+    }
+  },
+  "portfolio": {
+    "title": "المحفظة",
+    "totalValue": "القيمة الإجمالية",
+    "todayChange": "التغيير اليوم",
+    "allocation": "التوزيع",
+    "performance": "الأداء",
+    "holdings": "الممتلكات",
+    "addHolding": "إضافة ممتلكات",
+    "symbol": "الرمز",
+    "name": "الاسم",
+    "quantity": "الكمية",
+    "price": "السعر",
+    "value": "القيمة",
+    "change": "التغيير",
+    "changePercent": "نسبة التغيير",
+    "noHoldings": "لم يتم العثور على ممتلكات"
+  },
+  "reports": {
+    "title": "التقارير",
+    "monthlyReport": "التقرير الشهري",
+    "yearlyReport": "التقرير السنوي",
+    "customReport": "تقرير مخصص",
+    "incomeExpense": "الدخل مقابل المصروفات",
+    "cashFlow": "التدفق النقدي",
+    "netWorthTrend": "اتجاه صافي الثروة",
+    "categoryBreakdown": "تفصيل الفئات",
+    "generateReport": "إنشاء تقرير",
+    "exportPDF": "تصدير كـ PDF",
+    "exportExcel": "تصدير كـ Excel",
+    "period": "الفترة",
+    "from": "من",
+    "to": "إلى"
+  },
+  "settings": {
+    "title": "الإعدادات",
+    "profile": "الملف الشخصي",
+    "security": "الأمان",
+    "preferences": "التفضيلات",
+    "notifications": "الإشعارات",
+    "language": "اللغة",
+    "currency": "العملة",
+    "theme": "المظهر",
+    "themes": {
+      "light": "فاتح",
+      "dark": "داكن",
+      "system": "النظام"
+    },
+    "changePassword": "تغيير كلمة المرور",
+    "twoFactor": "المصادقة الثنائية",
+    "privacy": "الخصوصية",
+    "dataExport": "تصدير البيانات",
+    "deleteAccount": "حذف الحساب",
+    "saved": "تم حفظ الإعدادات بنجاح"
+  },
+  "validation": {
+    "required": "هذا الحقل مطلوب",
+    "email": "يرجى إدخال بريد إلكتروني صالح",
+    "minLength": "يجب أن يكون على الأقل {{min}} حرف",
+    "maxLength": "يجب ألا يزيد عن {{max}} حرف",
+    "number": "يجب أن يكون رقم",
+    "positive": "يجب أن يكون رقم موجب",
+    "date": "يرجى إدخال تاريخ صالح",
+    "futureDate": "لا يمكن أن يكون التاريخ في المستقبل",
+    "pastDate": "لا يمكن أن يكون التاريخ في الماضي"
+  },
+  "errors": {
+    "generic": "حدث خطأ ما",
+    "network": "خطأ في الشبكة، يرجى التحقق من اتصالك",
+    "unauthorized": "غير مصرح لك بتنفيذ هذا الإجراء",
+    "notFound": "لم يتم العثور على المورد المطلوب",
+    "serverError": "خطأ في الخادم، يرجى المحاولة لاحقاً",
+    "validationError": "يرجى التحقق من إدخالك والمحاولة مرة أخرى"
+  },
+  "success": {
+    "saved": "تم الحفظ بنجاح",
+    "deleted": "تم الحذف بنجاح",
+    "updated": "تم التحديث بنجاح",
+    "created": "تم الإنشاء بنجاح",
+    "copied": "تم النسخ إلى الحافظة"
+  },
+  "confirm": {
+    "delete": "هل أنت متأكد من حذف هذا؟",
+    "unsavedChanges": "لديك تغييرات غير محفوظة. هل أنت متأكد من المغادرة؟",
+    "logout": "هل أنت متأكد من تسجيل الخروج؟"
+  },
+  "empty": {
+    "noData": "لا توجد بيانات متاحة",
+    "noResults": "لم يتم العثور على نتائج",
+    "tryAgain": "حاول تعديل الفلاتر أو مصطلحات البحث"
+  },
+  "loading": {
+    "pleaseWait": "يرجى الانتظار...",
+    "loading": "جاري التحميل...",
+    "saving": "جاري الحفظ...",
+    "deleting": "جاري الحذف...",
+    "processing": "جاري المعالجة..."
+  }
+}
