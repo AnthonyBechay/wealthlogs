@@ -261,7 +261,7 @@ Use these test credentials:
 We use a Git Flow inspired branching strategy:
 
 ```
-main (production)
+master (production)
   └── staging (pre-production testing)
        └── feature/your-feature-name (development)
 ```
@@ -298,11 +298,11 @@ git push origin feature/your-feature-name
 
 5. **After PR is merged to staging:**
    - Test on staging environment
-   - If everything works, create PR from staging to main
+   - If everything works, create PR from staging to master
 
 6. **Deployment happens automatically:**
-   - Vercel deploys frontend on push to main
-   - Render deploys backend on push to main
+   - Vercel deploys frontend on push to master
+   - Render deploys backend on push to master
 
 ### Commit Message Convention
 
@@ -333,21 +333,21 @@ This validates:
 
 ### Frontend Deployment (Vercel)
 
-1. **Connect GitHub repository to Vercel**
+1. **The project GitHub repository is connected to Vercel**
 
-2. **Set environment variables in Vercel dashboard:**
+2. **Environment variables are set in Vercel dashboard:**
 ```env
 NEXT_PUBLIC_API_URL=https://wealthlog-backend-hx43.onrender.com
 NEXT_PUBLIC_GOOGLE_CLIENT_ID=your-google-client-id
 ```
 
-3. **Deployment is automatic on push to main branch**
+3. **Automatic deployment on push to master (wealthlogs.com) or staging (bechays.com) branches**
 
 ### Backend Deployment (Render)
 
-1. **Create a new Web Service on Render**
+1. **Web Service on Render as connected to GitHub repo**
 
-2. **Set environment variables in Render dashboard:**
+2. **Environment variables are set in Render dashboard:**
 ```env
 NODE_ENV=production
 DATABASE_URL=postgresql://...
@@ -359,12 +359,12 @@ FRONTEND_URL=https://wealthlogs.com
 ALLOWED_ORIGINS=https://wealthlogs.com,https://www.wealthlogs.com
 ```
 
-3. **Deployment is automatic on push to main branch**
+3. **Deployment is automatic on push to master branch**
 
 ### Post-deployment Verification
 
 ```bash
-# Check production status
+# Check production status (wait 2 minutes after deployment)
 ./scripts/maintain.sh deploy:status
 
 # Test production authentication
@@ -502,7 +502,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 📞 Support
 
-- 📧 Email: support@wealthlogs.com
+- 📧 Email: anthonybechay1@gmail.com
 - 📖 Documentation: [docs/](docs/)
 - 🐛 Issues: [GitHub Issues](https://github.com/yourusername/wealthlogs/issues)
 - 💬 Discord: [Join our community](https://discord.gg/wealthlogs)
@@ -511,5 +511,5 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 <div align="center">
   <p>Made with ❤️ for better financial management</p>
-  <p>© 2024 WealthLog. All rights reserved.</p>
+  <p>© 2025 WealthLogs. All rights reserved.</p>
 </div>
