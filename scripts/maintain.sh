@@ -572,7 +572,11 @@ case "$1" in
         cmd_start "$2"
         ;;
     test)
-        cmd_test "$2"
+        if [ "$2" = "frontend" ]; then
+            cmd_test_frontend
+        else
+            cmd_test "$2"
+        fi
         ;;
     build)
         cmd_build

@@ -5,6 +5,69 @@
 # ╚══════════════════════════════════════════════════════════════════════════════╝
 
 # ================================================================================
+# FRONTEND FEATURE TESTS
+# ================================================================================
+
+# Test new frontend features
+cmd_test_frontend() {
+    print_header "      FRONTEND FEATURE TESTING      "
+    
+    cd "$FRONTEND_DIR"
+    
+    # Check new pages exist
+    print_section "Checking New Pages"
+    
+    local pages_to_check=(
+        "pages/index.tsx"
+        "pages/expenses/index.tsx"
+        "pages/loans/index.tsx"
+        "pages/forecasting/index.tsx"
+        "pages/collaboration/delegated.tsx"
+        "pages/collaboration/coaching.tsx"
+        "pages/collaboration/communities.tsx"
+        "src/layout/layout.tsx"
+    )
+    
+    local missing=0
+    for page in "${pages_to_check[@]}"; do
+        if [ -f "$page" ]; then
+            print_success "✓ $page exists"
+        else
+            print_error "✗ $page missing"
+            missing=$((missing + 1))
+        fi
+    done
+    
+    if [ $missing -eq 0 ]; then
+        print_success "All new pages present!"
+    else
+        print_error "$missing pages missing"
+        return 1
+    fi
+    
+    # Check framer-motion dependency
+    print_section "Checking Dependencies"
+    if grep -q '"framer-motion"' package.json; then
+        print_success "framer-motion installed"
+    else
+        print_warning "framer-motion not found - installing..."
+        npm install framer-motion >> "$LOG_FILE" 2>&1
+    fi
+    
+    # Try to build
+    print_section "Testing Build"
+    print_test "Building frontend with new features..."
+    if npm run build >> "$LOG_FILE" 2>&1; then
+        print_success "Frontend builds successfully!"
+    else
+        print_error "Build failed - check log"
+        return 1
+    fi
+    
+    return 0
+}
+
+# ================================================================================
 # COMPREHENSIVE TEST SUITE
 # ================================================================================
 
