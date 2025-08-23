@@ -1,0 +1,47 @@
+# Dependencies
+node_modules/
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Build outputs
+dist/
+build/
+out/
+.next/
+.turbo/
+.vercel/
+
+# Coverage
+coverage/
+
+# Logs
+*.log
+.maintain-logs/
+
+# Database
+*.sqlite
+*.db
+prisma/migrations/
+
+# Mobile
+ios/
+android/
+
+# Git
+.git/
+
+# Documentation
+*.md
+
+# Config files that shouldn't be formatted
+tsconfig.json
+tsconfig.*.json
+
+# Generated files
+*.generated.*
+*.gen.ts
+
+# Temporary files
+tmp/
+temp/

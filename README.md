@@ -190,18 +190,48 @@ cd wealthlogs
 
 ### 2. Create PostgreSQL Database
 
+#### Option A: Using psql Command Line
+
 ```sql
 # Connect to PostgreSQL as superuser
 psql -U postgres
 
 # Create database and user
-CREATE USER abechay WITH PASSWORD '12345678';
-CREATE DATABASE wealthlog OWNER abechay;
-GRANT ALL PRIVILEGES ON DATABASE wealthlog TO abechay;
+CREATE USER wealthlog_user WITH PASSWORD 'your_secure_password';
+CREATE DATABASE wealthlog OWNER wealthlog_user;
+GRANT ALL PRIVILEGES ON DATABASE wealthlog TO wealthlog_user;
+
+# Grant schema permissions (required for Prisma)
+\c wealthlog
+GRANT ALL ON SCHEMA public TO wealthlog_user;
 \q
 ```
 
-> **Note:** Replace `abechay` and `12345678` with your preferred username and password. You'll update these in the configuration file in the next steps.
+#### Option B: Using pgAdmin GUI
+
+1. Open pgAdmin and connect to your PostgreSQL server
+2. Right-click on "Databases" → "Create" → "Database"
+   - Database name: `wealthlog`
+   - Owner: `postgres` (or create new user first)
+3. Right-click on "Login/Group Roles" → "Create" → "Login/Group Role"
+   - General tab: Name = `wealthlog_user`
+   - Definition tab: Password = `your_secure_password`
+   - Privileges tab: Check "Can login"
+4. Right-click on the `wealthlog` database → "Properties" → "Security" tab
+   - Grant all privileges to `wealthlog_user`
+
+#### Option C: Quick Setup (Development Only)
+
+```bash
+# One-liner for development (adjust username/password as needed)
+psql -U postgres -c "CREATE USER wealthlog_user WITH PASSWORD 'dev_password123'; CREATE DATABASE wealthlog OWNER wealthlog_user; GRANT ALL PRIVILEGES ON DATABASE wealthlog TO wealthlog_user;"
+```
+
+> **Important Notes:**
+> - Replace `wealthlog_user` and passwords with your preferred credentials
+> - Use strong passwords in production
+> - Keep your database credentials secure and never commit them to git
+> - The database name should remain `wealthlog` to match the schema
 
 ### 3. Configure Database Settings
 

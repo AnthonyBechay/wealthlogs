@@ -24,6 +24,7 @@ source "$MAINTAIN_SCRIPT_DIR/lib/database.sh"
 source "$MAINTAIN_SCRIPT_DIR/lib/logs.sh"
 source "$MAINTAIN_SCRIPT_DIR/lib/mobile.sh"
 source "$MAINTAIN_SCRIPT_DIR/lib/doctor.sh"
+source "$MAINTAIN_SCRIPT_DIR/lib/testing.sh"
 
 # Load configuration (config.env is in scripts/, not scripts/lib/)
 if ! load_config "$MAINTAIN_SCRIPT_DIR/config.env"; then
@@ -197,6 +198,12 @@ cmd_dev() {
 
 # TEST: Run tests
 cmd_test() {
+    # Check if comprehensive test requested
+    if [ "$1" = "comprehensive" ] || [ "$1" = "full" ]; then
+        cmd_test_comprehensive
+        return $?
+    fi
+    
     print_header "           RUNNING TEST SUITE           "
     
     # Check dependencies first
@@ -498,6 +505,7 @@ cmd_help() {
     echo -e "  ${GREEN}dev${NC}           Start all development servers"
     echo -e "  ${GREEN}start${NC}         Start specific service"
     echo -e "  ${GREEN}test${NC}          Run test suite"
+    echo -e "  ${GREEN}test full${NC}     Run comprehensive tests"
     echo -e "  ${GREEN}build${NC}         Build for production"
     echo ""
     
@@ -564,7 +572,7 @@ case "$1" in
         cmd_start "$2"
         ;;
     test)
-        cmd_test
+        cmd_test "$2"
         ;;
     build)
         cmd_build
