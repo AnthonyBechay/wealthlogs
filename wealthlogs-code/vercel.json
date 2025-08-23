@@ -1,6 +1,6 @@
 {
   "framework": "nextjs",
-  "buildCommand": "cd ../.. && npm ci --workspaces --include-workspace-root && cd wealthlogs-code && npx turbo run build --filter=@wealthlog/web...",
-  "installCommand": "echo 'Install handled by buildCommand'",
-  "outputDirectory": "apps/web/.next"
+  "outputDirectory": "apps/web/.next",
+  "buildCommand": "npm run build:web",
+  "installCommand": "npm ci --workspaces --include-workspace-root"
 }
