@@ -1,354 +1,182 @@
-# WealthLog Maintenance Script Documentation
+# WealthLog Maintenance Scripts v5.0
 
-## Overview
+## 🚀 Overview
 
-The WealthLog maintenance script (`maintain.sh`) is a comprehensive tool designed to streamline development, testing, deployment, and maintenance of the WealthLog platform. Version 4.0 includes mobile app support, configuration management, and enhanced logging.
+The WealthLog maintenance system provides a comprehensive set of tools for managing, building, testing, and deploying the WealthLog application. Built with a modular architecture for maintainability and scalability.
 
-## Features
+## 📁 Structure
 
-- 🚀 **Quick Setup** - Initialize project with one command
-- ⚙️ **Configuration Management** - Centralized config with validation
-- 📱 **Mobile Support** - Build and run iOS/Android apps
-- 🔍 **Comprehensive Testing** - Automated test suite with detailed reporting
-- 📝 **Advanced Logging** - All commands generate detailed logs
-- 🔧 **Auto-fix** - Automatically fix common issues
-- 🏗️ **Build Management** - Production builds for all platforms
-- 🗄️ **Database Tools** - Migration, studio, and management
-- 🚨 **Pre-deployment Checks** - Validate before deploying
-- 📊 **System Diagnostics** - Health checks and monitoring
+```
+scripts/
+├── maintain.sh          # Main entry point
+├── config.env          # Configuration file
+├── lib/                # Modular libraries
+│   ├── common.sh       # Shared utilities
+│   ├── config.sh       # Configuration management
+│   ├── database.sh     # Database operations
+│   ├── doctor.sh       # System diagnostics
+│   ├── logs.sh         # Logging management
+│   └── mobile.sh       # Mobile app management
+└── README.md           # This file
+```
 
-## Installation
+## 🔧 Installation
 
 ```bash
-# Make the script executable
+# Make scripts executable
 chmod +x scripts/maintain.sh
+chmod +x scripts/lib/*.sh
 
-# Create initial configuration
-./scripts/maintain.sh config create
-
-# Initialize the project
+# Initialize project
 ./scripts/maintain.sh init
 ```
 
-## Configuration
+## ⚙️ Configuration
 
-The script uses `scripts/config.env` for all configuration. This centralizes environment variables and settings.
+The `config.env` file contains all configuration settings, organized into sections:
 
-### Edit Configuration
+### Frequently Changed Settings
+- **Database Configuration**: Host, port, username, password
+- **Deployment URLs**: Production and staging URLs
+- **Development Ports**: Frontend, backend, mobile ports
 
+### Security Settings
+- **JWT Secrets**: Auto-generated if not set
+- **Google OAuth**: Client ID and secret
+
+### Run Configuration Commands
 ```bash
-./scripts/maintain.sh config edit
-```
-
-### Key Configuration Sections
-
-1. **Database Configuration**
-   - PostgreSQL connection details
-   - Username, password, database name
-
-2. **JWT & Security**
-   - Access and refresh token secrets
-   - Session secrets
-   - All automatically used in .env files
-
-3. **Google OAuth**
-   - Client ID and secret
-   - Callback URLs
-
-4. **Production URLs**
-   - Backend and frontend URLs
-   - Used for deployment checks
-
-5. **Mobile App Settings**
-   - Bundle ID and app name
-   - Platform-specific paths
-
-## Command Reference
-
-### 🚀 Quick Start Commands
-
-#### Initialize Project
-```bash
-./scripts/maintain.sh init
-```
-- Installs all dependencies
-- Creates environment files from config
-- Builds shared packages
-- Generates Prisma client
-
-#### Start Development
-```bash
-./scripts/maintain.sh dev
-```
-Starts all services (frontend + backend) using Turborepo.
-
-#### Start Individual Services
-```bash
-./scripts/maintain.sh start backend   # Port 5000
-./scripts/maintain.sh start frontend  # Port 3000
-./scripts/maintain.sh start mobile    # Port 5173
-```
-
-### ⚙️ Configuration Commands
-
-#### Edit Configuration
-```bash
-./scripts/maintain.sh config edit
-```
-Opens configuration file in your default editor.
-
-#### Validate Configuration
-```bash
-./scripts/maintain.sh config validate
-```
-Checks for missing or invalid configuration values.
-
-#### Show Configuration
-```bash
+# View current configuration
 ./scripts/maintain.sh config show
-```
-Displays current configuration (hides sensitive values).
 
-### 📱 Mobile App Commands
-
-#### Build Mobile Apps
-```bash
-./scripts/maintain.sh mobile build ios
-./scripts/maintain.sh mobile build android
-./scripts/maintain.sh mobile build both
-```
-Builds mobile apps and opens in respective IDEs.
-
-#### Run Mobile Apps
-```bash
-./scripts/maintain.sh mobile run ios
-./scripts/maintain.sh mobile run android
-```
-Runs apps on connected devices or emulators.
-
-#### Sync Capacitor
-```bash
-./scripts/maintain.sh mobile sync
-```
-Syncs web assets with native projects.
-
-#### Mobile Development Server
-```bash
-./scripts/maintain.sh mobile dev
-```
-Starts Vite development server for mobile.
-
-### 🗄️ Database Commands
-
-#### Setup Database
-```bash
-./scripts/maintain.sh db:setup
-```
-Creates database and runs initial migrations.
-
-Shows SQL commands to create database:
-```sql
-CREATE USER abechay WITH PASSWORD 'password';
-CREATE DATABASE wealthlog OWNER abechay;
-GRANT ALL PRIVILEGES ON DATABASE wealthlog TO abechay;
-```
-
-#### Run Migrations
-```bash
-./scripts/maintain.sh db:migrate
-./scripts/maintain.sh db:migrate "migration_name"
-```
-
-#### Open Prisma Studio
-```bash
-./scripts/maintain.sh db:studio
-```
-Opens GUI for database management (port 5555).
-
-#### Reset Database
-```bash
-./scripts/maintain.sh db:reset
-```
-⚠️ **Warning:** Deletes all data!
-
-### 🧪 Testing Commands
-
-#### Run Test Suite
-```bash
-./scripts/maintain.sh test
-```
-Runs comprehensive tests:
-- Configuration validation
-- TypeScript compilation
-- Build tests
-- API route validation
-- Mobile app builds
-
-#### Test Authentication
-```bash
-./scripts/maintain.sh auth:test       # Local
-./scripts/maintain.sh auth:test prod  # Production
-```
-Tests authentication flow and protected routes.
-
-### 🚀 Deployment Commands
-
-#### Pre-deployment Check
-```bash
-./scripts/maintain.sh deploy:check
-```
-**Always run before deploying!** Validates:
-- Environment configuration
-- Test suite passes
-- No exposed secrets
-- Clean git status
-- Build success
-
-#### Check Production Status
-```bash
-./scripts/maintain.sh deploy:status
-```
-Tests production endpoints and availability.
-
-#### Build for Production
-```bash
-./scripts/maintain.sh build
-```
-Builds all applications for production.
-
-### 🔧 Maintenance Commands
-
-#### System Diagnostics
-```bash
-./scripts/maintain.sh doctor
-```
-Comprehensive system health check:
-- Requirements verification
-- Project structure validation
-- Configuration check
-- Database connection test
-
-#### Quick Status Check
-```bash
-./scripts/maintain.sh status
-```
-Shows:
-- Package installation status
-- Environment files
-- Database connection
-- Port availability
-- Log file count
-
-#### Auto-fix Issues
-```bash
-./scripts/maintain.sh fix
-```
-Automatically fixes:
-- TypeScript errors
-- Missing type definitions
-- API route configuration
-- Environment file issues
-
-#### Clean Project
-```bash
-./scripts/maintain.sh clean
-```
-Removes:
-- node_modules directories
-- Build artifacts
-- Lock files
-- Old environment files
-
-### 📝 Logging Commands
-
-#### View Latest Log
-```bash
-./scripts/maintain.sh logs
-```
-
-#### View Backend Logs
-```bash
-./scripts/maintain.sh logs backend
-```
-
-#### View Frontend Logs
-```bash
-./scripts/maintain.sh logs frontend
-```
-
-#### List All Logs
-```bash
-./scripts/maintain.sh logs list
-```
-
-#### Clean Old Logs
-```bash
-./scripts/maintain.sh logs clean
-```
-Keeps only the last 10 log files.
-
-## Workflows
-
-### First-time Setup
-
-```bash
-# 1. Clone repository
-git clone https://github.com/yourusername/wealthlogs.git
-cd wealthlogs
-
-# 2. Initialize project
-./scripts/maintain.sh init
-
-# 3. Edit configuration
+# Edit configuration
 ./scripts/maintain.sh config edit
 
-# 4. Create database
+# Validate configuration
+./scripts/maintain.sh config validate
+
+# Export to .env files
+./scripts/maintain.sh config export
+```
+
+## 📖 Command Reference
+
+### Quick Start Commands
+
+| Command | Description |
+|---------|-------------|
+| `init` | Initialize or update the project |
+| `dev` | Start all development servers |
+| `start [service]` | Start specific service (backend/frontend/mobile/all) |
+| `test` | Run comprehensive test suite |
+| `build` | Build for production |
+
+### Configuration Management
+
+| Command | Description |
+|---------|-------------|
+| `config` | Show current configuration |
+| `config edit` | Edit configuration file |
+| `config validate` | Validate all settings |
+| `config create` | Create default configuration |
+| `config export` | Export to .env files |
+
+### Database Management
+
+| Command | Description |
+|---------|-------------|
+| `db:setup` | Initialize database with migrations |
+| `db:migrate [name]` | Run or create migrations |
+| `db:studio` | Open Prisma Studio GUI |
+| `db:reset` | Reset database (⚠️ deletes data) |
+| `db:status` | Check database status |
+| `db:backup` | Create database backup |
+| `db:restore [file]` | Restore from backup |
+
+### Mobile App Management
+
+| Command | Description |
+|---------|-------------|
+| `mobile init` | Initialize mobile app |
+| `mobile sync` | Sync web assets to native |
+| `mobile build [platform]` | Build mobile app (ios/android/both) |
+| `mobile run [platform]` | Run on device/emulator |
+| `mobile dev` | Start mobile dev server |
+| `mobile doctor` | Check mobile requirements |
+
+### Logging Management
+
+| Command | Description |
+|---------|-------------|
+| `logs` | View latest maintenance log |
+| `logs backend` | View backend logs |
+| `logs frontend` | View frontend logs |
+| `logs mobile` | View mobile logs |
+| `logs list` | List all logs |
+| `logs clean [keep]` | Clean old logs |
+| `logs search [term]` | Search in logs |
+| `logs follow [service]` | Follow logs in real-time |
+| `logs export` | Export all logs |
+
+### System Diagnostics
+
+| Command | Description |
+|---------|-------------|
+| `doctor` | Run comprehensive diagnostics |
+| `status` | Quick status check |
+| `fix` | Auto-fix common issues |
+| `clean` | Clean all build artifacts |
+
+### Deployment
+
+| Command | Description |
+|---------|-------------|
+| `deploy:check` | Pre-deployment validation |
+| `auth:test [env]` | Test authentication (local/prod) |
+
+## 🎯 Common Workflows
+
+### First-Time Setup
+```bash
+# 1. Initialize project
+./scripts/maintain.sh init
+
+# 2. Configure settings
+./scripts/maintain.sh config edit
+
+# 3. Setup database
 ./scripts/maintain.sh db:setup
 
-# 5. Start development
+# 4. Start development
 ./scripts/maintain.sh dev
 ```
 
 ### Daily Development
-
 ```bash
 # Start all services
 ./scripts/maintain.sh dev
 
-# Or start specific service
+# Or start individually
 ./scripts/maintain.sh start backend
 ./scripts/maintain.sh start frontend
-
-# Run tests
-./scripts/maintain.sh test
-
-# Check status
-./scripts/maintain.sh status
 ```
 
-### Before Deploying
-
+### Before Deployment
 ```bash
-# 1. Run deployment check
+# 1. Run pre-deployment check
 ./scripts/maintain.sh deploy:check
 
-# 2. Create feature branch
-git checkout -b feature/your-feature
+# 2. Test authentication
+./scripts/maintain.sh auth:test prod
 
-# 3. Commit changes
-git add .
-git commit -m "feat: your feature"
+# 3. Build for production
+./scripts/maintain.sh build
 
-# 4. Push to GitHub
-git push origin feature/your-feature
-
-# 5. Create PR to staging branch
-# 6. After merge, test on staging
-# 7. Create PR from staging to main
+# 4. Push to git (triggers auto-deployment)
+git push origin main
 ```
 
 ### Troubleshooting
-
 ```bash
 # 1. Run diagnostics
 ./scripts/maintain.sh doctor
@@ -365,160 +193,113 @@ git push origin feature/your-feature
 ```
 
 ### Mobile Development
-
 ```bash
-# 1. Build web assets
-./scripts/maintain.sh build
+# 1. Initialize mobile app
+./scripts/maintain.sh mobile init
 
-# 2. Sync with Capacitor
-./scripts/maintain.sh mobile sync
+# 2. Build for both platforms
+./scripts/maintain.sh mobile build both
 
-# 3. Build for platform
-./scripts/maintain.sh mobile build ios
-./scripts/maintain.sh mobile build android
+# 3. Run on Android
+./scripts/maintain.sh mobile run android
 
-# 4. Run on device
+# 4. Run on iOS (macOS only)
 ./scripts/maintain.sh mobile run ios
 ```
 
-## Logging System
+## 🔍 Diagnostics Features
 
-All commands generate detailed logs stored in `.maintain-logs/`:
+The `doctor` command performs comprehensive checks:
 
-- **Log Location:** `.maintain-logs/maintain-YYYYMMDD-HHMMSS.log`
-- **Latest Log:** `.maintain-logs/latest.log` (symlink)
-- **Retention:** Keeps last 10 logs by default
+- **System Requirements**: Node.js, npm, Git versions
+- **Project Structure**: Directory existence
+- **Dependencies**: Installation status
+- **Configuration**: Environment files, secrets
+- **Database**: Connection, migration status
+- **Network**: Port availability
+- **Security**: JWT secrets, passwords
+- **Git**: Repository status, uncommitted changes
+- **Resources**: Disk space, memory
+- **Production Readiness**: Build status, TypeScript errors
 
-### Log Levels
+## 📊 Logging System
 
-- **INFO:** General information
-- **SUCCESS:** Successful operations
-- **WARNING:** Non-critical issues
-- **ERROR:** Critical failures
-- **BUILD:** Build operations
-- **TEST:** Test results
-- **MOBILE:** Mobile app operations
-- **CONFIG:** Configuration changes
+All commands generate detailed logs:
 
-## Environment Files
+- **Location**: `.maintain-logs/` directory
+- **Latest log**: Symlinked to `latest.log`
+- **Retention**: Configurable (default: 20 files)
+- **Features**: 
+  - Search across logs
+  - Follow in real-time
+  - Export for sharing
+  - Auto-cleanup
 
-The script automatically creates and manages environment files:
+## 🛡️ Security Features
 
-### Backend (.env)
-- Created in `apps/backend/.env`
-- Uses values from `config.env`
-- Includes all JWT secrets, database URL, OAuth settings
+- **Auto-generated secrets**: JWT tokens generated if not set
+- **Password validation**: Warns about default passwords
+- **Secure configuration**: Sensitive data in `config.env`
+- **Environment isolation**: Separate configs for dev/staging/prod
 
-### Frontend (.env.local)
-- Created in `apps/web/.env.local`
-- Includes API URL and public OAuth client ID
+## 🐛 Error Handling
 
-### Mobile (.env)
-- Created in `apps/mobile/.env`
-- Includes Vite-specific environment variables
+- **Error trapping**: Catches and logs all errors
+- **Helpful messages**: Context-specific error guidance
+- **Recovery suggestions**: Auto-fix recommendations
+- **Detailed logging**: Full error traces in log files
 
-## Error Handling
+## 🎨 User Experience
 
-The script includes comprehensive error handling:
+- **Colored output**: Visual feedback with colors and emojis
+- **Progress indicators**: Spinners for long operations
+- **Interactive prompts**: Confirmations for destructive actions
+- **Status summaries**: Clear success/failure indicators
 
-1. **Port Conflicts:** Offers to kill existing processes
-2. **Missing Dependencies:** Installs automatically
-3. **Database Issues:** Provides setup instructions
-4. **Build Failures:** Generates detailed logs
-5. **Configuration Errors:** Validates and suggests fixes
+## 🔄 Updates
 
-## Best Practices
+To update the maintenance scripts:
 
-1. **Always run `deploy:check` before deploying**
-2. **Keep configuration file updated**
-3. **Check logs when issues occur**
-4. **Use `doctor` for diagnostics**
-5. **Run `test` after making changes**
-6. **Use feature branches for development**
-7. **Keep mobile app synced with web changes**
-
-## Troubleshooting Guide
-
-### Common Issues and Solutions
-
-#### Port Already in Use
 ```bash
-# Script will ask to kill process, or manually:
-lsof -i:3000
-kill -9 <PID>
-```
+# Pull latest changes
+git pull
 
-#### Database Connection Failed
-1. Check PostgreSQL is running
-2. Verify credentials in `config.env`
-3. Run `./scripts/maintain.sh config validate`
-4. Create database: `./scripts/maintain.sh db:setup`
-
-#### TypeScript Errors
-```bash
-# Auto-fix common issues
-./scripts/maintain.sh fix
-
-# Or manually install types
-cd apps/web
-npm install --save-dev @types/papaparse @types/node
-```
-
-#### Build Failures
-```bash
-# Clean and rebuild
-./scripts/maintain.sh clean
+# Re-initialize
 ./scripts/maintain.sh init
-./scripts/maintain.sh build
 ```
 
-#### Mobile App Not Building
-1. Ensure Xcode (iOS) or Android Studio (Android) is installed
-2. Run `./scripts/maintain.sh mobile sync`
-3. Check Capacitor configuration
-4. View logs for specific errors
+## 📝 Environment Variables
 
-## Advanced Features
+The scripts manage these environment files:
 
-### Custom Paths
-You can override default paths in `config.env`:
+- `scripts/config.env` - Main configuration
+- `apps/backend/.env` - Backend environment
+- `apps/web/.env.local` - Frontend environment
+- `apps/mobile/.env` - Mobile environment
+
+## 🆘 Getting Help
+
 ```bash
-CUSTOM_BACKEND_DIR="/custom/path/to/backend"
-CUSTOM_FRONTEND_DIR="/custom/path/to/frontend"
-CUSTOM_MOBILE_DIR="/custom/path/to/mobile"
+# Show all available commands
+./scripts/maintain.sh help
+
+# Run diagnostics
+./scripts/maintain.sh doctor
+
+# Check logs for errors
+./scripts/maintain.sh logs
 ```
 
-### Feature Flags
-Enable/disable features in `config.env`:
-```bash
-ENABLE_AUTH_TEST=true
-ENABLE_DB_RESET=true
-ENABLE_DEPLOY_COMMANDS=true
-ENABLE_AUTO_BACKUP=false
-```
+## 🤝 Contributing
 
-### Rate Limiting
-Configure in backend for production:
-- Login attempts: 5 per 15 minutes
-- API calls: Configurable per endpoint
+When adding new features:
 
-## Version History
+1. Create new module in `lib/` if needed
+2. Update `maintain.sh` to include new commands
+3. Add command to help text
+4. Update this README
+5. Test thoroughly
 
-- **v4.0** - Mobile support, config management
-- **v3.1** - Enhanced logging, better diagnostics
-- **v3.0** - Added authentication testing
-- **v2.0** - Database management, deployment checks
-- **v1.0** - Initial release
+## 📄 License
 
-## Support
-
-For issues or questions:
-1. Check this documentation
-2. Run `./scripts/maintain.sh doctor`
-3. Check logs: `./scripts/maintain.sh logs`
-4. Review main documentation: [../README.md](../README.md)
-5. Check specific docs in [../docs/](../docs/)
-
----
-
-Built with ❤️ for the WealthLog development team
+Part of the WealthLog project. See main LICENSE file.

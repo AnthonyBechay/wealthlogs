@@ -1,687 +1,98 @@
 #!/bin/bash
-
 # ╔══════════════════════════════════════════════════════════════════════════════╗
-# ║                     WealthLog Maintenance Script v3.1                         ║
-# ║                  Enhanced with Logging & Better Diagnostics                   ║
+# ║                     WealthLog Maintenance Script v5.0                         ║
+# ║                    Modular Architecture with Enhanced Features                ║
 # ╚══════════════════════════════════════════════════════════════════════════════╝
 #
 # Usage: ./maintain.sh [command] [options]
 # Run: ./maintain.sh help for all commands
 
-set -e  # Exit on error for safety
+set -e  # Exit on error
 
 # ================================================================================
 # INITIALIZATION
 # ================================================================================
 
-# Get script directory (works even with symlinks)
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Get script directory and export for libraries
+export MAINTAIN_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# Load configuration file if it exists
-CONFIG_FILE="$SCRIPT_DIR/config.env"
-if [ -f "$CONFIG_FILE" ]; then
-    source "$CONFIG_FILE"
-else
-    echo "Warning: Configuration file not found at $CONFIG_FILE"
-    echo "Creating default configuration..."
-    # Will create default config later in the script
+# Source library modules from lib/ subdirectory
+source "$MAINTAIN_SCRIPT_DIR/lib/common.sh"
+source "$MAINTAIN_SCRIPT_DIR/lib/init.sh"
+source "$MAINTAIN_SCRIPT_DIR/lib/config.sh"
+source "$MAINTAIN_SCRIPT_DIR/lib/database.sh"
+source "$MAINTAIN_SCRIPT_DIR/lib/logs.sh"
+source "$MAINTAIN_SCRIPT_DIR/lib/mobile.sh"
+source "$MAINTAIN_SCRIPT_DIR/lib/doctor.sh"
+
+# Load configuration (config.env is in scripts/, not scripts/lib/)
+if ! load_config "$MAINTAIN_SCRIPT_DIR/config.env"; then
+    echo "Warning: Configuration not loaded. Creating default..."
+    cmd_config_create
+    load_config "$MAINTAIN_SCRIPT_DIR/config.env"
 fi
-
-# ================================================================================
-# CONFIGURATION
-# ================================================================================
-
-# Colors for beautiful output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-CYAN='\033[0;36m'
-MAGENTA='\033[0;35m'
-WHITE='\033[1;37m'
-GRAY='\033[0;90m'
-NC='\033[0m' # No Color
-
-# Emojis for visual feedback
-CHECK="✅"
-CROSS="❌"
-WARN="⚠️ "
-INFO="ℹ️ "
-ROCKET="🚀"
-BUILD="🔨"
-CLEAN="🧹"
-TEST="🧪"
-DB="🗄️ "
-CLOCK="⏰"
-LOG="📝"
-
-# Project paths
-# Determine project root (script is now in scripts/ directory)
-PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
-
-# Set application paths (use custom paths if defined in config)
-BACKEND_DIR="${CUSTOM_BACKEND_DIR:-$PROJECT_ROOT/wealthlogs-code/apps/backend}"
-FRONTEND_DIR="${CUSTOM_FRONTEND_DIR:-$PROJECT_ROOT/wealthlogs-code/apps/web}"
-SHARED_DIR="${CUSTOM_SHARED_DIR:-$PROJECT_ROOT/wealthlogs-code/packages/shared}"
-
-# Logging configuration
-LOG_DIR="$PROJECT_ROOT/.maintain-logs"
-LOG_FILE="$LOG_DIR/maintain-$(date +%Y%m%d-%H%M%S).log"
-LATEST_LOG="$LOG_DIR/latest.log"
-
-# Production URLs
-PROD_BACKEND_URL="https://wealthlog-backend-hx43.onrender.com"
-PROD_FRONTEND_URL="https://wealthlogs.com"
-
-# Test credentials (from config or defaults)
-TEST_USERNAME="${TEST_USERNAME:-bech}"
-TEST_PASSWORD="${TEST_PASSWORD:-123}"
-TEST_EMAIL="${TEST_EMAIL:-test@example.com}"
-
-# ================================================================================
-# LOGGING FUNCTIONS
-# ================================================================================
-
-# Initialize logging
-init_logging() {
-    mkdir -p "$LOG_DIR"
-    touch "$LOG_FILE"
-    ln -sf "$LOG_FILE" "$LATEST_LOG"
-    
-    # Log header
-    {
-        echo "========================================="
-        echo "WealthLog Maintenance Log"
-        echo "Date: $(date)"
-        echo "Command: $*"
-        echo "========================================="
-        echo ""
-    } >> "$LOG_FILE"
-}
-
-# Log to file
-log() {
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" >> "$LOG_FILE"
-}
-
-# Log and display
-log_print() {
-    local message="$1"
-    echo -e "$message"
-    # Strip color codes for log file
-    echo "$message" | sed 's/\x1b\[[0-9;]*m//g' >> "$LOG_FILE"
-}
-
-# Log error with details
-log_error() {
-    local context="$1"
-    local detail="$2"
-    log "ERROR in $context: $detail"
-    echo -e "${RED}${CROSS}${NC} $context" >&2
-    if [ -n "$detail" ]; then
-        echo -e "${GRAY}  → $detail${NC}" >&2
-    fi
-}
-
-# Show log file location
-show_log_info() {
-    echo ""
-    echo -e "${LOG} Log file: ${CYAN}$LOG_FILE${NC}"
-    echo -e "${LOG} View latest: ${YELLOW}cat $LATEST_LOG${NC}"
-}
-
-# ================================================================================
-# UTILITY FUNCTIONS
-# ================================================================================
-
-print_header() {
-    echo ""
-    echo -e "${CYAN}╔══════════════════════════════════════════════════════════════╗${NC}"
-    echo -e "${CYAN}║${WHITE}  $1${CYAN}║${NC}"
-    echo -e "${CYAN}╚══════════════════════════════════════════════════════════════╝${NC}"
-    echo ""
-    log "=== $1 ==="
-}
-
-print_section() {
-    echo ""
-    echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo -e "${WHITE}  $1${NC}"
-    echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    log "--- $1 ---"
-}
-
-print_status() { 
-    echo -e "${BLUE}${INFO}${NC} $1"
-    log "INFO: $1"
-}
-
-print_success() { 
-    echo -e "${GREEN}${CHECK}${NC} $1"
-    log "SUCCESS: $1"
-}
-
-print_error() { 
-    echo -e "${RED}${CROSS}${NC} $1"
-    log "ERROR: $1"
-}
-
-print_warning() { 
-    echo -e "${YELLOW}${WARN}${NC}$1"
-    log "WARNING: $1"
-}
-
-print_build() { 
-    echo -e "${CYAN}${BUILD}${NC} $1"
-    log "BUILD: $1"
-}
-
-print_test() { 
-    echo -e "${MAGENTA}${TEST}${NC} $1"
-    log "TEST: $1"
-}
-
-# Spinner for long operations
-spinner() {
-    local pid=$!
-    local delay=0.1
-    local spinstr='⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏'
-    while [ "$(ps a | awk '{print $1}' | grep $pid)" ]; do
-        local temp=${spinstr#?}
-        printf " [%c]  " "$spinstr"
-        local spinstr=$temp${spinstr%"$temp"}
-        sleep $delay
-        printf "\b\b\b\b\b\b"
-    done
-    printf "    \b\b\b\b"
-}
-
-# Check system requirements
-check_requirements() {
-    local missing=0
-    
-    command -v node >/dev/null 2>&1 || { print_error "Node.js is required but not installed."; missing=1; }
-    command -v npm >/dev/null 2>&1 || { print_error "npm is required but not installed."; missing=1; }
-    command -v git >/dev/null 2>&1 || { print_error "Git is required but not installed."; missing=1; }
-    
-    if [ $missing -eq 1 ]; then
-        echo ""
-        print_error "Please install missing requirements and try again."
-        exit 1
-    fi
-    
-    # Check versions
-    NODE_VERSION=$(node --version)
-    NPM_VERSION=$(npm --version)
-    print_status "Node.js $NODE_VERSION | npm $NPM_VERSION"
-}
 
 # ================================================================================
 # MAIN COMMANDS
 # ================================================================================
 
-# INIT: First-time project setup (also handles package updates)
+# INIT: First-time project setup
 cmd_init() {
     print_header "         INITIALIZING WEALTHLOG PROJECT         "
     
     check_requirements
     
-    # Check if this is first-time or update
-    local is_update=false
-    if [ -d "$PROJECT_ROOT/node_modules" ]; then
-        is_update=true
-        print_status "Detected existing installation - updating packages..."
-        log "Running in update mode"
-    else
-        print_status "First-time setup detected..."
-        log "Running in fresh install mode"
-    fi
-    
+    # Export configuration to env files first
     print_section "Creating Environment Files"
+    cmd_config_export
     
-    # Backend .env
-    if [ ! -f "$BACKEND_DIR/.env" ]; then
-        cat > "$BACKEND_DIR/.env" << 'EOF'
-# Environment
-NODE_ENV=development
-PORT=5000
-
-# Database - UPDATE THIS!
-DATABASE_URL="postgresql://username:password@localhost:5432/wealthlog?schema=public"
-
-# JWT Secrets (regenerate for production!)
-JWT_ACCESS_SECRET=dev_access_secret_change_in_production_$(openssl rand -hex 16)
-JWT_REFRESH_SECRET=dev_refresh_secret_change_in_production_$(openssl rand -hex 16)
-SESSION_SECRET=dev_session_secret_change_in_production_$(openssl rand -hex 16)
-
-# Google OAuth (get your own from Google Cloud Console)
-GOOGLE_CLIENT_ID=your-google-client-id.apps.googleusercontent.com
-GOOGLE_CLIENT_SECRET=your-google-client-secret
-GOOGLE_CALLBACK_URL=http://localhost:5000/api/auth/google/callback
-
-# URLs
-FRONTEND_URL=http://localhost:3000
-ALLOWED_ORIGINS=http://localhost:3000
-
-# Optional
-REQUIRE_EMAIL_VERIFICATION=false
-EOF
-        print_success "Created backend .env file"
-    else
-        print_warning "Backend .env already exists - skipping"
-    fi
+    # Install all dependencies
+    init_all_dependencies
     
-    # Frontend .env.local
-    if [ ! -f "$FRONTEND_DIR/.env.local" ]; then
-        cat > "$FRONTEND_DIR/.env.local" << 'EOF'
-NEXT_PUBLIC_API_URL=http://localhost:5000
-NEXT_PUBLIC_GOOGLE_CLIENT_ID=your-google-client-id.apps.googleusercontent.com
-EOF
-        print_success "Created frontend .env.local file"
-    else
-        print_warning "Frontend .env.local already exists - skipping"
-    fi
-    
-    print_section "Installing Dependencies"
-    
-    # Root dependencies (in wealthlogs-code)
-    cd "$PROJECT_ROOT/wealthlogs-code"
-    print_status "Installing root dependencies..."
-    npm install --force >> "$LOG_FILE" 2>&1 &
-    spinner
-    print_success "Root dependencies installed"
-    
-    # Backend dependencies
-    cd "$BACKEND_DIR"
-    print_status "Installing backend dependencies..."
-    npm install --force >> "$LOG_FILE" 2>&1 &
-    spinner
-    print_success "Backend dependencies installed"
-    
-    # Frontend dependencies
-    cd "$FRONTEND_DIR"
-    print_status "Installing frontend dependencies..."
-    npm install --force >> "$LOG_FILE" 2>&1 &
-    spinner
-    
-    # Ensure critical types are installed
-    npm install --save-dev @types/papaparse @types/node >> "$LOG_FILE" 2>&1
-    print_success "Frontend dependencies installed"
-    
-    print_section "Building Shared Packages"
-    
+    # Build shared package
     if [ -d "$SHARED_DIR" ]; then
         cd "$SHARED_DIR"
-        if npm run build >> "$LOG_FILE" 2>&1; then
-            print_success "Shared package built successfully"
+        print_section "Building Shared Package"
+        
+        # Make sure TypeScript is available
+        if [ -f "node_modules/typescript/bin/tsc" ]; then
+            print_status "Building shared package..."
+            if npm run build >> "$LOG_FILE" 2>&1; then
+                print_success "Shared package built"
+            else
+                print_warning "Shared package build failed - check log"
+            fi
         else
-            print_warning "Shared package build needs configuration - check logs"
+            print_warning "TypeScript not found - skipping build"
         fi
     fi
     
-    print_section "Setting Up Database"
-    
-    cd "$BACKEND_DIR"
-    npx prisma generate >> "$LOG_FILE" 2>&1
-    print_success "Prisma client generated"
-    
-    echo ""
-    if [ "$is_update" = true ]; then
-        print_header "          UPDATE COMPLETE!          "
-        echo -e "${GREEN}Packages updated successfully!${NC}"
-    else
-        print_header "          INITIALIZATION COMPLETE!          "
-        echo ""
-        echo -e "${GREEN}Next steps:${NC}"
-        echo -e "  1. ${WHITE}Update DATABASE_URL${NC} in ${CYAN}apps/backend/.env${NC}"
-        echo -e "  2. Run: ${YELLOW}./maintain.sh db:setup${NC} to create database"
-        echo -e "  3. Run: ${YELLOW}./maintain.sh dev${NC} to start development"
-    fi
-    
-    show_log_info
-}
-
-# TEST: Run comprehensive tests with detailed logging
-cmd_test() {
-    print_header "           RUNNING TEST SUITE           "
-    
-    local total_errors=0
-    local critical_errors=0
-    
-    print_section "Testing Shared Package"
-    if [ -d "$SHARED_DIR" ]; then
-        cd "$SHARED_DIR"
+    # Generate Prisma client
+    if [ -d "$BACKEND_DIR" ]; then
+        cd "$BACKEND_DIR"
+        print_section "Setting Up Database Client"
         
-        print_test "Building shared package..."
-        if npm run build >> "$LOG_FILE" 2>&1; then
-            print_success "Shared package builds"
+        # Use --yes flag to auto-accept
+        print_status "Generating Prisma client..."
+        if npx --yes prisma generate >> "$LOG_FILE" 2>&1; then
+            print_success "Prisma client generated"
         else
-            print_error "Shared package build failed"
-            log "Shared package build error - check npm output above"
-            critical_errors=$((critical_errors + 1))
+            print_warning "Prisma client generation failed - check log"
         fi
-        
-        print_test "TypeScript validation..."
-        if npx tsc --noEmit >> "$LOG_FILE" 2>&1; then
-            print_success "TypeScript valid"
-        else
-            print_warning "TypeScript has warnings (see log for details)"
-            total_errors=$((total_errors + 1))
-        fi
-    fi
-    
-    print_section "Testing Frontend"
-    cd "$FRONTEND_DIR"
-    
-    print_test "Checking dependencies..."
-    if grep -q "@types/papaparse" package.json; then
-        print_success "Required types installed"
-    else
-        print_warning "Installing missing types..."
-        npm install --save-dev @types/papaparse >> "$LOG_FILE" 2>&1
-    fi
-    
-    print_test "TypeScript validation..."
-    local ts_output=$(npx tsc --noEmit 2>&1 || true)
-    echo "$ts_output" >> "$LOG_FILE"
-    
-    if echo "$ts_output" | grep -q "error TS"; then
-        local ts_errors=$(echo "$ts_output" | grep -c "error TS")
-        print_warning "$ts_errors TypeScript warning(s) - details in log"
-        log "TypeScript errors found: $ts_errors"
-        total_errors=$((total_errors + ts_errors))
-    else
-        print_success "TypeScript valid"
-    fi
-    
-    print_test "Production build test..."
-    if npm run build >> "$LOG_FILE" 2>&1; then
-        print_success "Production build works"
-    else
-        print_error "Production build failed - check log for details"
-        critical_errors=$((critical_errors + 1))
-    fi
-    
-    print_section "Testing Backend"
-    cd "$BACKEND_DIR"
-    
-    print_test "Prisma schema validation..."
-    if npx prisma validate >> "$LOG_FILE" 2>&1; then
-        print_success "Prisma schema valid"
-    else
-        print_error "Prisma schema invalid"
-        log "Prisma validation failed"
-        critical_errors=$((critical_errors + 1))
-    fi
-    
-    print_test "API route configuration..."
-    # Check for /api prefix in the shared API file (handle both quote types)
-    if grep -qE "'/api/|/api/" "$SHARED_DIR/src/api/index.ts" 2>/dev/null; then
-        print_success "API routes configured correctly"
-        log "API routes have /api prefix"
-    else
-        print_error "API routes misconfigured - missing /api prefix"
-        log "API routes missing /api prefix in $SHARED_DIR/src/api/index.ts"
-        
-        # Show what was found
-        echo -e "${GRAY}  → Checking for API routes in shared/src/api/index.ts${NC}"
-        grep -n "api\." "$SHARED_DIR/src/api/index.ts" | head -5 >> "$LOG_FILE" 2>&1 || true
-        
-        critical_errors=$((critical_errors + 1))
-    fi
-    
-    # Summary
-    echo ""
-    print_section "Test Summary"
-    
-    if [ $critical_errors -eq 0 ]; then
-        if [ $total_errors -eq 0 ]; then
-            print_success "All tests passed! Ready for deployment."
-        else
-            print_warning "Tests passed with $total_errors non-critical warning(s)"
-            print_status "Safe to deploy but consider fixing warnings"
-        fi
-        show_log_info
-        return 0
-    else
-        print_error "$critical_errors critical error(s) found!"
-        print_error "Fix these before deploying"
-        show_log_info
-        return 1
-    fi
-}
-
-# DEPLOY:CHECK - Pre-deployment validation with detailed logging
-cmd_deploy_check() {
-    print_header "       PRE-DEPLOYMENT VALIDATION       "
-    
-    local ready=true
-    
-    print_section "Checking Environment"
-    
-    # Check for production values in env files
-    if [ -f "$BACKEND_DIR/.env" ]; then
-        if grep -q "localhost" "$BACKEND_DIR/.env"; then
-            print_warning "Backend .env contains localhost URLs"
-            print_status "Ensure production env vars are set on Render"
-            log "Backend .env has localhost URLs - needs production config on Render"
-        else
-            print_success "Backend .env looks production-ready"
-        fi
-    else
-        print_error "Backend .env missing!"
-        ready=false
-    fi
-    
-    print_section "Running Tests"
-    
-    # Run test suite
-    if cmd_test; then
-        print_success "Tests passed"
-    else
-        print_error "Tests failed"
-        ready=false
-    fi
-    
-    print_section "Security Check"
-    
-    # Check for exposed secrets
-    cd "$PROJECT_ROOT"
-    print_status "Scanning for exposed secrets..."
-    
-    local secret_files=$(grep -rl "JWT_.*SECRET\|GOOGLE_CLIENT_SECRET" \
-        --include="*.js" --include="*.ts" --include="*.tsx" \
-        --exclude-dir=node_modules --exclude-dir=.git \
-        --exclude="*.env*" . 2>/dev/null | head -5 || true)
-    
-    if [ -n "$secret_files" ]; then
-        print_warning "Potential secrets in code - verify they're not hardcoded"
-        echo "$secret_files" | while read -r file; do
-            echo -e "${GRAY}  → Check: $file${NC}"
-            log "Potential secret in: $file"
-        done
-    else
-        print_success "No exposed secrets found"
-    fi
-    
-    print_section "Git Status"
-    
-    # Check git status
-    if [ -d .git ]; then
-        if git diff-index --quiet HEAD -- 2>/dev/null; then
-            print_success "No uncommitted changes"
-        else
-            print_warning "You have uncommitted changes:"
-            git status --short | head -10
-            git status --short >> "$LOG_FILE"
-        fi
-        
-        # Show current branch
-        BRANCH=$(git rev-parse --abbrev-ref HEAD)
-        print_status "Current branch: $BRANCH"
-        log "Git branch: $BRANCH"
-    fi
-    
-    # Summary
-    echo ""
-    if [ "$ready" = true ]; then
-        print_header "    ${CHECK} READY FOR DEPLOYMENT!    "
-        echo ""
-        echo -e "${GREEN}Deployment will happen automatically:${NC}"
-        echo -e "  ${WHITE}1.${NC} Backend deploys when you: ${YELLOW}git push origin $BRANCH${NC}"
-        echo -e "  ${WHITE}2.${NC} Frontend deploys when you: ${YELLOW}git push origin $BRANCH${NC}"
-        echo ""
-        echo -e "${CYAN}Both Render and Vercel are connected to your Git repository${NC}"
-        echo ""
-        print_status "After pushing, monitor deployments at:"
-        echo -e "  ${WHITE}Render:${NC} https://dashboard.render.com"
-        echo -e "  ${WHITE}Vercel:${NC} https://vercel.com/dashboard"
-    else
-        print_header "    ${CROSS} NOT READY FOR DEPLOYMENT    "
-        print_error "Fix the issues above before deploying"
-        echo ""
-        echo -e "${YELLOW}Troubleshooting tips:${NC}"
-        echo -e "  1. Check the detailed log: ${CYAN}cat $LATEST_LOG${NC}"
-        echo -e "  2. Try auto-fix: ${YELLOW}./maintain.sh fix${NC}"
-        echo -e "  3. Rebuild packages: ${YELLOW}./maintain.sh build${NC}"
-    fi
-    
-    show_log_info
-}
-
-# FIX - Auto-fix common issues with detailed logging
-cmd_fix() {
-    print_header "        AUTO-FIXING COMMON ISSUES        "
-    
-    print_section "Checking API Routes Configuration"
-    
-    # First, let's check what's actually in the file
-    if [ -f "$SHARED_DIR/src/api/index.ts" ]; then
-        print_status "Analyzing API routes in shared package..."
-        
-        # Count how many routes have /api prefix
-        local with_prefix=$(grep -c "'/api/" "$SHARED_DIR/src/api/index.ts" 2>/dev/null || echo "0")
-        local without_prefix=$(grep -c "api\.(get\|post\|put\|delete\|patch)(" "$SHARED_DIR/src/api/index.ts" 2>/dev/null || echo "0")
-        
-        log "Routes with /api prefix: $with_prefix"
-        log "Total API calls found: $without_prefix"
-        
-        if [ "$with_prefix" -gt 0 ]; then
-            print_success "API routes already have /api prefix ($with_prefix routes configured)"
-        else
-            print_warning "API routes may need /api prefix"
-            echo -e "${GRAY}  → Found $without_prefix API calls to check${NC}"
-        fi
-    else
-        print_error "API file not found at $SHARED_DIR/src/api/index.ts"
-    fi
-    
-    print_section "Fixing TypeScript Errors"
-    
-    cd "$FRONTEND_DIR"
-    
-    # Create types directory if it doesn't exist
-    mkdir -p types
-    
-    # Fix error handling in all TSX files
-    print_status "Adding type assertions for error handling..."
-    
-    # Count files to fix
-    local files_to_fix=$(find pages -name "*.tsx" -type f 2>/dev/null | wc -l)
-    print_status "Processing $files_to_fix TypeScript files..."
-    
-    # Fix with proper backup
-    find pages -name "*.tsx" -type f 2>/dev/null | while read -r file; do
-        # Create backup
-        cp "$file" "$file.bak"
-        
-        # Apply fixes
-        sed -i 's/catch (error)/catch (error: any)/g' "$file" 2>/dev/null || true
-        sed -i 's/error\.response/(error as any).response/g' "$file" 2>/dev/null || true
-        
-        # Check if file changed
-        if ! diff -q "$file" "$file.bak" > /dev/null 2>&1; then
-            log "Fixed error handling in: $file"
-        fi
-        
-        # Remove backup
-        rm -f "$file.bak"
-    done
-    
-    print_success "Error handling fixed in TypeScript files"
-    
-    # Install missing types
-    print_status "Installing missing type definitions..."
-    npm install --save-dev @types/papaparse @types/node >> "$LOG_FILE" 2>&1
-    print_success "Type definitions installed"
-    
-    print_section "Rebuilding Packages"
-    
-    cd "$SHARED_DIR"
-    print_build "Rebuilding shared package..."
-    if npm run build >> "$LOG_FILE" 2>&1; then
-        print_success "Shared package rebuilt successfully"
-    else
-        print_warning "Shared package build had issues - check log"
-    fi
-    
-    cd "$FRONTEND_DIR"
-    
-    print_section "Validating Fixes"
-    
-    print_test "Testing frontend build..."
-    if npm run build >> "$LOG_FILE" 2>&1; then
-        print_success "Frontend builds successfully after fixes!"
-    else
-        print_warning "Some issues remain - check build output in log"
     fi
     
     echo ""
-    print_success "Auto-fix complete!"
+    print_header "          INITIALIZATION COMPLETE!          "
     echo ""
     echo -e "${GREEN}Next steps:${NC}"
-    echo -e "  1. Run: ${YELLOW}./maintain.sh test${NC} to verify all fixes"
-    echo -e "  2. Run: ${YELLOW}./maintain.sh deploy:check${NC} before deploying"
+    echo -e "  1. Run: ${YELLOW}./maintain.sh config edit${NC} to configure settings"
+    echo -e "  2. Run: ${YELLOW}./maintain.sh db:setup${NC} to create database"
+    echo -e "  3. Run: ${YELLOW}./maintain.sh dev${NC} to start development"
     
     show_log_info
 }
 
-# LOGS - View and manage logs
-cmd_logs() {
-    case "$1" in
-        view|"")
-            if [ -f "$LATEST_LOG" ]; then
-                less "$LATEST_LOG"
-            else
-                print_error "No logs found. Run a command first."
-            fi
-            ;;
-        list)
-            print_header "        MAINTENANCE LOGS        "
-            if [ -d "$LOG_DIR" ]; then
-                ls -lh "$LOG_DIR"/*.log 2>/dev/null | tail -10 || print_warning "No logs found"
-            else
-                print_warning "No logs directory found"
-            fi
-            ;;
-        clean)
-            print_header "        CLEANING OLD LOGS        "
-            if [ -d "$LOG_DIR" ]; then
-                # Keep only last 10 logs
-                ls -t "$LOG_DIR"/*.log 2>/dev/null | tail -n +11 | xargs rm -f 2>/dev/null || true
-                print_success "Old logs cleaned (kept last 10)"
-            fi
-            ;;
-        *)
-            print_error "Unknown logs command. Use: view, list, or clean"
-            ;;
-    esac
-}
-
-# Other commands remain the same but with logging added...
-# (I'll keep the essential ones and add logging)
-
-# START: Start individual or all services
+# START: Start services
 cmd_start() {
     local service="${1:-all}"
     
@@ -689,144 +100,94 @@ cmd_start() {
         backend)
             print_header "Starting Backend Server"
             
-            # Check port availability
-            if lsof -i:${DEV_BACKEND_PORT:-5000} >/dev/null 2>&1; then
-                print_warning "Port ${DEV_BACKEND_PORT:-5000} is in use"
+            # Check port
+            if port_in_use "$DEV_BACKEND_PORT"; then
+                print_warning "Port $DEV_BACKEND_PORT is in use"
                 read -p "Kill existing process? (y/N): " kill_confirm
                 if [ "$kill_confirm" = "y" ]; then
-                    kill -9 $(lsof -t -i:${DEV_BACKEND_PORT:-5000}) 2>/dev/null || true
-                    print_success "Port ${DEV_BACKEND_PORT:-5000} freed"
+                    kill_port "$DEV_BACKEND_PORT"
+                    print_success "Port freed"
                 else
-                    print_error "Cannot start backend, port in use"
                     exit 1
                 fi
             fi
             
             cd "$BACKEND_DIR"
             
-            # Check environment file
+            # Check env
             if [ ! -f ".env" ]; then
-                print_warning "Backend .env not found, creating from config..."
-                create_backend_env
+                print_warning "Creating .env from config..."
+                cmd_config_export
             fi
             
-            # Start backend
-            print_status "Starting backend on port ${DEV_BACKEND_PORT:-5000}..."
-            print_status "URL: http://localhost:${DEV_BACKEND_PORT:-5000}"
+            print_status "Starting backend on port $DEV_BACKEND_PORT..."
+            print_status "URL: http://localhost:$DEV_BACKEND_PORT"
             npm run dev
             ;;
             
         frontend|web)
             print_header "Starting Frontend Server"
             
-            # Check port availability
-            if lsof -i:${DEV_FRONTEND_PORT:-3000} >/dev/null 2>&1; then
-                print_warning "Port ${DEV_FRONTEND_PORT:-3000} is in use"
+            # Check port
+            if port_in_use "$DEV_FRONTEND_PORT"; then
+                print_warning "Port $DEV_FRONTEND_PORT is in use"
                 read -p "Kill existing process? (y/N): " kill_confirm
                 if [ "$kill_confirm" = "y" ]; then
-                    kill -9 $(lsof -t -i:${DEV_FRONTEND_PORT:-3000}) 2>/dev/null || true
-                    print_success "Port ${DEV_FRONTEND_PORT:-3000} freed"
+                    kill_port "$DEV_FRONTEND_PORT"
+                    print_success "Port freed"
                 else
-                    print_error "Cannot start frontend, port in use"
                     exit 1
                 fi
             fi
             
             cd "$FRONTEND_DIR"
             
-            # Check environment file
+            # Check env
             if [ ! -f ".env.local" ]; then
-                print_warning "Frontend .env.local not found, creating..."
-                create_frontend_env
+                print_warning "Creating .env.local from config..."
+                cmd_config_export
             fi
             
-            # Start frontend
-            print_status "Starting frontend on port ${DEV_FRONTEND_PORT:-3000}..."
-            print_status "URL: http://localhost:${DEV_FRONTEND_PORT:-3000}"
+            print_status "Starting frontend on port $DEV_FRONTEND_PORT..."
+            print_status "URL: http://localhost:$DEV_FRONTEND_PORT"
             npm run dev
+            ;;
+            
+        mobile)
+            cmd_mobile_dev
             ;;
             
         all|both)
             print_header "Starting All Services"
             
-            # Check environment
-            if [ ! -f "$BACKEND_DIR/.env" ]; then
-                print_warning "Backend .env not found, creating from config..."
-                create_backend_env
+            # Check environments
+            if [ ! -f "$BACKEND_DIR/.env" ] || [ ! -f "$FRONTEND_DIR/.env.local" ]; then
+                print_warning "Creating environment files from config..."
+                cmd_config_export
             fi
             
-            if [ ! -f "$FRONTEND_DIR/.env.local" ]; then
-                print_warning "Frontend .env.local not found, creating..."
-                create_frontend_env
-            fi
-            
-            print_status "Backend: http://localhost:${DEV_BACKEND_PORT:-5000}"
-            print_status "Frontend: http://localhost:${DEV_FRONTEND_PORT:-3000}"
+            print_status "Backend: http://localhost:$DEV_BACKEND_PORT"
+            print_status "Frontend: http://localhost:$DEV_FRONTEND_PORT"
             echo ""
             
-            cd "$PROJECT_ROOT"
-            
-            # Check if database is ready
+            # Check database
             cd "$BACKEND_DIR"
             if ! npx prisma migrate status >> "$LOG_FILE" 2>&1; then
-                print_warning "Database not migrated. Running migrations..."
+                print_warning "Running database migrations..."
                 npx prisma migrate deploy >> "$LOG_FILE" 2>&1
             fi
             
-            # Change to wealthlogs-code directory for turbo to work
+            # Start with turbo
             cd "$PROJECT_ROOT/wealthlogs-code"
-            
-            # Start with npm run dev (uses turbo)
-            log "Starting development servers from wealthlogs-code..."
             npm run dev
             ;;
             
         *)
             print_error "Unknown service: $service"
-            echo "Usage: ./maintain.sh start [backend|frontend|all]"
+            echo "Usage: ./scripts/maintain.sh start [backend|frontend|mobile|all]"
             exit 1
             ;;
     esac
-}
-
-# Helper function to create backend .env from config
-create_backend_env() {
-    cat > "$BACKEND_DIR/.env" << EOF
-# Environment
-NODE_ENV=development
-PORT=${DEV_BACKEND_PORT:-5000}
-
-# Database
-DATABASE_URL="postgresql://${DB_USERNAME:-postgres}:${DB_PASSWORD:-password}@${DB_HOST:-localhost}:${DB_PORT:-5432}/${DB_NAME:-wealthlog}?schema=public"
-
-# JWT Secrets
-JWT_ACCESS_SECRET=${JWT_ACCESS_SECRET:-$(openssl rand -hex 32 2>/dev/null || echo "dev_access_secret")}
-JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET:-$(openssl rand -hex 32 2>/dev/null || echo "dev_refresh_secret")}
-SESSION_SECRET=${SESSION_SECRET:-$(openssl rand -hex 32 2>/dev/null || echo "dev_session_secret")}
-SECRET_KEY=${JWT_ACCESS_SECRET:-$(openssl rand -hex 32 2>/dev/null || echo "dev_access_secret")}
-
-# Google OAuth
-GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-your-google-client-id.apps.googleusercontent.com}
-GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-your-google-client-secret}
-GOOGLE_CALLBACK_URL=http://localhost:${DEV_BACKEND_PORT:-5000}/api/auth/google/callback
-
-# URLs
-FRONTEND_URL=http://localhost:${DEV_FRONTEND_PORT:-3000}
-ALLOWED_ORIGINS=http://localhost:${DEV_FRONTEND_PORT:-3000}
-
-# Optional
-REQUIRE_EMAIL_VERIFICATION=false
-EOF
-    print_success "Created backend .env file"
-}
-
-# Helper function to create frontend .env.local from config
-create_frontend_env() {
-    cat > "$FRONTEND_DIR/.env.local" << EOF
-NEXT_PUBLIC_API_URL=http://localhost:${DEV_BACKEND_PORT:-5000}
-NEXT_PUBLIC_GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-your-google-client-id.apps.googleusercontent.com}
-EOF
-    print_success "Created frontend .env.local file"
 }
 
 # DEV: Alias for start all
@@ -834,839 +195,437 @@ cmd_dev() {
     cmd_start "all"
 }
 
-# BUILD: Build for production
-cmd_build() {
-    print_header "         BUILDING FOR PRODUCTION         "
+# TEST: Run tests
+cmd_test() {
+    print_header "           RUNNING TEST SUITE           "
+    
+    # Check dependencies first
+    print_section "Checking Dependencies"
+    if ! quick_dependency_check; then
+        print_error "Dependencies not installed"
+        print_status "Run './maintain.sh init' first"
+        return 1
+    fi
     
     local errors=0
     
-    print_section "Building Shared Packages"
-    if [ -d "$SHARED_DIR" ]; then
+    # Test shared package
+    if [ -d "$SHARED_DIR" ] && [ -d "$SHARED_DIR/node_modules" ]; then
+        print_section "Testing Shared Package"
         cd "$SHARED_DIR"
-        if npm run build >> "$LOG_FILE" 2>&1; then
-            print_success "Shared package built"
+        
+        # Use local TypeScript
+        if [ -f "node_modules/typescript/bin/tsc" ]; then
+            if npm run build >> "$LOG_FILE" 2>&1; then
+                print_success "Shared package builds"
+            else
+                print_error "Shared package build failed"
+                errors=$((errors + 1))
+            fi
         else
-            print_error "Shared package build failed"
+            print_warning "TypeScript not installed in shared - skipping"
+        fi
+    fi
+    
+    # Test frontend
+    if [ -d "$FRONTEND_DIR" ] && [ -d "$FRONTEND_DIR/node_modules" ]; then
+        print_section "Testing Frontend"
+        cd "$FRONTEND_DIR"
+        
+        # TypeScript check using local installation
+        print_test "TypeScript validation..."
+        if [ -f "node_modules/typescript/bin/tsc" ]; then
+            if npx tsc --noEmit >> "$LOG_FILE" 2>&1; then
+                print_success "TypeScript valid"
+            else
+                print_warning "TypeScript has issues"
+                errors=$((errors + 1))
+            fi
+        else
+            print_warning "TypeScript not installed - skipping"
+        fi
+        
+        # Build test
+        print_test "Production build test..."
+        if [ -f "node_modules/next/dist/bin/next" ]; then
+            if npm run build >> "$LOG_FILE" 2>&1; then
+                print_success "Production build works"
+            else
+                print_error "Production build failed"
+                errors=$((errors + 1))
+            fi
+        else
+            print_warning "Next.js not installed - skipping build test"
+        fi
+    fi
+    
+    # Test backend
+    if [ -d "$BACKEND_DIR" ] && [ -d "$BACKEND_DIR/node_modules" ]; then
+        print_section "Testing Backend"
+        cd "$BACKEND_DIR"
+        
+        # Prisma validation using --yes flag
+        print_test "Prisma schema validation..."
+        if npx --yes prisma validate >> "$LOG_FILE" 2>&1; then
+            print_success "Prisma schema valid"
+        else
+            print_error "Prisma schema invalid"
             errors=$((errors + 1))
         fi
     fi
     
-    print_section "Building Frontend"
-    cd "$FRONTEND_DIR"
-    if npm run build >> "$LOG_FILE" 2>&1; then
-        print_success "Frontend built successfully"
-    else
-        print_error "Frontend build failed - check log"
-        errors=$((errors + 1))
-    fi
-    
-    print_section "Preparing Backend"
-    cd "$BACKEND_DIR"
-    npx prisma generate >> "$LOG_FILE" 2>&1
-    print_success "Prisma client generated"
-    
+    # Summary
+    echo ""
     if [ $errors -eq 0 ]; then
-        echo ""
-        print_success "Production build complete!"
+        print_success "All tests passed!"
     else
-        echo ""
-        print_error "Build failed with $errors error(s)"
+        print_error "$errors test(s) failed"
         show_log_info
         exit 1
     fi
 }
 
-# CLEAN - Remove all build artifacts
+# BUILD: Build for production
+cmd_build() {
+    print_header "         BUILDING FOR PRODUCTION         "
+    
+    # Build shared
+    if [ -d "$SHARED_DIR" ]; then
+        print_section "Building Shared Package"
+        cd "$SHARED_DIR"
+        npm run build >> "$LOG_FILE" 2>&1
+        print_success "Shared package built"
+    fi
+    
+    # Build frontend
+    print_section "Building Frontend"
+    cd "$FRONTEND_DIR"
+    npm run build >> "$LOG_FILE" 2>&1
+    print_success "Frontend built"
+    
+    # Prepare backend
+    print_section "Preparing Backend"
+    cd "$BACKEND_DIR"
+    npx prisma generate >> "$LOG_FILE" 2>&1
+    print_success "Backend prepared"
+    
+    echo ""
+    print_success "Production build complete!"
+}
+
+# CLEAN: Clean project
 cmd_clean() {
     print_header "         CLEANING PROJECT         "
     
-    print_status "Removing build artifacts..."
-    cd "$PROJECT_ROOT"
+    print_warning "This will remove all build artifacts and dependencies"
+    read -p "Continue? (y/N): " confirm
     
-    # Remove node_modules
-    rm -rf node_modules apps/*/node_modules packages/*/node_modules
+    if [ "$confirm" != "y" ]; then
+        print_status "Cancelled"
+        return
+    fi
     
-    # Remove build directories
-    rm -rf apps/web/.next apps/*/.turbo packages/*/dist .turbo
+    print_status "Removing node_modules..."
+    find "$PROJECT_ROOT/wealthlogs-code" -name "node_modules" -type d -prune -exec rm -rf {} + 2>/dev/null || true
     
-    # Remove lock files
-    rm -f package-lock.json apps/*/package-lock.json packages/*/package-lock.json
+    print_status "Removing build directories..."
+    rm -rf "$FRONTEND_DIR/.next" "$FRONTEND_DIR/out"
+    rm -rf "$MOBILE_DIR/build" "$MOBILE_DIR/ios/build" "$MOBILE_DIR/android/build"
+    find "$PROJECT_ROOT/wealthlogs-code" -name "dist" -type d -prune -exec rm -rf {} + 2>/dev/null || true
     
-    # Remove old patch files and temp scripts
-    rm -f *.patch fix-*.sh quick-fix.sh deploy-checklist.sh cleanup.sh
+    print_status "Removing lock files..."
+    find "$PROJECT_ROOT/wealthlogs-code" -name "package-lock.json" -delete 2>/dev/null || true
+    find "$PROJECT_ROOT/wealthlogs-code" -name "yarn.lock" -delete 2>/dev/null || true
     
     print_success "Project cleaned!"
     
     # Ask about logs
-    echo ""
     read -p "Clean logs too? (y/N): " clean_logs
     if [ "$clean_logs" = "y" ]; then
-        rm -rf "$LOG_DIR"
-        print_success "Logs cleaned!"
+        cmd_logs_clean 0
     fi
 }
 
-# DB Commands
-cmd_db() {
-    case "$1" in
-        setup)
-            print_header "        DATABASE SETUP        "
-            cd "$BACKEND_DIR"
-            npx prisma migrate dev --name initial_setup >> "$LOG_FILE" 2>&1
-            print_success "Database created and migrated"
-            ;;
-        migrate)
-            print_header "        DATABASE MIGRATION        "
-            cd "$BACKEND_DIR"
-            if [ -n "$2" ]; then
-                npx prisma migrate dev --name "$2" >> "$LOG_FILE" 2>&1
-            else
-                npx prisma migrate deploy >> "$LOG_FILE" 2>&1
-            fi
-            print_success "Migration complete"
-            ;;
-        reset)
-            print_header "        DATABASE RESET        "
-            print_warning "This will DELETE all data!"
-            read -p "Are you sure? (y/N): " confirm
-            if [ "$confirm" = "y" ]; then
-                cd "$BACKEND_DIR"
-                npx prisma migrate reset >> "$LOG_FILE" 2>&1
-                print_success "Database reset complete"
-            fi
-            ;;
-        *)
-            print_error "Unknown db command. Use: setup, migrate, or reset"
-            ;;
-    esac
-}
-
-# STATUS - Quick project health check
-cmd_status() {
-    print_header "       PROJECT STATUS       "
+# FIX: Auto-fix common issues
+cmd_fix() {
+    print_header "        AUTO-FIXING COMMON ISSUES        "
     
-    check_requirements
+    print_section "Fixing TypeScript Errors"
+    
+    cd "$FRONTEND_DIR"
+    
+    # Install missing types
+    print_status "Installing type definitions..."
+    npm install --save-dev @types/papaparse @types/node @types/react >> "$LOG_FILE" 2>&1
+    print_success "Type definitions installed"
+    
+    # Fix error handling
+    print_status "Fixing error handling in TypeScript files..."
+    find . -name "*.tsx" -o -name "*.ts" | while read -r file; do
+        # Fix catch blocks
+        sed -i.bak 's/catch (error)/catch (error: any)/g' "$file" 2>/dev/null || \
+        sed -i '' 's/catch (error)/catch (error: any)/g' "$file" 2>/dev/null || true
+        rm -f "$file.bak"
+    done
+    print_success "Error handling fixed"
+    
+    print_section "Rebuilding Packages"
+    
+    # Rebuild shared
+    if [ -d "$SHARED_DIR" ]; then
+        cd "$SHARED_DIR"
+        npm run build >> "$LOG_FILE" 2>&1 || true
+        print_success "Shared package rebuilt"
+    fi
+    
+    # Test build
+    cd "$FRONTEND_DIR"
+    print_test "Testing fixes..."
+    if npm run build >> "$LOG_FILE" 2>&1; then
+        print_success "Build successful after fixes!"
+    else
+        print_warning "Some issues remain - check log"
+    fi
     
     echo ""
+    print_success "Auto-fix complete!"
+    print_status "Run './scripts/maintain.sh test' to verify"
+}
+
+# DEPLOY:CHECK - Pre-deployment validation
+cmd_deploy_check() {
+    print_header "       PRE-DEPLOYMENT VALIDATION       "
     
-    # Check installations
-    [ -d "$PROJECT_ROOT/node_modules" ] && print_success "Root packages installed" || print_warning "Root packages not installed"
-    [ -d "$BACKEND_DIR/node_modules" ] && print_success "Backend packages installed" || print_warning "Backend packages not installed"
-    [ -d "$FRONTEND_DIR/node_modules" ] && print_success "Frontend packages installed" || print_warning "Frontend packages not installed"
+    local ready=true
     
-    # Check env files
-    [ -f "$BACKEND_DIR/.env" ] && print_success "Backend .env exists" || print_error "Backend .env missing"
-    [ -f "$FRONTEND_DIR/.env.local" ] && print_success "Frontend .env.local exists" || print_warning "Frontend .env.local missing"
-    
-    # Check database
-    cd "$BACKEND_DIR"
-    if npx prisma migrate status >> "$LOG_FILE" 2>&1; then
-        print_success "Database connected and migrated"
+    # Run tests
+    print_section "Running Tests"
+    if cmd_test; then
+        print_success "Tests passed"
     else
-        print_warning "Database not migrated or not connected"
+        ready=false
     fi
     
-    # Check ports
-    if lsof -i:3000 >/dev/null 2>&1; then
-        print_warning "Port 3000 in use (frontend)"
+    # Check configuration
+    print_section "Checking Configuration"
+    if cmd_config_validate; then
+        print_success "Configuration valid"
     else
-        print_success "Port 3000 available"
+        print_warning "Configuration has issues"
     fi
     
-    if lsof -i:5000 >/dev/null 2>&1; then
-        print_warning "Port 5000 in use (backend)"
-    else
-        print_success "Port 5000 available"
+    # Check git status
+    print_section "Git Status"
+    cd "$PROJECT_ROOT"
+    
+    if [ -d .git ]; then
+        if git diff-index --quiet HEAD -- 2>/dev/null; then
+            print_success "No uncommitted changes"
+        else
+            print_warning "You have uncommitted changes"
+        fi
+        
+        local branch=$(git rev-parse --abbrev-ref HEAD)
+        print_status "Current branch: $branch"
     fi
     
-    # Check logs
-    if [ -d "$LOG_DIR" ]; then
-        local log_count=$(ls "$LOG_DIR"/*.log 2>/dev/null | wc -l)
-        print_status "Log files: $log_count"
+    # Summary
+    echo ""
+    if [ "$ready" = true ]; then
+        print_header "    ✅ READY FOR DEPLOYMENT!    "
+        echo -e "${GREEN}Push to trigger automatic deployment${NC}"
+    else
+        print_header "    ❌ NOT READY FOR DEPLOYMENT    "
+        print_error "Fix issues before deploying"
     fi
 }
 
-# AUTH:TEST - Test authentication flow
+# AUTH:TEST - Test authentication
 cmd_auth_test() {
     print_header "      AUTHENTICATION TESTING      "
     
-    local env="$1"
+    local env="${1:-local}"
     local api_url
     
     if [ "$env" = "prod" ] || [ "$env" = "production" ]; then
         api_url="$PROD_BACKEND_URL"
         print_status "Testing PRODUCTION authentication"
     else
-        api_url="http://localhost:5000"
+        api_url="http://localhost:$DEV_BACKEND_PORT"
         print_status "Testing LOCAL authentication"
     fi
     
-    print_section "Testing Auth Debug Endpoint"
+    # Test login
+    print_test "Testing login endpoint..."
     
-    # Test debug endpoint
-    print_test "Checking auth configuration..."
-    DEBUG_RESPONSE=$(curl -s "$api_url/api/auth/debug" 2>/dev/null || echo '{"error": "Connection failed"}')
-    
-    if echo "$DEBUG_RESPONSE" | grep -q "environment"; then
-        print_success "Debug endpoint accessible"
-        echo "$DEBUG_RESPONSE" | python3 -m json.tool 2>/dev/null || echo "$DEBUG_RESPONSE"
-        log "Debug response: $DEBUG_RESPONSE"
-    else
-        print_error "Debug endpoint not accessible"
-        log "Debug failed: $DEBUG_RESPONSE"
-    fi
-    
-    print_section "Testing Login Flow"
-    
-    # Try to login
-    print_test "Attempting login..."
-    LOGIN_RESPONSE=$(curl -s -X POST "$api_url/api/auth/login" \
+    local response=$(curl -s -X POST "$api_url/api/auth/login" \
         -H "Content-Type: application/json" \
-        -H "Accept: application/json" \
-        -d '{"username": "'"$TEST_USERNAME"'", "password": "'"$TEST_PASSWORD"'"}' \
-        2>/dev/null || echo '{"error": "Connection failed"}')
+        -d "{\"username\": \"$TEST_USERNAME\", \"password\": \"$TEST_PASSWORD\"}" 2>/dev/null)
     
-    # Extract access token
-    ACCESS_TOKEN=$(echo "$LOGIN_RESPONSE" | grep -o '"accessToken":"[^"]*' | cut -d'"' -f4)
-    
-    if [ -n "$ACCESS_TOKEN" ]; then
-        print_success "Login successful!"
-        print_status "Access token received (length: ${#ACCESS_TOKEN})"
-        log "Login successful, token length: ${#ACCESS_TOKEN}"
-    else
-        print_warning "Login failed or user doesn't exist"
-        echo -e "${GRAY}Response: $LOGIN_RESPONSE${NC}"
-        log "Login response: $LOGIN_RESPONSE"
+    if echo "$response" | grep -q "accessToken"; then
+        print_success "Login successful"
         
-        # Try to register
-        print_test "Attempting to register test user..."
-        REGISTER_RESPONSE=$(curl -s -X POST "$api_url/api/auth/register" \
-            -H "Content-Type: application/json" \
-            -d '{
-                "username": "'"$TEST_USERNAME"'",
-                "email": "'"$TEST_EMAIL"'",
-                "password": "'"$TEST_PASSWORD"'",
-                "firstName": "Test",
-                "lastName": "User"
-            }' 2>/dev/null)
+        # Extract token
+        local token=$(echo "$response" | grep -o '"accessToken":"[^"]*' | cut -d'"' -f4)
         
-        if echo "$REGISTER_RESPONSE" | grep -q "userId"; then
-            print_success "Test user registered"
-            
-            # Try login again
-            LOGIN_RESPONSE=$(curl -s -X POST "$api_url/api/auth/login" \
-                -H "Content-Type: application/json" \
-                -d '{"username": "'"$TEST_USERNAME"'", "password": "'"$TEST_PASSWORD"'"}' \
-                2>/dev/null)
-            ACCESS_TOKEN=$(echo "$LOGIN_RESPONSE" | grep -o '"accessToken":"[^"]*' | cut -d'"' -f4)
-        fi
-    fi
-    
-    if [ -n "$ACCESS_TOKEN" ]; then
-        print_section "Testing Protected Routes"
+        # Test protected route
+        print_test "Testing protected route..."
+        local me_response=$(curl -s "$api_url/api/auth/me" \
+            -H "Authorization: Bearer $token" 2>/dev/null)
         
-        # Test /api/auth/me
-        print_test "Testing /api/auth/me endpoint..."
-        ME_RESPONSE=$(curl -s -X GET "$api_url/api/auth/me" \
-            -H "Authorization: Bearer $ACCESS_TOKEN" \
-            2>/dev/null)
-        
-        if echo "$ME_RESPONSE" | grep -q "user"; then
-            print_success "Protected route accessible with token"
-            log "Me endpoint response: $ME_RESPONSE"
+        if echo "$me_response" | grep -q "user"; then
+            print_success "Protected route accessible"
         else
             print_error "Protected route failed"
-            echo -e "${GRAY}Response: $ME_RESPONSE${NC}"
         fi
-        
-        # Test dashboard endpoint
-        print_test "Testing /api/dashboard/networth/summary..."
-        DASHBOARD_RESPONSE=$(curl -s -X GET "$api_url/api/dashboard/networth/summary" \
-            -H "Authorization: Bearer $ACCESS_TOKEN" \
-            -H "Accept: application/json" \
-            2>/dev/null)
-        
-        if echo "$DASHBOARD_RESPONSE" | grep -q "error"; then
-            print_error "Dashboard endpoint failed"
-            echo -e "${GRAY}Response: $DASHBOARD_RESPONSE${NC}"
-        else
-            print_success "Dashboard endpoint accessible"
-        fi
-    fi
-    
-    print_section "Testing CORS Configuration"
-    
-    # Test CORS preflight
-    print_test "Testing CORS preflight request..."
-    CORS_RESPONSE=$(curl -s -X OPTIONS "$api_url/api/dashboard/networth/summary" \
-        -H "Origin: $PROD_FRONTEND_URL" \
-        -H "Access-Control-Request-Method: GET" \
-        -H "Access-Control-Request-Headers: authorization" \
-        -I 2>/dev/null | head -n 20)
-    
-    if echo "$CORS_RESPONSE" | grep -q "access-control-allow-origin"; then
-        print_success "CORS headers present"
-        echo "$CORS_RESPONSE" | grep -i "access-control" | while read -r line; do
-            echo -e "${GRAY}  → $line${NC}"
-        done
     else
-        print_warning "CORS headers might be missing"
+        print_warning "Login failed - user may not exist"
     fi
     
     echo ""
-    print_success "Authentication test complete!"
-    show_log_info
+    print_success "Authentication test complete"
 }
 
-# DEPLOY:STATUS - Check production status
-cmd_deploy_status() {
-    print_header "      PRODUCTION STATUS CHECK      "
-    
-    print_section "Testing Production Endpoints"
-    
-    # Test backend health
-    print_status "Backend URL: $PROD_BACKEND_URL"
-    BACKEND_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$PROD_BACKEND_URL/" 2>/dev/null || echo "000")
-    if [ "$BACKEND_STATUS" = "200" ] || [ "$BACKEND_STATUS" = "404" ]; then
-        print_success "Backend is responding (HTTP $BACKEND_STATUS)"
-    else
-        print_error "Backend not responding (HTTP $BACKEND_STATUS)"
-    fi
-    
-    # Test API auth endpoint
-    AUTH_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$PROD_BACKEND_URL/api/auth/me" 2>/dev/null || echo "000")
-    if [ "$AUTH_STATUS" = "401" ] || [ "$AUTH_STATUS" = "403" ]; then
-        print_success "Auth endpoint protected correctly (HTTP $AUTH_STATUS)"
-    else
-        print_warning "Auth endpoint status: HTTP $AUTH_STATUS"
-    fi
-    
-    # Test frontend
-    print_status "Frontend URL: $PROD_FRONTEND_URL"
-    FRONTEND_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$PROD_FRONTEND_URL" 2>/dev/null || echo "000")
-    if [ "$FRONTEND_STATUS" = "200" ]; then
-        print_success "Frontend is accessible (HTTP $FRONTEND_STATUS)"
-    else
-        print_error "Frontend not responding (HTTP $FRONTEND_STATUS)"
-    fi
-    
-    echo ""
-    print_success "Production status check complete"
-}
-
-# DOCTOR - System diagnostics
-cmd_doctor() {
-    print_header "       SYSTEM DIAGNOSTICS       "
-    
-    local issues=0
-    
-    print_section "Checking System Requirements"
-    check_requirements
-    
-    print_section "Checking Project Structure"
-    
-    # Check critical directories
-    [ -d "$BACKEND_DIR" ] && print_success "Backend directory exists" || { print_error "Backend directory missing"; issues=$((issues + 1)); }
-    [ -d "$FRONTEND_DIR" ] && print_success "Frontend directory exists" || { print_error "Frontend directory missing"; issues=$((issues + 1)); }
-    [ -d "$SHARED_DIR" ] && print_success "Shared directory exists" || { print_error "Shared directory missing"; issues=$((issues + 1)); }
-    [ -d "$MOBILE_DIR" ] && print_success "Mobile directory exists" || print_warning "Mobile directory missing (optional)"
-    
-    print_section "Checking Configuration"
-    
-    if [ -f "$CONFIG_FILE" ]; then
-        source "$CONFIG_FILE"
-        
-        # Check critical config values
-        if [ -n "$JWT_ACCESS_SECRET" ] && [ "$JWT_ACCESS_SECRET" != "" ]; then
-            print_success "JWT secrets configured"
-        else
-            print_error "JWT secrets not configured"
-            issues=$((issues + 1))
-        fi
-        
-        if [ "$DB_PASSWORD" != "password" ] && [ -n "$DB_PASSWORD" ]; then
-            print_success "Database password configured"
-        else
-            print_warning "Using default database password"
-        fi
-    else
-        print_error "Configuration file missing"
-        issues=$((issues + 1))
-    fi
-    
-    print_section "Checking Dependencies"
-    
-    # Check package.json files
-    [ -f "$BACKEND_DIR/package.json" ] && print_success "Backend package.json exists" || { print_error "Backend package.json missing"; issues=$((issues + 1)); }
-    [ -f "$FRONTEND_DIR/package.json" ] && print_success "Frontend package.json exists" || { print_error "Frontend package.json missing"; issues=$((issues + 1)); }
-    
-    print_section "Checking Database Connection"
-    
-    cd "$BACKEND_DIR"
-    if npx prisma db pull --print 2>&1 | grep -q "success" || npx prisma migrate status 2>&1 | grep -q "Database schema is up to date"; then
-        print_success "Database connection working"
-    else
-        print_warning "Database connection issues - check configuration"
-    fi
-    
-    # Summary
-    echo ""
-    if [ $issues -eq 0 ]; then
-        print_header "    ${CHECK} SYSTEM HEALTHY!    "
-        print_success "No issues detected"
-    else
-        print_header "    ${WARN} ISSUES FOUND    "
-        print_error "Found $issues issue(s)"
-        echo ""
-        echo -e "${YELLOW}Suggested fixes:${NC}"
-        echo -e "  1. Run: ${CYAN}./scripts/maintain.sh config edit${NC} to configure settings"
-        echo -e "  2. Run: ${CYAN}./scripts/maintain.sh init${NC} to initialize project"
-        echo -e "  3. Run: ${CYAN}./scripts/maintain.sh fix${NC} to auto-fix issues"
-    fi
-    
-    show_log_info
-}
-
-# HELP - Show detailed help
+# HELP - Show help
 cmd_help() {
-    print_header "        WEALTHLOGS MAINTENANCE HELP        "
+    print_header "        WEALTHLOG MAINTENANCE HELP        "
     
     echo -e "${WHITE}USAGE:${NC} ./scripts/maintain.sh ${GREEN}[command]${NC} ${YELLOW}[options]${NC}"
     echo ""
     
     echo -e "${CYAN}━━━ QUICK START ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo -e "  ${GREEN}init${NC}          Setup/update packages and environment"
+    echo -e "  ${GREEN}init${NC}          Initialize/update project"
     echo -e "  ${GREEN}dev${NC}           Start all development servers"
-    echo -e "  ${GREEN}start backend${NC} Start backend server only"
-    echo -e "  ${GREEN}start frontend${NC} Start frontend server only"
-    echo -e "  ${GREEN}start mobile${NC}  Start mobile development"
-    echo -e "  ${GREEN}test${NC}          Run comprehensive tests"
-    echo -e "  ${GREEN}fix${NC}           Auto-fix common issues"
+    echo -e "  ${GREEN}start${NC}         Start specific service"
+    echo -e "  ${GREEN}test${NC}          Run test suite"
+    echo -e "  ${GREEN}build${NC}         Build for production"
     echo ""
     
     echo -e "${CYAN}━━━ CONFIGURATION ━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo -e "  ${GREEN}config edit${NC}     Edit configuration file"
-    echo -e "  ${GREEN}config validate${NC} Validate configuration"
-    echo -e "  ${GREEN}config show${NC}     Show current configuration"
-    echo -e "  ${GREEN}config create${NC}   Create default configuration"
-    echo ""
-    
-    echo -e "${CYAN}━━━ MOBILE APP ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo -e "  ${GREEN}mobile build ios${NC}     Build iOS app"
-    echo -e "  ${GREEN}mobile build android${NC} Build Android app"
-    echo -e "  ${GREEN}mobile build both${NC}    Build both platforms"
-    echo -e "  ${GREEN}mobile run ios${NC}       Run iOS app"
-    echo -e "  ${GREEN}mobile run android${NC}   Run Android app"
-    echo -e "  ${GREEN}mobile sync${NC}          Sync Capacitor"
-    echo -e "  ${GREEN}mobile dev${NC}           Start mobile dev server"
-    echo ""
-    
-    echo -e "${CYAN}━━━ DEPLOYMENT ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo -e "  ${GREEN}deploy:check${NC}  ${YELLOW}[IMPORTANT]${NC} Pre-deployment validation"
-    echo -e "  ${GREEN}deploy:status${NC} Check production status"
-    echo -e "  ${GREEN}build${NC}         Build all for production"
-    echo ""
-    
-    echo -e "${CYAN}━━━ AUTHENTICATION ━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo -e "  ${GREEN}auth:test${NC}      Test local authentication"
-    echo -e "  ${GREEN}auth:test prod${NC} Test production authentication"
+    echo -e "  ${GREEN}config${NC}        Manage configuration"
+    echo -e "  ${GREEN}config edit${NC}   Edit configuration"
+    echo -e "  ${GREEN}config validate${NC} Validate settings"
     echo ""
     
     echo -e "${CYAN}━━━ DATABASE ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo -e "  ${GREEN}db:setup${NC}      Create database with migrations"
-    echo -e "  ${GREEN}db:migrate${NC}    Run pending migrations"
-    echo -e "  ${GREEN}db:studio${NC}     Open Prisma Studio GUI"
-    echo -e "  ${GREEN}db:reset${NC}      Reset database ${RED}(deletes all data!)${NC}"
+    echo -e "  ${GREEN}db:setup${NC}      Setup database"
+    echo -e "  ${GREEN}db:migrate${NC}    Run migrations"
+    echo -e "  ${GREEN}db:studio${NC}     Open Prisma Studio"
+    echo -e "  ${GREEN}db:backup${NC}     Backup database"
     echo ""
     
-    echo -e "${CYAN}━━━ MAINTENANCE ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo -e "  ${GREEN}doctor${NC}        Run system diagnostics"
-    echo -e "  ${GREEN}status${NC}        Quick health check"
-    echo -e "  ${GREEN}logs${NC}          View latest log"
-    echo -e "  ${GREEN}logs backend${NC}  View backend logs"
-    echo -e "  ${GREEN}logs frontend${NC} View frontend logs"
+    echo -e "${CYAN}━━━ MOBILE ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "  ${GREEN}mobile init${NC}   Initialize mobile app"
+    echo -e "  ${GREEN}mobile build${NC}  Build mobile app"
+    echo -e "  ${GREEN}mobile run${NC}    Run on device"
+    echo ""
+    
+    echo -e "${CYAN}━━━ MAINTENANCE ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "  ${GREEN}doctor${NC}        Run diagnostics"
+    echo -e "  ${GREEN}status${NC}        Quick status check"
+    echo -e "  ${GREEN}fix${NC}           Auto-fix issues"
+    echo -e "  ${GREEN}clean${NC}         Clean project"
+    echo ""
+    
+    echo -e "${CYAN}━━━ LOGS ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "  ${GREEN}logs${NC}          View logs"
     echo -e "  ${GREEN}logs list${NC}     List all logs"
     echo -e "  ${GREEN}logs clean${NC}    Clean old logs"
-    echo -e "  ${GREEN}clean${NC}         Remove all build artifacts"
     echo ""
     
-    echo -e "${CYAN}━━━ WORKFLOWS ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo ""
-    echo -e "${WHITE}First-time setup:${NC}"
-    echo -e "  1. ${YELLOW}./scripts/maintain.sh init${NC}        ${GRAY}# Install dependencies${NC}"
-    echo -e "  2. ${YELLOW}./scripts/maintain.sh config edit${NC} ${GRAY}# Configure settings${NC}"
-    echo -e "  3. ${YELLOW}./scripts/maintain.sh db:setup${NC}    ${GRAY}# Create database${NC}"
-    echo -e "  4. ${YELLOW}./scripts/maintain.sh dev${NC}         ${GRAY}# Start development${NC}"
-    echo ""
-    echo -e "${WHITE}Before deploying:${NC}"
-    echo -e "  1. ${YELLOW}./scripts/maintain.sh deploy:check${NC} ${GREEN}← Always run first!${NC}"
-    echo -e "  2. ${YELLOW}git checkout -b feature/name${NC} ${GRAY}# Create feature branch${NC}"
-    echo -e "  3. ${YELLOW}git add . && git commit${NC}"
-    echo -e "  4. ${YELLOW}git push origin feature/name${NC}"
-    echo -e "  5. ${GRAY}Open PR to staging branch on GitHub${NC}"
-    echo -e "  6. ${GRAY}After merge, test on staging${NC}"
-    echo -e "  7. ${GRAY}If good, PR from staging to master${NC}"
-    echo ""
-    echo -e "${WHITE}When something breaks:${NC}"
-    echo -e "  1. ${YELLOW}./scripts/maintain.sh doctor${NC}   ${GRAY}# Run diagnostics${NC}"
-    echo -e "  2. ${YELLOW}./scripts/maintain.sh logs${NC}     ${GRAY}# Check logs${NC}"
-    echo -e "  3. ${YELLOW}./scripts/maintain.sh fix${NC}      ${GRAY}# Try auto-fix${NC}"
-    echo -e "  4. ${YELLOW}./scripts/maintain.sh clean${NC}    ${GRAY}# Clean everything${NC}"
-    echo -e "  5. ${YELLOW}./scripts/maintain.sh init${NC}     ${GRAY}# Reinstall${NC}"
+    echo -e "${CYAN}━━━ DEPLOYMENT ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "  ${GREEN}deploy:check${NC}  Pre-deployment check"
+    echo -e "  ${GREEN}auth:test${NC}     Test authentication"
     echo ""
     
-    echo -e "${MAGENTA}━━━ LOGGING ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo -e "All commands generate detailed logs in:"
-    echo -e "  ${CYAN}$LOG_DIR/${NC}"
-    echo ""
-    echo -e "View latest log: ${YELLOW}./scripts/maintain.sh logs${NC}"
-    echo -e "List all logs:   ${YELLOW}./scripts/maintain.sh logs list${NC}"
-    echo ""
-    
-    echo -e "${GRAY}Version 4.0 | With Mobile Support & Config Management${NC}"
-    echo -e "${GRAY}Built with ❤️  for WealthLogs${NC}"
+    echo -e "${GRAY}Version 5.0 | Modular Architecture${NC}"
+    echo -e "${GRAY}Config: $SCRIPT_DIR/config.env${NC}"
 }
 
 # ================================================================================
 # MAIN SCRIPT LOGIC
 # ================================================================================
 
-# Initialize logging for all commands except help
+# Initialize logging (except for help)
 if [ "$1" != "help" ] && [ "$1" != "--help" ] && [ "$1" != "-h" ]; then
-    init_logging "$@"
+    setup_logging "$@"
 fi
 
 # Handle commands
 case "$1" in
     # Quick start
-    init|install|update) cmd_init ;;
-    dev) cmd_dev ;;
-    start) cmd_start "$2" ;;
-    test) cmd_test ;;
+    init|install|setup)
+        cmd_init
+        ;;
+    dev)
+        cmd_dev
+        ;;
+    start)
+        cmd_start "$2"
+        ;;
+    test)
+        cmd_test
+        ;;
+    build)
+        cmd_build
+        ;;
     
     # Configuration
-    config) cmd_config "$2" ;;
-    
-    # Mobile
-    mobile) cmd_mobile "$2" "$3" ;;
-    
-    # Deployment
-    deploy:check|deploy-check|precheck|pre-deploy) cmd_deploy_check ;;
-    deploy:status|deploy-status|prod-status) cmd_deploy_status ;;
-    build) cmd_build ;;
-    
-    # Authentication Testing
-    auth:test|auth-test) cmd_auth_test "$2" ;;
-    auth:test:prod|auth-test-prod) cmd_auth_test "prod" ;;
+    config)
+        cmd_config "$2" "$3"
+        ;;
     
     # Database
-    db:setup|db-setup) cmd_db setup ;;
-    db:migrate|db-migrate|migrate) cmd_db migrate "$2" ;;
-    db:studio|db-studio|studio) cmd_db studio ;;
-    db:reset|db-reset) cmd_db reset ;;
+    db:*)
+        cmd_db "${1#db:}" "$2"
+        ;;
     
-    # Maintenance
-    fix|quickfix|quick-fix) cmd_fix ;;
-    clean) cmd_clean ;;
-    status) cmd_status ;;
-    doctor) cmd_doctor ;;
+    # Mobile
+    mobile)
+        cmd_mobile "$2" "$3"
+        ;;
     
     # Logs
-    logs) cmd_logs "$2" ;;
+    logs)
+        cmd_logs "$2" "$3"
+        ;;
+    
+    # Maintenance
+    doctor)
+        cmd_doctor
+        ;;
+    status)
+        cmd_status
+        ;;
+    fix)
+        cmd_fix
+        ;;
+    clean)
+        cmd_clean
+        ;;
+    
+    # Deployment
+    deploy:check|precheck)
+        cmd_deploy_check
+        ;;
+    auth:test)
+        cmd_auth_test "$2"
+        ;;
     
     # Help
-    help|--help|-h|"") cmd_help ;;
+    help|--help|-h|"")
+        cmd_help
+        ;;
     
-    # Unknown command
+    # Unknown
     *)
         print_error "Unknown command: $1"
         echo "Run: ./scripts/maintain.sh help"
         exit 1
         ;;
 esac
-    CORS_RESPONSE=$(curl -s -X OPTIONS "$api_url/api/dashboard/networth/summary" \
-        -H "Origin: $PROD_FRONTEND_URL" \
-        -H "Access-Control-Request-Method: GET" \
-        -H "Access-Control-Request-Headers: authorization" \
-        -I 2>/dev/null | head -n 20)
-    
-    if echo "$CORS_RESPONSE" | grep -q "access-control-allow-origin"; then
-        print_success "CORS headers present"
-        echo "$CORS_RESPONSE" | grep -i "access-control" | while read -r line; do
-            echo -e "${GRAY}  → $line${NC}"
-        done
-    else
-        print_warning "CORS headers might be missing"
-    fi
-    
-    echo ""
-    print_success "Authentication test complete!"
+
+# Show log info at the end (if not help)
+if [ "$1" != "help" ] && [ "$1" != "--help" ] && [ "$1" != "-h" ] && [ "$1" != "" ]; then
     show_log_info
-}
-
-# DEPLOY:STATUS - Check production status
-cmd_deploy_status() {
-    print_header "      PRODUCTION STATUS CHECK      "
-    
-    print_section "Testing Production Endpoints"
-    
-    # Test backend health
-    print_status "Backend URL: $PROD_BACKEND_URL"
-    BACKEND_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$PROD_BACKEND_URL/" 2>/dev/null || echo "000")
-    if [ "$BACKEND_STATUS" = "200" ] || [ "$BACKEND_STATUS" = "404" ]; then
-        print_success "Backend is responding (HTTP $BACKEND_STATUS)"
-    else
-        print_error "Backend not responding (HTTP $BACKEND_STATUS)"
-    fi
-    
-    # Test API auth endpoint
-    AUTH_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$PROD_BACKEND_URL/api/auth/me" 2>/dev/null || echo "000")
-    if [ "$AUTH_STATUS" = "401" ] || [ "$AUTH_STATUS" = "403" ]; then
-        print_success "Auth endpoint protected correctly (HTTP $AUTH_STATUS)"
-    else
-        print_warning "Auth endpoint status: HTTP $AUTH_STATUS"
-    fi
-    
-    # Test frontend
-    print_status "Frontend URL: $PROD_FRONTEND_URL"
-    FRONTEND_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$PROD_FRONTEND_URL" 2>/dev/null || echo "000")
-    if [ "$FRONTEND_STATUS" = "200" ]; then
-        print_success "Frontend is accessible (HTTP $FRONTEND_STATUS)"
-    else
-        print_error "Frontend not responding (HTTP $FRONTEND_STATUS)"
-    fi
-    
-    echo ""
-    print_success "Production status check complete"
-}
-
-# DOCTOR - System diagnostics
-cmd_doctor() {
-    print_header "       SYSTEM DIAGNOSTICS       "
-    
-    local issues=0
-    
-    print_section "Checking System Requirements"
-    check_requirements
-    
-    print_section "Checking Project Structure"
-    
-    # Check critical directories
-    [ -d "$BACKEND_DIR" ] && print_success "Backend directory exists" || { print_error "Backend directory missing"; issues=$((issues + 1)); }
-    [ -d "$FRONTEND_DIR" ] && print_success "Frontend directory exists" || { print_error "Frontend directory missing"; issues=$((issues + 1)); }
-    [ -d "$SHARED_DIR" ] && print_success "Shared directory exists" || { print_error "Shared directory missing"; issues=$((issues + 1)); }
-    [ -d "$MOBILE_DIR" ] && print_success "Mobile directory exists" || print_warning "Mobile directory missing (optional)"
-    
-    print_section "Checking Configuration"
-    
-    if [ -f "$CONFIG_FILE" ]; then
-        source "$CONFIG_FILE"
-        
-        # Check critical config values
-        if [ -n "$JWT_ACCESS_SECRET" ] && [ "$JWT_ACCESS_SECRET" != "" ]; then
-            print_success "JWT secrets configured"
-        else
-            print_error "JWT secrets not configured"
-            issues=$((issues + 1))
-        fi
-        
-        if [ "$DB_PASSWORD" != "password" ] && [ -n "$DB_PASSWORD" ]; then
-            print_success "Database password configured"
-        else
-            print_warning "Using default database password"
-        fi
-    else
-        print_error "Configuration file missing"
-        issues=$((issues + 1))
-    fi
-    
-    print_section "Checking Dependencies"
-    
-    # Check package.json files
-    [ -f "$BACKEND_DIR/package.json" ] && print_success "Backend package.json exists" || { print_error "Backend package.json missing"; issues=$((issues + 1)); }
-    [ -f "$FRONTEND_DIR/package.json" ] && print_success "Frontend package.json exists" || { print_error "Frontend package.json missing"; issues=$((issues + 1)); }
-    
-    print_section "Checking Database Connection"
-    
-    cd "$BACKEND_DIR"
-    if npx prisma db pull --print 2>&1 | grep -q "success" || npx prisma migrate status 2>&1 | grep -q "Database schema is up to date"; then
-        print_success "Database connection working"
-    else
-        print_warning "Database connection issues - check configuration"
-    fi
-    
-    # Summary
-    echo ""
-    if [ $issues -eq 0 ]; then
-        print_header "    ${CHECK} SYSTEM HEALTHY!    "
-        print_success "No issues detected"
-    else
-        print_header "    ${WARN} ISSUES FOUND    "
-        print_error "Found $issues issue(s)"
-        echo ""
-        echo -e "${YELLOW}Suggested fixes:${NC}"
-        echo -e "  1. Run: ${CYAN}./maintain.sh config edit${NC} to configure settings"
-        echo -e "  2. Run: ${CYAN}./maintain.sh init${NC} to initialize project"
-        echo -e "  3. Run: ${CYAN}./maintain.sh fix${NC} to auto-fix issues"
-    fi
-    
-    show_log_info
-}
-
-# HELP - Show detailed help
-cmd_help() {
-    print_header "        WEALTHLOG MAINTENANCE HELP        "
-    
-    echo -e "${WHITE}USAGE:${NC} ./maintain.sh ${GREEN}[command]${NC} ${YELLOW}[options]${NC}"
-    echo ""
-    
-    echo -e "${CYAN}━━━ QUICK START ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo -e "  ${GREEN}init${NC}          Setup/update packages and environment"
-    echo -e "  ${GREEN}dev${NC}           Start all development servers"
-    echo -e "  ${GREEN}start backend${NC} Start backend server only"
-    echo -e "  ${GREEN}start frontend${NC} Start frontend server only"
-    echo -e "  ${GREEN}start mobile${NC}  Start mobile development"
-    echo -e "  ${GREEN}test${NC}          Run comprehensive tests"
-    echo -e "  ${GREEN}fix${NC}           Auto-fix common issues"
-    echo ""
-    
-    echo -e "${CYAN}━━━ CONFIGURATION ━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo -e "  ${GREEN}config edit${NC}     Edit configuration file"
-    echo -e "  ${GREEN}config validate${NC} Validate configuration"
-    echo -e "  ${GREEN}config show${NC}     Show current configuration"
-    echo -e "  ${GREEN}config create${NC}   Create default configuration"
-    echo ""
-    
-    echo -e "${CYAN}━━━ MOBILE APP ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo -e "  ${GREEN}mobile build ios${NC}     Build iOS app"
-    echo -e "  ${GREEN}mobile build android${NC} Build Android app"
-    echo -e "  ${GREEN}mobile build both${NC}    Build both platforms"
-    echo -e "  ${GREEN}mobile run ios${NC}       Run iOS app"
-    echo -e "  ${GREEN}mobile run android${NC}   Run Android app"
-    echo -e "  ${GREEN}mobile sync${NC}          Sync Capacitor"
-    echo -e "  ${GREEN}mobile dev${NC}           Start mobile dev server"
-    echo ""
-    
-    echo -e "${CYAN}━━━ DEPLOYMENT ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo -e "  ${GREEN}deploy:check${NC}  ${YELLOW}[IMPORTANT]${NC} Pre-deployment validation"
-    echo -e "  ${GREEN}deploy:status${NC} Check production status"
-    echo -e "  ${GREEN}build${NC}         Build all for production"
-    echo ""
-    
-    echo -e "${CYAN}━━━ AUTHENTICATION ━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo -e "  ${GREEN}auth:test${NC}      Test local authentication"
-    echo -e "  ${GREEN}auth:test prod${NC} Test production authentication"
-    echo ""
-    
-    echo -e "${CYAN}━━━ DATABASE ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo -e "  ${GREEN}db:setup${NC}      Create database with migrations"
-    echo -e "  ${GREEN}db:migrate${NC}    Run pending migrations"
-    echo -e "  ${GREEN}db:studio${NC}     Open Prisma Studio GUI"
-    echo -e "  ${GREEN}db:reset${NC}      Reset database ${RED}(deletes all data!)${NC}"
-    echo ""
-    
-    echo -e "${CYAN}━━━ MAINTENANCE ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo -e "  ${GREEN}doctor${NC}        Run system diagnostics"
-    echo -e "  ${GREEN}status${NC}        Quick health check"
-    echo -e "  ${GREEN}logs${NC}          View latest log"
-    echo -e "  ${GREEN}logs backend${NC}  View backend logs"
-    echo -e "  ${GREEN}logs frontend${NC} View frontend logs"
-    echo -e "  ${GREEN}logs list${NC}     List all logs"
-    echo -e "  ${GREEN}logs clean${NC}    Clean old logs"
-    echo -e "  ${GREEN}clean${NC}         Remove all build artifacts"
-    echo ""
-    
-    echo -e "${CYAN}━━━ WORKFLOWS ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo ""
-    echo -e "${WHITE}First-time setup:${NC}"
-    echo -e "  1. ${YELLOW}./maintain.sh init${NC}        ${GRAY}# Install dependencies${NC}"
-    echo -e "  2. ${YELLOW}./maintain.sh config edit${NC} ${GRAY}# Configure settings${NC}"
-    echo -e "  3. ${YELLOW}./maintain.sh db:setup${NC}    ${GRAY}# Create database${NC}"
-    echo -e "  4. ${YELLOW}./maintain.sh dev${NC}         ${GRAY}# Start development${NC}"
-    echo ""
-    echo -e "${WHITE}Before deploying:${NC}"
-    echo -e "  1. ${YELLOW}./maintain.sh deploy:check${NC} ${GREEN}← Always run first!${NC}"
-    echo -e "  2. ${YELLOW}git checkout -b feature/name${NC} ${GRAY}# Create feature branch${NC}"
-    echo -e "  3. ${YELLOW}git add . && git commit${NC}"
-    echo -e "  4. ${YELLOW}git push origin feature/name${NC}"
-    echo -e "  5. ${GRAY}Open PR to staging branch on GitHub${NC}"
-    echo -e "  6. ${GRAY}After merge, test on staging${NC}"
-    echo -e "  7. ${GRAY}If good, PR from staging to main${NC}"
-    echo ""
-    echo -e "${WHITE}When something breaks:${NC}"
-    echo -e "  1. ${YELLOW}./maintain.sh doctor${NC}   ${GRAY}# Run diagnostics${NC}"
-    echo -e "  2. ${YELLOW}./maintain.sh logs${NC}     ${GRAY}# Check logs${NC}"
-    echo -e "  3. ${YELLOW}./maintain.sh fix${NC}      ${GRAY}# Try auto-fix${NC}"
-    echo -e "  4. ${YELLOW}./maintain.sh clean${NC}    ${GRAY}# Clean everything${NC}"
-    echo -e "  5. ${YELLOW}./maintain.sh init${NC}     ${GRAY}# Reinstall${NC}"
-    echo ""
-    
-    echo -e "${MAGENTA}━━━ LOGGING ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo -e "All commands generate detailed logs in:"
-    echo -e "  ${CYAN}$LOG_DIR/${NC}"
-    echo ""
-    echo -e "View latest log: ${YELLOW}./maintain.sh logs${NC}"
-    echo -e "List all logs:   ${YELLOW}./maintain.sh logs list${NC}"
-    echo ""
-    
-    echo -e "${GRAY}Version 4.0 | With Mobile Support & Config Management${NC}"
-    echo -e "${GRAY}Built with ❤️  for WealthLog${NC}"
-}
-
-# ================================================================================
-# MAIN SCRIPT LOGIC
-# ================================================================================
-
-# Initialize logging for all commands except help
-if [ "$1" != "help" ] && [ "$1" != "--help" ] && [ "$1" != "-h" ]; then
-    init_logging "$@"
 fi
-
-# Handle commands
-case "$1" in
-    # Quick start
-    init|install|update) cmd_init ;;
-    dev) cmd_dev ;;
-    start) cmd_start "$2" ;;
-    test) cmd_test ;;
-    
-    # Configuration
-    config) cmd_config "$2" ;;
-    
-    # Mobile
-    mobile) cmd_mobile "$2" "$3" ;;
-    
-    # Deployment
-    deploy:check|deploy-check|precheck|pre-deploy) cmd_deploy_check ;;
-    deploy:status|deploy-status|prod-status) cmd_deploy_status ;;
-    build) cmd_build ;;
-    
-    # Authentication Testing
-    auth:test|auth-test) cmd_auth_test "$2" ;;
-    auth:test:prod|auth-test-prod) cmd_auth_test "prod" ;;
-    
-    # Database
-    db:setup|db-setup) cmd_db setup ;;
-    db:migrate|db-migrate|migrate) cmd_db migrate "$2" ;;
-    db:studio|db-studio|studio) cmd_db studio ;;
-    db:reset|db-reset) cmd_db reset ;;
-    
-    # Maintenance
-    fix|quickfix|quick-fix) cmd_fix ;;
-    clean) cmd_clean ;;
-    status) cmd_status ;;
-    doctor) cmd_doctor ;;
-    
-    # Logs
-    logs) cmd_logs "$2" ;;
-    
-    # Help
-    help|--help|-h|"") cmd_help ;;
-    
-    # Unknown command
-    *)
-        print_error "Unknown command: $1"
-        echo "Run: ./maintain.sh help"
-        exit 1
-        ;;
-esac
