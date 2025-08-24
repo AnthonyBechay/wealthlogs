@@ -38,6 +38,7 @@ export enum ErrorCode {
   SYSTEM_INTERNAL_ERROR = 'SYS_001',
   SYSTEM_SERVICE_UNAVAILABLE = 'SYS_002',
   SYSTEM_RATE_LIMIT_EXCEEDED = 'SYS_003',
+  RATE_LIMIT_EXCEEDED = 'RATE_001',
 }
 
 export interface ErrorContext {
@@ -69,7 +70,9 @@ export class AppError extends Error {
     this.isOperational = true;
 
     // Maintains proper stack trace
-    Error.captureStackTrace(this, this.constructor);
+    if (Error.captureStackTrace) {
+      Error.captureStackTrace(this, this.constructor);
+    }
   }
 
   toJSON() {
@@ -139,7 +142,7 @@ export class ErrorFactory {
  * Error Handler for different platforms
  */
 export class ErrorHandler {
-  private static isDevelopment = process.env.NODE_ENV === 'development';
+  private static isDevelopment = typeof process !== 'undefined' && process.env?.NODE_ENV === 'development';
 
   /**
    * Handle errors in Express middleware
@@ -263,7 +266,7 @@ export class ErrorHandler {
   private static async reportError(error: AppError) {
     // Implement Sentry, LogRocket, or other error tracking
     // This is a placeholder for actual implementation
-    if (process.env.SENTRY_DSN) {
+    if (typeof process !== 'undefined' && process.env?.SENTRY_DSN) {
       // await Sentry.captureException(error);
     }
   }

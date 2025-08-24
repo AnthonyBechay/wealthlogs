@@ -100,7 +100,7 @@ export class ApiClient {
         // Check rate limiting
         if (this.rateLimiter && !this.rateLimiter.isAllowed('global')) {
           throw new AppError({
-            code: 'RATE_LIMIT_EXCEEDED',
+          code: ErrorCode.RATE_LIMIT_EXCEEDED,
             message: 'Too many requests',
             statusCode: 429,
           });
@@ -415,7 +415,7 @@ export class ApiClient {
    * Batch requests
    */
   async batch<T = any>(requests: Array<() => Promise<any>>): Promise<T[]> {
-    return Promise.all(requests.map(req => this.executeRequest(req)));
+    return Promise.all(requests.map(req => this.executeRequest(req))) as Promise<T[]>;
   }
 }
 

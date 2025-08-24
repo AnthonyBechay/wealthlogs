@@ -4,7 +4,19 @@
  * Works across web and mobile platforms
  */
 
-import * as crypto from 'crypto';
+// Use dynamic import for crypto to support both Node.js and browser
+let crypto: any;
+if (typeof window === 'undefined') {
+  // Node.js environment
+  try {
+    crypto = require('crypto');
+  } catch (e) {
+    // Crypto not available
+  }
+} else {
+  // Browser environment
+  crypto = window.crypto;
+}
 
 export interface EncryptedData {
   data: string;
@@ -27,6 +39,11 @@ export class SecurityService {
    * Encrypt sensitive data
    */
   static encrypt(text: string, password: string): EncryptedData {
+    // Node.js specific implementation
+    if (!crypto || !crypto.randomBytes) {
+      throw new Error('Encryption not available in this environment');
+    }
+    
     const salt = crypto.randomBytes(this.SALT_LENGTH);
     const key = crypto.pbkdf2Sync(password, salt, this.ITERATIONS, 32, 'sha256');
     const iv = crypto.randomBytes(this.IV_LENGTH);
@@ -51,6 +68,11 @@ export class SecurityService {
    */
   static decrypt(encryptedData: EncryptedData, password: string): string {
     const parts = encryptedData.data.split(':');
+    // Node.js specific implementation
+    if (!crypto || typeof Buffer === 'undefined') {
+      throw new Error('Decryption not available in this environment');
+    }
+    
     const salt = Buffer.from(parts[0], 'hex');
     const encrypted = parts[1];
     
@@ -243,7 +265,7 @@ export class SecurityService {
  */
 export class SecureStorage {
   private static isAvailable(): boolean {
-    return typeof window !== 'undefined' && window.localStorage;
+    return typeof window !== 'undefined' && !!window.localStorage;
   }
 
   /**

@@ -49,13 +49,15 @@ export class Logger {
   private logHandlers: ((log: LogContext) => void)[] = [];
   private buffer: LogContext[] = [];
   private maxBufferSize = 100;
-  private isDevelopment = process.env.NODE_ENV === 'development';
+  private isDevelopment = typeof process !== 'undefined' && process.env?.NODE_ENV === 'development';
 
   private constructor() {
     // Set log level from environment
-    const envLogLevel = process.env.LOG_LEVEL?.toUpperCase();
-    if (envLogLevel && LogLevel[envLogLevel as keyof typeof LogLevel] !== undefined) {
-      this.logLevel = LogLevel[envLogLevel as keyof typeof LogLevel];
+    if (typeof process !== 'undefined' && process.env) {
+      const envLogLevel = process.env.LOG_LEVEL?.toUpperCase();
+      if (envLogLevel && LogLevel[envLogLevel as keyof typeof LogLevel] !== undefined) {
+        this.logLevel = LogLevel[envLogLevel as keyof typeof LogLevel];
+      }
     }
 
     // Add default console handler

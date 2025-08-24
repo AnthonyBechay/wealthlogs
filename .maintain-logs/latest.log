@@ -1,25 +1,31 @@
 =========================================
 WealthLog Maintenance Log
-Date: Sun, Aug 24, 2025  1:27:15 PM
+Date: Sun, Aug 24, 2025  2:06:07 PM
 Command: init
 =========================================
 
-[2025-08-24 13:27:15] ===          INITIALIZING WEALTHLOG PROJECT          ===
-[2025-08-24 13:27:19] INFO: System: windows | Node: v22.14.0 | npm: 11.1.0 | Git: 2.48.1.windows.1
-[2025-08-24 13:27:19] --- Creating Environment Files ---
-[2025-08-24 13:27:19] ===     EXPORTING CONFIGURATION     ===
-[2025-08-24 13:27:20] --- Creating Backend .env ---
-[2025-08-24 13:27:20] SUCCESS: Backend .env created
-[2025-08-24 13:27:20] --- Creating Frontend .env.local ---
-[2025-08-24 13:27:20] SUCCESS: Frontend .env.local created
-[2025-08-24 13:27:20] --- Creating Mobile .env ---
-[2025-08-24 13:27:20] SUCCESS: Mobile .env created
-[2025-08-24 13:27:20] SUCCESS: Configuration exported to all apps!
-[2025-08-24 13:27:20] ===     INSTALLING ALL DEPENDENCIES     ===
-[2025-08-24 13:27:20] SUCCESS: Root dependencies already installed
-[2025-08-24 13:27:20] INFO: Ensuring all workspace packages are linked...
+[2025-08-24 14:06:07] ===          INITIALIZING WEALTHLOG PROJECT          ===
+[2025-08-24 14:06:10] INFO: System: windows | Node: v22.14.0 | npm: 11.1.0 | Git: 2.48.1.windows.1
+[2025-08-24 14:06:10] --- Creating Environment Files ---
+[2025-08-24 14:06:10] ===     EXPORTING CONFIGURATION     ===
+[2025-08-24 14:06:10] --- Creating Backend .env ---
+[2025-08-24 14:06:11] SUCCESS: Backend .env created
+[2025-08-24 14:06:11] --- Creating Frontend .env.local ---
+[2025-08-24 14:06:11] SUCCESS: Frontend .env.local created
+[2025-08-24 14:06:11] --- Creating Mobile .env ---
+[2025-08-24 14:06:11] SUCCESS: Mobile .env created
+[2025-08-24 14:06:11] SUCCESS: Configuration exported to all apps!
+[2025-08-24 14:06:11] ===     INSTALLING ALL DEPENDENCIES     ===
+[2025-08-24 14:06:11] INFO: Installing root dependencies (this includes all workspace packages)...
+npm warn deprecated inflight@1.0.6: This module is not supported, and leaks memory. Do not use it. Check out lru-cache if you want a good and tested way to coalesce async requests by a key value, which is much more comprehensive and powerful.
+npm warn deprecated npmlog@5.0.1: This package is no longer supported.
+npm warn deprecated rimraf@3.0.2: Rimraf versions prior to v4 are no longer supported
+npm warn deprecated glob@7.2.3: Glob versions prior to v9 are no longer supported
+npm warn deprecated are-we-there-yet@2.0.0: This package is no longer supported.
+npm warn deprecated multer@1.4.5-lts.2: Multer 1.x is impacted by a number of vulnerabilities, which have been patched in 2.x. You should upgrade to the latest 2.x version.
+npm warn deprecated gauge@3.0.2: This package is no longer supported.
 
-up to date, audited 864 packages in 9s
+added 857 packages, and audited 864 packages in 5m
 
 197 packages are looking for funding
   run `npm fund` for details
@@ -30,26 +36,24 @@ To address all issues (including breaking changes), run:
   npm audit fix --force
 
 Run `npm audit` for details.
-[2025-08-24 13:27:31] INFO: Setting up common package...
+[2025-08-24 14:11:21] SUCCESS: Root dependencies installed
+[2025-08-24 14:11:21] INFO: Setting up common package...
 
-up to date, audited 864 packages in 5s
+up to date, audited 864 packages in 9s
 
 197 packages are looking for funding
   run `npm fund` for details
 
 found 0 vulnerabilities
-[2025-08-24 13:27:37] SUCCESS: Common package ready
-[2025-08-24 13:27:37] INFO: Building shared package...
+[2025-08-24 14:11:32] SUCCESS: Common package ready
+[2025-08-24 14:11:32] INFO: Building shared package...
 
 > @wealthlog/shared@0.0.1 build
 > tsc
 
-src/services/api-client.ts(103,13): error TS2322: Type '"RATE_LIMIT_EXCEEDED"' is not assignable to type 'ErrorCode'.
-src/services/api-client.ts(418,5): error TS2322: Type 'unknown[]' is not assignable to type 'T[]'.
-  Type 'unknown' is not assignable to type 'T'.
-    'T' could be instantiated with an arbitrary type which could be unrelated to 'unknown'.
-src/services/security.ts(246,5): error TS2322: Type 'false | Storage' is not assignable to type 'boolean'.
-  Type 'Storage' is not assignable to type 'boolean'.
+error TS2688: Cannot find type definition file for 'node'.
+  The file is in the program because:
+    Entry point of type library 'node' specified in compilerOptions
 npm error Lifecycle script `build` failed with error:
 npm error code 2
 npm error path C:\Users\User\Desktop\wealthlogs\wealthlogs-code\packages\shared
@@ -57,19 +61,19 @@ npm error workspace @wealthlog/shared@0.0.1
 npm error location C:\Users\User\Desktop\wealthlogs\wealthlogs-code\packages\shared
 npm error command failed
 npm error command C:\Windows\system32\cmd.exe /d /s /c tsc
-[2025-08-24 13:27:44] SUCCESS: Shared package built
-[2025-08-24 13:27:44] --- Building Shared Package ---
-[2025-08-24 13:27:44] WARNING: TypeScript not found - skipping build
-[2025-08-24 13:27:44] --- Setting Up Database Client ---
-[2025-08-24 13:27:44] INFO: Generating Prisma client...
+[2025-08-24 14:11:37] SUCCESS: Shared package built
+[2025-08-24 14:11:37] --- Building Shared Package ---
+[2025-08-24 14:11:37] WARNING: TypeScript not found - skipping build
+[2025-08-24 14:11:37] --- Setting Up Database Client ---
+[2025-08-24 14:11:37] INFO: Generating Prisma client...
 Environment variables loaded from .env
 Prisma schema loaded from prisma\schema.prisma
 
-✔ Generated Prisma Client (v6.14.0) to .\..\..\node_modules\@prisma\client in 816ms
+✔ Generated Prisma Client (v6.14.0) to .\..\..\node_modules\@prisma\client in 1.46s
 
 Start by importing your Prisma Client (See: https://pris.ly/d/importing-client)
 
-Tip: Want to turn off tips and other hints? https://pris.ly/tip-4-nohints
+Tip: Interested in query caching in just a few lines of code? Try Accelerate today! https://pris.ly/tip-3-accelerate
 
-[2025-08-24 13:27:54] SUCCESS: Prisma client generated
-[2025-08-24 13:27:54] ===           INITIALIZATION COMPLETE!           ===
+[2025-08-24 14:11:49] SUCCESS: Prisma client generated
+[2025-08-24 14:11:49] ===           INITIALIZATION COMPLETE!           ===

@@ -38,13 +38,19 @@ install_dependencies() {
     
     print_status "Installing $name dependencies..."
     
-    # Use --yes flag to auto-accept prompts
-    if npm install --yes >> "$LOG_FILE" 2>&1; then
+    # Try normal install first, then with legacy-peer-deps if it fails
+    if npm install >> "$LOG_FILE" 2>&1; then
         print_success "$name dependencies installed"
         return 0
     else
-        print_error "$name dependencies installation failed"
-        return 1
+        print_warning "Retrying with --legacy-peer-deps..."
+        if npm install --legacy-peer-deps >> "$LOG_FILE" 2>&1; then
+            print_success "$name dependencies installed (with legacy peer deps)"
+            return 0
+        else
+            print_error "$name dependencies installation failed"
+            return 1
+        fi
     fi
 }
 
@@ -72,17 +78,23 @@ init_all_dependencies() {
         cd "$PROJECT_ROOT/wealthlogs-code"
         if ! check_dependencies_installed "$PROJECT_ROOT/wealthlogs-code"; then
             print_status "Installing root dependencies (this includes all workspace packages)..."
+            # Try normal install first, then with legacy-peer-deps if it fails
             if npm install >> "$LOG_FILE" 2>&1; then
                 print_success "Root dependencies installed"
             else
-                print_error "Root dependencies installation failed"
-                errors=$((errors + 1))
+                print_warning "Retrying with --legacy-peer-deps due to dependency conflicts..."
+                if npm install --legacy-peer-deps >> "$LOG_FILE" 2>&1; then
+                    print_success "Root dependencies installed (with legacy peer deps)"
+                else
+                    print_error "Root dependencies installation failed"
+                    errors=$((errors + 1))
+                fi
             fi
         else
             print_success "Root dependencies already installed"
             # Even if installed, run npm install to ensure all workspaces are linked
             print_status "Ensuring all workspace packages are linked..."
-            npm install >> "$LOG_FILE" 2>&1
+            npm install --legacy-peer-deps >> "$LOG_FILE" 2>&1
         fi
     fi
     

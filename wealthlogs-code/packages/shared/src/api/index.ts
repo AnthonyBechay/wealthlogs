@@ -555,7 +555,7 @@ export class WealthLogAPI {
 // Default API instance factory
 export function createWealthLogAPI(baseURL?: string, tokenStorage?: TokenStorage): WealthLogAPI {
   const config: ApiConfig = {
-    baseURL: baseURL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000',
+    baseURL: baseURL || (typeof process !== 'undefined' ? process.env?.NEXT_PUBLIC_API_URL : undefined) || 'http://localhost:5000',
   };
   
   return new WealthLogAPI(config, tokenStorage);
