@@ -321,7 +321,7 @@ export default function Home() {
   useEffect(() => {
     // If user is logged in, redirect to dashboard
     if (!isLoading && user && mounted) {
-      router.push("/landing/landing");
+      router.push("/dashboard");
     }
   }, [user, isLoading, router, mounted]);
 

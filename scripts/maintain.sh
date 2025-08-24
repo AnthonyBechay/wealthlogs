@@ -447,6 +447,194 @@ cmd_deploy_check() {
     fi
 }
 
+# USER:CREATE - Create a new user
+cmd_user_create() {
+    print_header "       CREATE NEW USER       "
+    
+    local username="$1"
+    local password="$2"
+    
+    if [ -z "$username" ] || [ -z "$password" ]; then
+        print_error "Usage: ./maintain.sh user:create <username> <password>"
+        return 1
+    fi
+    
+    cd "$BACKEND_DIR"
+    
+    print_status "Creating user: $username"
+    
+    # Create a simple Node.js script to create user
+    cat > /tmp/create_user.js << EOF
+const { PrismaClient } = require('@prisma/client');
+const bcrypt = require('bcryptjs');
+
+const prisma = new PrismaClient();
+
+async function createUser() {
+    try {
+        const hashedPassword = await bcrypt.hash('$password', 10);
+        
+        const user = await prisma.user.create({
+            data: {
+                username: '$username',
+                email: '${username}@example.com',
+                password: hashedPassword,
+                firstName: 'Test',
+                lastName: 'User',
+                emailVerified: true,
+                roles: {
+                    connectOrCreate: {
+                        where: { name: 'MEMBER' },
+                        create: { name: 'MEMBER', description: 'Standard member' }
+                    }
+                }
+            }
+        });
+        
+        console.log('User created successfully:', user.username);
+        process.exit(0);
+    } catch (error) {
+        if (error.code === 'P2002') {
+            console.error('User already exists');
+        } else {
+            console.error('Error creating user:', error.message);
+        }
+        process.exit(1);
+    }
+}
+
+createUser();
+EOF
+    
+    # Run the script
+    if node /tmp/create_user.js >> "$LOG_FILE" 2>&1; then
+        print_success "User created: $username"
+        print_status "Password: $password"
+    else
+        print_error "Failed to create user - check log"
+        show_log_info
+    fi
+    
+    rm -f /tmp/create_user.js
+}
+
+# USER:LIST - List all users
+cmd_user_list() {
+    print_header "       USER LIST       "
+    
+    cd "$BACKEND_DIR"
+    
+    # Create a simple script to list users
+    cat > /tmp/list_users.js << 'EOF'
+const { PrismaClient } = require('@prisma/client');
+
+const prisma = new PrismaClient();
+
+async function listUsers() {
+    try {
+        const users = await prisma.user.findMany({
+            select: {
+                id: true,
+                username: true,
+                email: true,
+                firstName: true,
+                lastName: true,
+                emailVerified: true,
+                createdAt: true,
+                lastLoginAt: true
+            },
+            orderBy: { createdAt: 'desc' }
+        });
+        
+        console.log('\nUsers in database:');
+        console.log('==================');
+        users.forEach(user => {
+            console.log(`\nID: ${user.id}`);
+            console.log(`Username: ${user.username}`);
+            console.log(`Email: ${user.email}`);
+            console.log(`Name: ${user.firstName} ${user.lastName}`);
+            console.log(`Verified: ${user.emailVerified ? 'Yes' : 'No'}`);
+            console.log(`Created: ${user.createdAt.toLocaleDateString()}`);
+            console.log(`Last Login: ${user.lastLoginAt ? user.lastLoginAt.toLocaleDateString() : 'Never'}`);
+        });
+        console.log(`\nTotal users: ${users.length}`);
+        process.exit(0);
+    } catch (error) {
+        console.error('Error listing users:', error.message);
+        process.exit(1);
+    }
+}
+
+listUsers();
+EOF
+    
+    # Run the script
+    node /tmp/list_users.js
+    rm -f /tmp/list_users.js
+}
+
+# USER:RESET-PASSWORD - Reset user password
+cmd_user_reset_password() {
+    print_header "     RESET USER PASSWORD     "
+    
+    local username="$1"
+    
+    if [ -z "$username" ]; then
+        print_error "Usage: ./maintain.sh user:reset-password <username>"
+        return 1
+    fi
+    
+    read -s -p "Enter new password: " new_password
+    echo ""
+    
+    if [ -z "$new_password" ]; then
+        print_error "Password cannot be empty"
+        return 1
+    fi
+    
+    cd "$BACKEND_DIR"
+    
+    # Create script to reset password
+    cat > /tmp/reset_password.js << EOF
+const { PrismaClient } = require('@prisma/client');
+const bcrypt = require('bcryptjs');
+
+const prisma = new PrismaClient();
+
+async function resetPassword() {
+    try {
+        const hashedPassword = await bcrypt.hash('$new_password', 10);
+        
+        const user = await prisma.user.update({
+            where: { username: '$username' },
+            data: { password: hashedPassword }
+        });
+        
+        console.log('Password reset successfully for:', user.username);
+        process.exit(0);
+    } catch (error) {
+        if (error.code === 'P2025') {
+            console.error('User not found');
+        } else {
+            console.error('Error resetting password:', error.message);
+        }
+        process.exit(1);
+    }
+}
+
+resetPassword();
+EOF
+    
+    if node /tmp/reset_password.js >> "$LOG_FILE" 2>&1; then
+        print_success "Password reset for: $username"
+    else
+        print_error "Failed to reset password - check log"
+        show_log_info
+    fi
+    
+    rm -f /tmp/reset_password.js
+}
+
 # AUTH:TEST - Test authentication
 cmd_auth_test() {
     print_header "      AUTHENTICATION TESTING      "
@@ -522,6 +710,12 @@ cmd_help() {
     echo -e "  ${GREEN}db:backup${NC}     Backup database"
     echo ""
     
+    echo -e "${CYAN}━━━ USER MANAGEMENT ━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "  ${GREEN}user:create${NC}   Create new user"
+    echo -e "  ${GREEN}user:list${NC}     List all users"
+    echo -e "  ${GREEN}user:reset-password${NC} Reset password"
+    echo ""
+    
     echo -e "${CYAN}━━━ MOBILE ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo -e "  ${GREEN}mobile init${NC}   Initialize mobile app"
     echo -e "  ${GREEN}mobile build${NC}  Build mobile app"
@@ -589,7 +783,18 @@ case "$1" in
     
     # Database
     db:*)
-        cmd_db "${1#db:}" "$2"
+        cmd_db "${1#db:}" "$2" "$3"
+        ;;
+    
+    # User management
+    user:create)
+        cmd_user_create "$2" "$3"
+        ;;
+    user:list)
+        cmd_user_list
+        ;;
+    user:reset-password)
+        cmd_user_reset_password "$2"
         ;;
     
     # Mobile

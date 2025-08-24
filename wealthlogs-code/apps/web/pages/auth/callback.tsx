@@ -1,43 +1,52 @@
 // pages/auth/callback.tsx
+// OAuth callback handler page
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/router';
-import authService from '../../src/services/auth.service';
+import { useAuth } from '../../src/contexts/AuthContext';
 
 export default function AuthCallback() {
   const router = useRouter();
+  const { refreshUser } = useAuth();
 
   useEffect(() => {
     const handleCallback = async () => {
-      const { token, error } = router.query;
+      try {
+        // Get tokens from query params or handle OAuth response
+        const { token, error } = router.query;
 
-      if (error) {
-        console.error('OAuth error:', error);
-        router.push('/login?error=oauth_failed');
-        return;
-      }
-
-      if (token && typeof token === 'string') {
-        try {
-          await authService.handleGoogleCallback(token);
-          router.push('/landing/landing');
-        } catch (error: any) {
-          console.error('Failed to handle OAuth callback:', error);
-          router.push('/login?error=oauth_failed');
+        if (error) {
+          // Handle OAuth error
+          console.error('OAuth error:', error);
+          router.push(`/login?error=${error}`);
+          return;
         }
+
+        if (token) {
+          // Store token and refresh user
+          localStorage.setItem('accessToken', token as string);
+          await refreshUser();
+          router.push('/dashboard');
+        } else {
+          // No token, redirect to login
+          router.push('/login');
+        }
+      } catch (err) {
+        console.error('Auth callback error:', err);
+        router.push('/login?error=oauth_failed');
       }
     };
 
     if (router.isReady) {
       handleCallback();
     }
-  }, [router]);
+  }, [router, refreshUser]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="text-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-        <p className="mt-4 text-gray-600">Completing sign in...</p>
+        <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+        <p className="text-gray-600">Completing authentication...</p>
       </div>
     </div>
   );

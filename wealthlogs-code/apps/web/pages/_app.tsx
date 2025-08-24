@@ -12,9 +12,11 @@ import { appWithTranslation } from 'next-i18next';
 import nextI18NextConfig from '../next-i18next.config';
 
 /* Public routes requiring no auth */
-const PUBLIC_PATHS = ['/', '/login', '/register', '/forgot-password', '/reset-password', '/verify-email', '/auth/callback'];
+const PUBLIC_PATHS = ['/', '/login', '/register', '/forgot-password', '/reset-password', '/verify-email', '/auth'];
 const isPublicRoute = (pathname: string): boolean => {
-  return PUBLIC_PATHS.some(path => pathname.startsWith(path));
+  // Exact match for root or starts with other paths
+  if (pathname === '/') return true;
+  return PUBLIC_PATHS.slice(1).some(path => pathname.startsWith(path));
 };
 
 type ThemeMode = 'light' | 'dark' | 'system';
@@ -27,15 +29,14 @@ interface NavigationItem {
 }
 
 const NAVIGATION_ITEMS: NavigationItem[] = [
-  { href: '/landing/landing', label: 'Dashboard', icon: '🏠' },
+  { href: '/dashboard', label: 'Dashboard', icon: '🏠' },
   { href: '/accounts', label: 'Accounts', icon: '💼' },
   { href: '/trading/trading', label: 'Trading', icon: '📈' },
   { href: '/RealEstate', label: 'Real Estate', icon: '🏘️' },
-  { href: '/comingSoon', label: 'Expenses', icon: '💳' },
-  { href: '/comingSoon', label: 'Loans', icon: '💰' },
-  { href: '/comingSoon', label: 'Forecasting', icon: '📊' },
-  { href: '/settings/settingsGeneral', label: 'General Settings', icon: '⚙️' },
-  { href: '/settings/settingsTrading', label: 'Trading Settings', icon: '🛠️' },
+  { href: '/expenses', label: 'Expenses', icon: '💳' },
+  { href: '/loans', label: 'Loans', icon: '💰' },
+  { href: '/forecasting', label: 'Forecasting', icon: '📊' },
+  { href: '/settings/settingsGeneral', label: 'Settings', icon: '⚙️' },
 ];
 
 const getStoredTheme = (): ThemeMode => {
@@ -145,7 +146,7 @@ function AppLayout({ children }: { children: React.ReactNode }) {
   };
 
   const handleLogoClick = () => {
-    router.push('/landing/landing');
+    router.push('/dashboard');
     setIsDrawerOpen(false);
   };
 

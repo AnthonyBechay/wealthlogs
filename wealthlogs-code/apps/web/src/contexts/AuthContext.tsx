@@ -271,7 +271,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (response.user.roles.includes('ADMIN')) {
           router.push('/admin/dashboard');
         } else {
-          router.push('/landing/landing');
+          router.push('/dashboard');
         }
       }
     } catch (error: any) {

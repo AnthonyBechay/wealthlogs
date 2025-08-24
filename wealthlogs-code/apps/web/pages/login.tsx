@@ -12,7 +12,7 @@ interface LoginForm {
 
 export default function Login() {
   const router = useRouter();
-  const { login, loginWithGoogle, isAuthenticated } = useAuth();
+  const { login, isAuthenticated } = useAuth();
   const [formData, setFormData] = useState<LoginForm>({
     username: "",
     password: ""
@@ -24,7 +24,7 @@ export default function Login() {
   // Redirect if already authenticated
   useEffect(() => {
     if (isAuthenticated) {
-      const redirectTo = router.query.redirect as string || "/landing/landing";
+      const redirectTo = router.query.redirect as string || "/dashboard";
       router.push(redirectTo);
     }
   }, [isAuthenticated, router]);
@@ -76,8 +76,8 @@ export default function Login() {
   };
 
   const handleGoogleLogin = () => {
-    setIsLoading(true);
-    loginWithGoogle();
+    // Google OAuth endpoint handled by backend
+    window.location.href = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/auth/google`;
   };
 
   const togglePasswordVisibility = () => {
