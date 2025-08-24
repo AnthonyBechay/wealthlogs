@@ -1,0 +1,30 @@
+# WealthLog Build Fix - Copy and paste these commands
+
+# Step 1: Navigate to shared package
+cd C:\Users\User\Desktop\wealthlogs\wealthlogs-code\packages\shared
+
+# Step 2: Clean everything
+rmdir /s /q node_modules dist
+del /f package-lock.json
+
+# Step 3: Install dependencies
+npm install
+
+# Step 4: Build (should work now with the import fix)
+npm run build
+
+# If build still fails, try:
+npx tsc --skipLibCheck
+
+# Step 5: Continue with other packages
+cd ..\..\apps\backend
+npm install --legacy-peer-deps
+npx prisma generate
+
+cd ..\web
+npm install --legacy-peer-deps
+
+cd ..\..
+npm install --legacy-peer-deps
+
+# Done! Your project should now be ready.

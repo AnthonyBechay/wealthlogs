@@ -12,10 +12,10 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
+    "@types/node": "^20.0.0",
     "axios": "^1.7.9",
     "bcryptjs": "^2.4.3",
-    "jsonwebtoken": "^9.0.2",
-    "@types/node": "^20.0.0"
+    "jsonwebtoken": "^9.0.2"
   },
   "devDependencies": {
     "typescript": "^5.9.2"

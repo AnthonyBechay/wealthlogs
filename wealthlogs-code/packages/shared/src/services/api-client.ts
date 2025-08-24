@@ -5,7 +5,7 @@
  */
 
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse, AxiosError } from 'axios';
-import { AppError, ErrorHandler, RetryHandler, CircuitBreaker } from './error-handler';
+import { AppError, ErrorHandler, ErrorCode, RetryHandler, CircuitBreaker } from './error-handler';
 import { CSRFProtection, RateLimiter } from './security';
 
 export interface ApiClientConfig {
