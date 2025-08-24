@@ -3,6 +3,13 @@ export * from './api/index';
 export * from './storage/index';
 export * from './types/index';
 
+// Export new services
+export * from './services/error-handler';
+export * from './services/data-validator';
+export * from './services/security';
+export * from './services/api-client';
+export * from './services/monitoring';
+
 // Re-export commonly used utilities
 export { createWealthLogAPI, WealthLogAPI, getPlatform } from './api/index';
 export { createTokenStorage, WebTokenStorage, MobileTokenStorage, MemoryTokenStorage } from './storage/index';
@@ -18,3 +25,44 @@ export type {
   ApiConfig,
   Platform
 } from './types/index';
+
+// Re-export new service utilities
+export { 
+  AppError, 
+  ErrorFactory, 
+  ErrorHandler, 
+  RetryHandler, 
+  CircuitBreaker,
+  ErrorCode 
+} from './services/error-handler';
+
+export { 
+  DataValidator, 
+  ValidationSchemas, 
+  FieldValidators 
+} from './services/data-validator';
+
+export { 
+  SecurityService, 
+  SecureStorage, 
+  CSRFProtection, 
+  RateLimiter 
+} from './services/security';
+
+export { 
+  ApiClient, 
+  createApiClient, 
+  getApiClient 
+} from './services/api-client';
+
+export {
+  Logger,
+  MetricsCollector,
+  PerformanceMonitor,
+  HealthCheck,
+  logger,
+  metrics,
+  performance,
+  health,
+  LogLevel
+} from './services/monitoring';

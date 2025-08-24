@@ -16,7 +16,9 @@
     "typescript": "^5.9.2"
   },
   "dependencies": {
-    "axios": "^1.7.9"
+    "axios": "^1.7.9",
+    "bcryptjs": "^2.4.3",
+    "jsonwebtoken": "^9.0.2"
   },
   "peerDependencies": {
     "@capacitor/preferences": "^6.0.0"

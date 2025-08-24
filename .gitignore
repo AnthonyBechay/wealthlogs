@@ -1,275 +1,99 @@
-# ================================================================================
-# Node.js & NPM
-# ================================================================================
+# Dependencies
 node_modules/
+.pnp
+.pnp.js
+
+# Testing
+coverage/
+.nyc_output/
+
+# Production builds
+.next/
+out/
+dist/
+build/
+
+# Environment files
+.env
+.env.local
+.env.development
+.env.development.local
+.env.test.local
+.env.production
+.env.production.local
+
+# Debug
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 lerna-debug.log*
-.pnpm-debug.log*
-package-lock.json
-yarn.lock
-pnpm-lock.yaml
-.npm
-.yarn-integrity
 
-# ================================================================================
-# Build outputs & Compiled files
-# ================================================================================
-dist/
-build/
-out/
-.next/
-.nuxt/
-.turbo/
-.vercel/
-*.tsbuildinfo
-.cache/
-
-# ================================================================================
-# Environment Variables & Secrets
-# ================================================================================
-.env
-.env.*
-!.env.example
-!.env.template
-*.env
-!config.env.example
-config.env
-!config.env.example
-
-# ================================================================================
-# Logs & Maintenance
-# ================================================================================
-logs/
-*.log
-.maintain-logs/
-maintenance-*.log
-error-*.log
-combined-*.log
-
-# ================================================================================
-# IDEs & Editors
-# ================================================================================
-# VS Code
-.vscode/*
-!.vscode/settings.json
-!.vscode/tasks.json
-!.vscode/launch.json
-!.vscode/extensions.json
-*.code-workspace
-
-# JetBrains IDEs
+# IDE
 .idea/
-*.iml
-*.ipr
-*.iws
-
-# Sublime Text
-*.sublime-project
-*.sublime-workspace
-
-# Vim
+.vscode/
 *.swp
 *.swo
 *~
 
-# Emacs
-*~
-\#*\#
-.\#*
-
-# ================================================================================
-# Operating System Files
-# ================================================================================
-# macOS
+# OS
 .DS_Store
-.AppleDouble
-.LSOverride
-Icon
-._*
-.Spotlight-V100
-.Trashes
-
-# Windows
 Thumbs.db
-ehthumbs.db
-Desktop.ini
-$RECYCLE.BIN/
-*.lnk
 
-# Linux
-.directory
-.Trash-*
+# Logs
+logs/
+*.log
+.maintain-logs/
 
-# ================================================================================
-# Database
-# ================================================================================
-*.sqlite
-*.sqlite3
-*.db
-prisma/migrations/dev/
-prisma/*.db
-prisma/*.db-journal
+# Turbo
+.turbo/
 
-# ================================================================================
-# Testing & Coverage
-# ================================================================================
-coverage/
-.nyc_output/
-*.lcov
-.coverage
-htmlcov/
-*.cover
-.pytest_cache/
-test-results/
-jest-results/
-cypress/videos/
-cypress/screenshots/
+# Uploads (keep directory structure but not files)
+uploads/**/*
+!uploads/**/.gitkeep
 
-# ================================================================================
-# Mobile Development (Capacitor/Cordova)
-# ================================================================================
-# iOS
-ios/App/build/
-ios/App/Pods/
-ios/DerivedData/
-ios/Index/
-ios/build/
-*.xcworkspace/xcuserdata/
-*.xcodeproj/xcuserdata/
-*.pbxuser
-*.mode1v3
-*.mode2v3
-*.perspectivev3
-*.xccheckout
-*.moved-aside
-*.hmap
-*.ipa
-*.dSYM.zip
-*.dSYM
-
-# Android
-android/.gradle/
-android/build/
-android/app/build/
-android/app/release/
-android/app/debug/
-android/local.properties
-android/captures/
-android/.externalNativeBuild/
-android/.cxx/
-*.apk
-*.aab
-*.ap_
-*.dex
-*.class
-
-# Capacitor specific
-capacitor.config.json.orig
-ios/App/App/capacitor.config.json
-android/app/src/main/assets/capacitor.config.json
-
-# ================================================================================
-# Backend Specific
-# ================================================================================
-uploads/
-temp/
-sessions/
-public/uploads/
-
-# ================================================================================
-# Frontend Specific
-# ================================================================================
-# Next.js
-.next/
-out/
-.vercel/
-
-# Production builds
-/build
-/dist
-
-# Storybook
-storybook-static/
-.storybook/out/
-
-# ================================================================================
-# Temporary Files
-# ================================================================================
-tmp/
-temp/
-*.tmp
-*.temp
-*.bak
+# Backup files
 *.backup
-*.old
+*.bak
+*-original.*
+*-old.*
+*-enhanced.*
+
+# TypeScript
+*.tsbuildinfo
+
+# Misc
+.cache/
+.temp/
 .tmp/
 
-# ================================================================================
-# Documentation
-# ================================================================================
-docs/_build/
-docs/.vuepress/dist/
-site/
+# Local scripts output
+scripts/*.log
+scripts/config.env.backup
 
-# ================================================================================
-# Package Files
-# ================================================================================
-*.tar.gz
-*.zip
-*.7z
-*.rar
-*.jar
-*.war
-*.ear
+# Build artifacts
+.next/
+.turbo/
+dist/
+build/
+out/
 
-# ================================================================================
-# Security & Certificates
-# ================================================================================
+# Test files
+*.test.js
+*.spec.js
+__tests__/
+__mocks__/
+
+# Certificates
 *.pem
 *.key
 *.crt
-*.p12
-*.pfx
-ssl/
-certs/
-.cert/
 
-# ================================================================================
-# Miscellaneous
-# ================================================================================
-.eslintcache
-.stylelintcache
-.parcel-cache/
-.docusaurus/
-.serverless/
-.fusebox/
-.dynamodb/
-.tern-port
-.venv/
-venv/
-ENV/
-env/
+# Database files
+*.sqlite
+*.sqlite3
+*.db
 
-# ================================================================================
-# Project Specific - Keep these in git
-# ================================================================================
-!.gitignore
-!.gitkeep
-!turbo.json
-!vercel.json
-!package.json
-!tsconfig.json
-!tsconfig.*.json
-!next.config.js
-!tailwind.config.js
-!postcss.config.js
-!.prettierrc
-!.eslintrc.json
-!jest.config.js
-!README.md
-!LICENSE
-!scripts/maintain.sh
-!scripts/lib/
-!scripts/config.env.example
+# Package manager files
+package-lock.json.backup
+yarn.lock.backup
+pnpm-lock.yaml.backup

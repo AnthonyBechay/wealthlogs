@@ -1,25 +1,25 @@
 =========================================
 WealthLog Maintenance Log
-Date: Sat, Aug 23, 2025  8:56:31 PM
+Date: Sun, Aug 24, 2025  1:27:15 PM
 Command: init
 =========================================
 
-[2025-08-23 20:56:31] ===          INITIALIZING WEALTHLOG PROJECT          ===
-[2025-08-23 20:56:34] INFO: System: windows | Node: v22.14.0 | npm: 11.1.0 | Git: 2.48.1.windows.1
-[2025-08-23 20:56:34] --- Creating Environment Files ---
-[2025-08-23 20:56:34] ===     EXPORTING CONFIGURATION     ===
-[2025-08-23 20:56:34] --- Creating Backend .env ---
-[2025-08-23 20:56:34] SUCCESS: Backend .env created
-[2025-08-23 20:56:35] --- Creating Frontend .env.local ---
-[2025-08-23 20:56:35] SUCCESS: Frontend .env.local created
-[2025-08-23 20:56:35] --- Creating Mobile .env ---
-[2025-08-23 20:56:35] SUCCESS: Mobile .env created
-[2025-08-23 20:56:35] SUCCESS: Configuration exported to all apps!
-[2025-08-23 20:56:35] ===     INSTALLING ALL DEPENDENCIES     ===
-[2025-08-23 20:56:35] SUCCESS: Root dependencies already installed
-[2025-08-23 20:56:35] INFO: Ensuring all workspace packages are linked...
+[2025-08-24 13:27:15] ===          INITIALIZING WEALTHLOG PROJECT          ===
+[2025-08-24 13:27:19] INFO: System: windows | Node: v22.14.0 | npm: 11.1.0 | Git: 2.48.1.windows.1
+[2025-08-24 13:27:19] --- Creating Environment Files ---
+[2025-08-24 13:27:19] ===     EXPORTING CONFIGURATION     ===
+[2025-08-24 13:27:20] --- Creating Backend .env ---
+[2025-08-24 13:27:20] SUCCESS: Backend .env created
+[2025-08-24 13:27:20] --- Creating Frontend .env.local ---
+[2025-08-24 13:27:20] SUCCESS: Frontend .env.local created
+[2025-08-24 13:27:20] --- Creating Mobile .env ---
+[2025-08-24 13:27:20] SUCCESS: Mobile .env created
+[2025-08-24 13:27:20] SUCCESS: Configuration exported to all apps!
+[2025-08-24 13:27:20] ===     INSTALLING ALL DEPENDENCIES     ===
+[2025-08-24 13:27:20] SUCCESS: Root dependencies already installed
+[2025-08-24 13:27:20] INFO: Ensuring all workspace packages are linked...
 
-added 3 packages, and audited 844 packages in 14s
+up to date, audited 864 packages in 9s
 
 197 packages are looking for funding
   run `npm fund` for details
@@ -30,33 +30,46 @@ To address all issues (including breaking changes), run:
   npm audit fix --force
 
 Run `npm audit` for details.
-[2025-08-23 20:56:51] INFO: Setting up common package...
+[2025-08-24 13:27:31] INFO: Setting up common package...
 
-up to date, audited 844 packages in 5s
+up to date, audited 864 packages in 5s
 
 197 packages are looking for funding
   run `npm fund` for details
 
 found 0 vulnerabilities
-[2025-08-23 20:56:57] SUCCESS: Common package ready
-[2025-08-23 20:56:57] INFO: Building shared package...
+[2025-08-24 13:27:37] SUCCESS: Common package ready
+[2025-08-24 13:27:37] INFO: Building shared package...
 
 > @wealthlog/shared@0.0.1 build
 > tsc
 
-[2025-08-23 20:57:03] SUCCESS: Shared package built
-[2025-08-23 20:57:03] --- Building Shared Package ---
-[2025-08-23 20:57:03] WARNING: TypeScript not found - skipping build
-[2025-08-23 20:57:03] --- Setting Up Database Client ---
-[2025-08-23 20:57:03] INFO: Generating Prisma client...
+src/services/api-client.ts(103,13): error TS2322: Type '"RATE_LIMIT_EXCEEDED"' is not assignable to type 'ErrorCode'.
+src/services/api-client.ts(418,5): error TS2322: Type 'unknown[]' is not assignable to type 'T[]'.
+  Type 'unknown' is not assignable to type 'T'.
+    'T' could be instantiated with an arbitrary type which could be unrelated to 'unknown'.
+src/services/security.ts(246,5): error TS2322: Type 'false | Storage' is not assignable to type 'boolean'.
+  Type 'Storage' is not assignable to type 'boolean'.
+npm error Lifecycle script `build` failed with error:
+npm error code 2
+npm error path C:\Users\User\Desktop\wealthlogs\wealthlogs-code\packages\shared
+npm error workspace @wealthlog/shared@0.0.1
+npm error location C:\Users\User\Desktop\wealthlogs\wealthlogs-code\packages\shared
+npm error command failed
+npm error command C:\Windows\system32\cmd.exe /d /s /c tsc
+[2025-08-24 13:27:44] SUCCESS: Shared package built
+[2025-08-24 13:27:44] --- Building Shared Package ---
+[2025-08-24 13:27:44] WARNING: TypeScript not found - skipping build
+[2025-08-24 13:27:44] --- Setting Up Database Client ---
+[2025-08-24 13:27:44] INFO: Generating Prisma client...
 Environment variables loaded from .env
 Prisma schema loaded from prisma\schema.prisma
 
-✔ Generated Prisma Client (v6.14.0) to .\..\..\node_modules\@prisma\client in 718ms
+✔ Generated Prisma Client (v6.14.0) to .\..\..\node_modules\@prisma\client in 816ms
 
 Start by importing your Prisma Client (See: https://pris.ly/d/importing-client)
 
-Tip: Need your database queries to be 1000x faster? Accelerate offers you that and more: https://pris.ly/tip-2-accelerate
+Tip: Want to turn off tips and other hints? https://pris.ly/tip-4-nohints
 
-[2025-08-23 20:57:13] SUCCESS: Prisma client generated
-[2025-08-23 20:57:13] ===           INITIALIZATION COMPLETE!           ===
+[2025-08-24 13:27:54] SUCCESS: Prisma client generated
+[2025-08-24 13:27:54] ===           INITIALIZATION COMPLETE!           ===
