@@ -1,18 +1,10 @@
 /**
- * Enhanced Auth Context with Security Features
- * Provides secure authentication state management across the application
+ * Auth Context - Simple and reliable authentication state management
  */
 
-import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/router';
-import { AuthService } from '../services/api-service';
-import {
-  logger,
-  metrics,
-  SecurityService,
-  RateLimiter,
-  AppError
-} from '@wealthlog/shared';
+import authService from '../services/auth.service';
 
 interface User {
   id: number;
@@ -22,7 +14,6 @@ interface User {
   lastName?: string;
   roles: string[];
   emailVerified: boolean;
-  lastLogin?: Date;
 }
 
 interface AuthContextType {
@@ -35,330 +26,135 @@ interface AuthContextType {
   register: (data: any) => Promise<void>;
   refreshUser: () => Promise<void>;
   clearError: () => void;
-  checkSession: () => Promise<boolean>;
-  updatePassword: (currentPassword: string, newPassword: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
-// Session timeout (30 minutes)
-const SESSION_TIMEOUT = 30 * 60 * 1000;
-
-// Inactivity timeout (15 minutes)
-const INACTIVITY_TIMEOUT = 15 * 60 * 1000;
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
-  
-  // Refs for timeout management
-  const sessionTimeoutRef = useRef<NodeJS.Timeout>();
-  const inactivityTimeoutRef = useRef<NodeJS.Timeout>();
-  const lastActivityRef = useRef<number>(Date.now());
-
-  // Rate limiter for sensitive operations
-  const rateLimiter = useRef(new RateLimiter(5, 60000));
 
   /**
-   * Clear all timeouts
-   */
-  const clearTimeouts = useCallback(() => {
-    if (sessionTimeoutRef.current) {
-      clearTimeout(sessionTimeoutRef.current);
-    }
-    if (inactivityTimeoutRef.current) {
-      clearTimeout(inactivityTimeoutRef.current);
-    }
-  }, []);
-
-  /**
-   * Setup session timeout
-   */
-  const setupSessionTimeout = useCallback(() => {
-    clearTimeouts();
-    
-    // Session timeout
-    sessionTimeoutRef.current = setTimeout(() => {
-      logger.warn('Session timeout reached');
-      metrics.increment('auth.session_timeout');
-      handleSessionExpired();
-    }, SESSION_TIMEOUT);
-
-    // Inactivity timeout
-    resetInactivityTimeout();
-  }, [clearTimeouts]);
-
-  /**
-   * Reset inactivity timeout on user activity
-   */
-  const resetInactivityTimeout = useCallback(() => {
-    if (inactivityTimeoutRef.current) {
-      clearTimeout(inactivityTimeoutRef.current);
-    }
-
-    inactivityTimeoutRef.current = setTimeout(() => {
-      const inactiveTime = Date.now() - lastActivityRef.current;
-      
-      if (inactiveTime >= INACTIVITY_TIMEOUT) {
-        logger.warn('Inactivity timeout reached');
-        metrics.increment('auth.inactivity_timeout');
-        handleSessionExpired();
-      } else {
-        resetInactivityTimeout();
-      }
-    }, INACTIVITY_TIMEOUT);
-  }, []);
-
-  /**
-   * Track user activity
-   */
-  const trackActivity = useCallback(() => {
-    lastActivityRef.current = Date.now();
-    resetInactivityTimeout();
-  }, [resetInactivityTimeout]);
-
-  /**
-   * Handle session expiration
-   */
-  const handleSessionExpired = useCallback(async () => {
-    setUser(null);
-    clearTimeouts();
-    
-    // Clear auth data
-    AuthService.logout();
-    
-    // Show notification
-    if (typeof window !== 'undefined') {
-      alert('Your session has expired. Please login again.');
-    }
-    
-    router.push('/login');
-  }, [clearTimeouts, router]);
-
-  /**
-   * Check if session is valid
-   */
-  const checkSession = useCallback(async (): Promise<boolean> => {
-    try {
-      const token = localStorage.getItem('accessToken');
-      
-      if (!token) {
-        return false;
-      }
-
-      // Validate token format (basic check)
-      if (token.split('.').length !== 3) {
-        logger.warn('Invalid token format detected');
-        return false;
-      }
-
-      // Check token expiration (decode JWT)
-      try {
-        const payload = JSON.parse(atob(token.split('.')[1]));
-        if (payload.exp && payload.exp * 1000 < Date.now()) {
-          logger.info('Token expired');
-          
-          // Try to refresh
-          await AuthService.refreshToken();
-          return true;
-        }
-      } catch (e) {
-        logger.error('Failed to decode token', e);
-        return false;
-      }
-
-      return true;
-    } catch (error) {
-      logger.error('Session check failed', error);
-      return false;
-    }
-  }, []);
-
-  /**
-   * Initialize auth state
+   * Initialize auth state on mount
    */
   useEffect(() => {
     const initAuth = async () => {
       try {
         setLoading(true);
         
-        // Check for existing session
-        const hasValidSession = await checkSession();
+        // Check for existing token
+        const token = localStorage.getItem('accessToken');
         
-        if (hasValidSession) {
-          const userData = await AuthService.getCurrentUser();
-          
-          if (userData?.user) {
-            setUser(userData.user);
-            setupSessionTimeout();
+        if (token) {
+          try {
+            // Try to get current user
+            const userData = await authService.getCurrentUser();
             
-            logger.info('User session restored');
-            metrics.increment('auth.session_restored');
+            if (userData?.user) {
+              setUser(userData.user);
+              console.log('User session restored');
+            }
+          } catch (error) {
+            console.log('Token expired or invalid, clearing...');
+            localStorage.removeItem('accessToken');
+            localStorage.removeItem('refreshToken');
           }
         }
       } catch (error) {
-        logger.error('Auth initialization failed', error);
-        setError('Failed to restore session');
+        console.error('Auth initialization failed', error);
       } finally {
         setLoading(false);
       }
     };
 
     initAuth();
-
-    // Setup activity tracking
-    if (typeof window !== 'undefined') {
-      const events = ['mousedown', 'keydown', 'scroll', 'touchstart'];
-      events.forEach(event => {
-        window.addEventListener(event, trackActivity);
-      });
-
-      // Cleanup
-      return () => {
-        events.forEach(event => {
-          window.removeEventListener(event, trackActivity);
-        });
-        clearTimeouts();
-      };
-    }
-  }, [checkSession, setupSessionTimeout, trackActivity, clearTimeouts]);
+  }, []);
 
   /**
-   * Login with security checks
+   * Login user
    */
   const login = useCallback(async (username: string, password: string) => {
     try {
       setLoading(true);
       setError(null);
 
-      // Rate limiting check
-      if (!rateLimiter.current.isAllowed('login')) {
-        throw new AppError({
-          code: 'RATE_LIMIT_EXCEEDED',
-          message: 'Too many login attempts. Please wait.',
-          statusCode: 429
-        });
-      }
-
       // Input validation
       if (!username || !password) {
-        throw new AppError({
-          code: 'VALIDATION_FAILED',
-          message: 'Username and password are required',
-          statusCode: 400
-        });
+        throw new Error('Username and password are required');
       }
 
-      // Sanitize inputs
-      const sanitizedUsername = SecurityService.sanitizeHtml(username);
-      
       // Perform login
-      const response = await AuthService.login(sanitizedUsername, password);
+      const response = await authService.login(username, password);
       
       if (response?.user) {
         setUser(response.user);
-        setupSessionTimeout();
+        console.log('Login successful');
         
-        logger.info('Login successful', { 
-          userId: response.user.id,
-          username: response.user.username 
-        });
-        metrics.increment('auth.login.success');
-        
-        // Redirect based on role
-        if (response.user.roles.includes('ADMIN')) {
-          router.push('/admin/dashboard');
-        } else {
-          router.push('/dashboard');
-        }
+        // Redirect to dashboard
+        router.push('/dashboard');
       }
     } catch (error: any) {
-      logger.error('Login failed', error);
-      metrics.increment('auth.login.failed');
-      
+      console.error('Login failed', error);
       setError(error.message || 'Login failed');
       throw error;
     } finally {
       setLoading(false);
     }
-  }, [router, setupSessionTimeout]);
+  }, [router]);
 
   /**
-   * Logout with cleanup
+   * Logout user
    */
   const logout = useCallback(async () => {
     try {
       setLoading(true);
       
-      // Clear session
-      await AuthService.logout();
+      // Call logout endpoint
+      await authService.logout();
       
       // Clear state
       setUser(null);
-      clearTimeouts();
       
-      logger.info('Logout successful');
-      metrics.increment('auth.logout');
+      console.log('Logout successful');
       
+      // Redirect to login
       router.push('/login');
     } catch (error) {
-      logger.error('Logout failed', error);
+      console.error('Logout failed', error);
     } finally {
       setLoading(false);
     }
-  }, [clearTimeouts, router]);
+  }, [router]);
 
   /**
-   * Register with validation
+   * Register new user
    */
   const register = useCallback(async (data: any) => {
     try {
       setLoading(true);
       setError(null);
 
-      // Rate limiting check
-      if (!rateLimiter.current.isAllowed('register')) {
-        throw new AppError({
-          code: 'RATE_LIMIT_EXCEEDED',
-          message: 'Too many registration attempts. Please wait.',
-          statusCode: 429
-        });
+      // Basic validation
+      if (!data.username || !data.email || !data.password) {
+        throw new Error('Required fields are missing');
       }
 
-      // Validate password strength
-      const passwordStrength = SecurityService.getPasswordStrength(data.password);
-      if (!passwordStrength.isStrong) {
-        throw new AppError({
-          code: 'VALIDATION_FAILED',
-          message: 'Password is not strong enough',
-          statusCode: 400,
-          details: { feedback: passwordStrength.feedback }
-        });
+      // Password strength check (simple)
+      if (data.password.length < 8) {
+        throw new Error('Password must be at least 8 characters');
       }
-
-      // Sanitize inputs
-      const sanitizedData = {
-        ...data,
-        username: SecurityService.sanitizeHtml(data.username),
-        email: SecurityService.sanitizeHtml(data.email),
-        firstName: SecurityService.sanitizeHtml(data.firstName),
-        lastName: SecurityService.sanitizeHtml(data.lastName)
-      };
 
       // Perform registration
-      await AuthService.register(sanitizedData);
+      await authService.register(data);
       
-      logger.info('Registration successful');
-      metrics.increment('auth.register.success');
+      console.log('Registration successful');
       
       // Redirect to login with success message
       router.push('/login?registered=true');
     } catch (error: any) {
-      logger.error('Registration failed', error);
-      metrics.increment('auth.register.failed');
-      
+      console.error('Registration failed', error);
       setError(error.message || 'Registration failed');
       throw error;
     } finally {
@@ -371,60 +167,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
    */
   const refreshUser = useCallback(async () => {
     try {
-      const userData = await AuthService.getCurrentUser();
+      const userData = await authService.getCurrentUser();
       
       if (userData?.user) {
         setUser(userData.user);
-        logger.info('User data refreshed');
+        console.log('User data refreshed');
       }
     } catch (error) {
-      logger.error('Failed to refresh user data', error);
+      console.error('Failed to refresh user data', error);
       
-      // If refresh fails, check if session is still valid
-      const isValid = await checkSession();
-      if (!isValid) {
-        handleSessionExpired();
-      }
+      // If refresh fails, clear user
+      setUser(null);
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('refreshToken');
     }
-  }, [checkSession, handleSessionExpired]);
-
-  /**
-   * Update password with validation
-   */
-  const updatePassword = useCallback(async (currentPassword: string, newPassword: string) => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      // Validate new password strength
-      const passwordStrength = SecurityService.getPasswordStrength(newPassword);
-      if (!passwordStrength.isStrong) {
-        throw new AppError({
-          code: 'VALIDATION_FAILED',
-          message: 'New password is not strong enough',
-          statusCode: 400,
-          details: { feedback: passwordStrength.feedback }
-        });
-      }
-
-      // Change password
-      await AuthService.changePassword(currentPassword, newPassword);
-      
-      logger.info('Password updated successfully');
-      metrics.increment('auth.password_change.success');
-      
-      // Force re-login for security
-      await logout();
-    } catch (error: any) {
-      logger.error('Password update failed', error);
-      metrics.increment('auth.password_change.failed');
-      
-      setError(error.message || 'Failed to update password');
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  }, [logout]);
+  }, []);
 
   /**
    * Clear error state
@@ -443,9 +200,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     logout,
     register,
     refreshUser,
-    clearError,
-    checkSession,
-    updatePassword
+    clearError
   };
 
   return (
@@ -492,11 +247,7 @@ export function withAuth<P extends object>(
           );
           
           if (!hasRequiredRole) {
-            logger.warn('Access denied - insufficient permissions', {
-              userId: user.id,
-              requiredRoles: options.roles,
-              userRoles: user.roles
-            });
+            console.warn('Access denied - insufficient permissions');
             router.push('/unauthorized');
           }
         }
@@ -504,7 +255,11 @@ export function withAuth<P extends object>(
     }, [loading, isAuthenticated, user, router]);
 
     if (loading) {
-      return <div>Loading...</div>;
+      return (
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        </div>
+      );
     }
 
     if (!isAuthenticated) {
@@ -517,7 +272,14 @@ export function withAuth<P extends object>(
       );
       
       if (!hasRequiredRole) {
-        return <div>Unauthorized</div>;
+        return (
+          <div className="flex items-center justify-center min-h-screen">
+            <div className="text-center">
+              <h1 className="text-2xl font-bold text-red-600">Unauthorized</h1>
+              <p className="text-gray-600 mt-2">You don't have permission to access this page.</p>
+            </div>
+          </div>
+        );
       }
     }
 

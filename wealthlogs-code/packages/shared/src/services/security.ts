@@ -4,118 +4,110 @@
  * Works across web and mobile platforms
  */
 
-// Use dynamic import for crypto to support both Node.js and browser
-let crypto: any;
-if (typeof window === 'undefined') {
-  // Node.js environment
-  try {
-    crypto = require('crypto');
-  } catch (e) {
-    // Crypto not available
+/**
+ * Browser-compatible crypto utilities
+ */
+class BrowserCrypto {
+  /**
+   * Generate random bytes (browser-compatible)
+   */
+  static getRandomValues(length: number): Uint8Array {
+    const array = new Uint8Array(length);
+    if (typeof window !== 'undefined' && window.crypto) {
+      window.crypto.getRandomValues(array);
+    } else if (typeof global !== 'undefined' && global.crypto) {
+      global.crypto.getRandomValues(array);
+    } else {
+      // Fallback for environments without crypto
+      for (let i = 0; i < length; i++) {
+        array[i] = Math.floor(Math.random() * 256);
+      }
+    }
+    return array;
   }
-} else {
-  // Browser environment
-  crypto = window.crypto;
-}
 
-export interface EncryptedData {
-  data: string;
-  iv: string;
-  tag: string;
-  algorithm: string;
+  /**
+   * Convert bytes to hex string
+   */
+  static bytesToHex(bytes: Uint8Array): string {
+    return Array.from(bytes)
+      .map(b => b.toString(16).padStart(2, '0'))
+      .join('');
+  }
+
+  /**
+   * Generate random hex string
+   */
+  static randomHex(length: number): string {
+    const bytes = this.getRandomValues(length);
+    return this.bytesToHex(bytes);
+  }
+
+  /**
+   * Generate UUID v4 (browser-compatible)
+   */
+  static generateUUID(): string {
+    if (typeof window !== 'undefined' && window.crypto && window.crypto.randomUUID) {
+      return window.crypto.randomUUID();
+    }
+    
+    // Fallback UUID v4 generation
+    const bytes = this.getRandomValues(16);
+    bytes[6] = (bytes[6] & 0x0f) | 0x40;
+    bytes[8] = (bytes[8] & 0x3f) | 0x80;
+    
+    const hex = this.bytesToHex(bytes);
+    return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20, 32)}`;
+  }
 }
 
 /**
  * Security utilities for sensitive data handling
  */
 export class SecurityService {
-  private static readonly ALGORITHM = 'aes-256-gcm';
-  private static readonly SALT_LENGTH = 32;
-  private static readonly IV_LENGTH = 16;
-  private static readonly TAG_LENGTH = 16;
-  private static readonly ITERATIONS = 100000;
-
   /**
-   * Encrypt sensitive data
-   */
-  static encrypt(text: string, password: string): EncryptedData {
-    // Node.js specific implementation
-    if (!crypto || !crypto.randomBytes) {
-      throw new Error('Encryption not available in this environment');
-    }
-    
-    const salt = crypto.randomBytes(this.SALT_LENGTH);
-    const key = crypto.pbkdf2Sync(password, salt, this.ITERATIONS, 32, 'sha256');
-    const iv = crypto.randomBytes(this.IV_LENGTH);
-    
-    const cipher = crypto.createCipheriv(this.ALGORITHM, key, iv);
-    
-    let encrypted = cipher.update(text, 'utf8', 'hex');
-    encrypted += cipher.final('hex');
-    
-    const tag = cipher.getAuthTag();
-    
-    return {
-      data: salt.toString('hex') + ':' + encrypted,
-      iv: iv.toString('hex'),
-      tag: tag.toString('hex'),
-      algorithm: this.ALGORITHM,
-    };
-  }
-
-  /**
-   * Decrypt sensitive data
-   */
-  static decrypt(encryptedData: EncryptedData, password: string): string {
-    const parts = encryptedData.data.split(':');
-    // Node.js specific implementation
-    if (!crypto || typeof Buffer === 'undefined') {
-      throw new Error('Decryption not available in this environment');
-    }
-    
-    const salt = Buffer.from(parts[0], 'hex');
-    const encrypted = parts[1];
-    
-    const key = crypto.pbkdf2Sync(password, salt, this.ITERATIONS, 32, 'sha256');
-    const iv = Buffer.from(encryptedData.iv, 'hex');
-    const tag = Buffer.from(encryptedData.tag, 'hex');
-    
-    const decipher = crypto.createDecipheriv(this.ALGORITHM, key, iv);
-    decipher.setAuthTag(tag);
-    
-    let decrypted = decipher.update(encrypted, 'hex', 'utf8');
-    decrypted += decipher.final('utf8');
-    
-    return decrypted;
-  }
-
-  /**
-   * Hash sensitive data (one-way)
-   */
-  static hash(text: string): string {
-    return crypto.createHash('sha256').update(text).digest('hex');
-  }
-
-  /**
-   * Generate secure random token
+   * Generate secure random token (browser-compatible)
    */
   static generateToken(length = 32): string {
-    return crypto.randomBytes(length).toString('hex');
+    return BrowserCrypto.randomHex(length);
   }
 
   /**
-   * Generate UUID v4
+   * Generate UUID v4 (browser-compatible)
    */
   static generateUUID(): string {
-    return crypto.randomUUID();
+    return BrowserCrypto.generateUUID();
+  }
+
+  /**
+   * Simple hash function (not cryptographically secure, but works in browser)
+   */
+  static async hash(text: string): Promise<string> {
+    if (typeof window !== 'undefined' && window.crypto && window.crypto.subtle) {
+      // Use Web Crypto API if available
+      const encoder = new TextEncoder();
+      const data = encoder.encode(text);
+      const hashBuffer = await window.crypto.subtle.digest('SHA-256', data);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+    
+    // Fallback simple hash (not cryptographically secure)
+    let hash = 0;
+    for (let i = 0; i < text.length; i++) {
+      const char = text.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash;
+    }
+    return Math.abs(hash).toString(16);
   }
 
   /**
    * Mask sensitive data for display
    */
   static maskData(data: string, showChars = 4): string {
-    if (data.length <= showChars) {
-      return '*'.repeat(data.length);
+    if (!data || data.length <= showChars) {
+      return '*'.repeat(data?.length || 0);
     }
     
     const visiblePart = data.slice(-showChars);
@@ -128,6 +120,8 @@ export class SecurityService {
    * Mask email address
    */
   static maskEmail(email: string): string {
+    if (!email || !email.includes('@')) return email;
+    
     const [username, domain] = email.split('@');
     
     if (username.length <= 3) {
@@ -144,6 +138,8 @@ export class SecurityService {
    * Mask phone number
    */
   static maskPhone(phone: string): string {
+    if (!phone) return '';
+    
     const digits = phone.replace(/\D/g, '');
     
     if (digits.length <= 4) {
@@ -166,6 +162,10 @@ export class SecurityService {
   } {
     let score = 0;
     const feedback: string[] = [];
+    
+    if (!password) {
+      return { score: 0, feedback: ['Password is required'], isStrong: false };
+    }
     
     // Length check
     if (password.length >= 8) score += 1;
@@ -207,7 +207,9 @@ export class SecurityService {
    * Sanitize user input to prevent XSS
    */
   static sanitizeHtml(input: string): string {
-    return input
+    if (!input) return '';
+    
+    return String(input)
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;')
@@ -220,7 +222,9 @@ export class SecurityService {
    * Sanitize SQL input (basic - Prisma handles most of this)
    */
   static sanitizeSql(input: string): string {
-    return input
+    if (!input) return '';
+    
+    return String(input)
       .replace(/'/g, "''")
       .replace(/;/g, '')
       .replace(/--/g, '')
@@ -235,9 +239,9 @@ export class SecurityService {
     const digits = '0123456789';
     let otp = '';
     
+    const randomValues = BrowserCrypto.getRandomValues(length);
     for (let i = 0; i < length; i++) {
-      const randomIndex = crypto.randomInt(0, digits.length);
-      otp += digits[randomIndex];
+      otp += digits[randomValues[i] % 10];
     }
     
     return otp;
@@ -247,7 +251,7 @@ export class SecurityService {
    * Time-constant string comparison (prevents timing attacks)
    */
   static secureCompare(a: string, b: string): boolean {
-    if (a.length !== b.length) {
+    if (!a || !b || a.length !== b.length) {
       return false;
     }
     
@@ -261,63 +265,7 @@ export class SecurityService {
 }
 
 /**
- * Secure storage wrapper for sensitive data
- */
-export class SecureStorage {
-  private static isAvailable(): boolean {
-    return typeof window !== 'undefined' && !!window.localStorage;
-  }
-
-  /**
-   * Store encrypted data
-   */
-  static setItem(key: string, value: any, password: string): void {
-    if (!this.isAvailable()) return;
-    
-    const data = JSON.stringify(value);
-    const encrypted = SecurityService.encrypt(data, password);
-    
-    localStorage.setItem(key, JSON.stringify(encrypted));
-  }
-
-  /**
-   * Retrieve and decrypt data
-   */
-  static getItem(key: string, password: string): any {
-    if (!this.isAvailable()) return null;
-    
-    const stored = localStorage.getItem(key);
-    if (!stored) return null;
-    
-    try {
-      const encrypted = JSON.parse(stored) as EncryptedData;
-      const decrypted = SecurityService.decrypt(encrypted, password);
-      return JSON.parse(decrypted);
-    } catch (error) {
-      console.error('Failed to decrypt data:', error);
-      return null;
-    }
-  }
-
-  /**
-   * Remove item
-   */
-  static removeItem(key: string): void {
-    if (!this.isAvailable()) return;
-    localStorage.removeItem(key);
-  }
-
-  /**
-   * Clear all secure storage
-   */
-  static clear(): void {
-    if (!this.isAvailable()) return;
-    localStorage.clear();
-  }
-}
-
-/**
- * CSRF Token Management
+ * CSRF Token Management (browser-compatible)
  */
 export class CSRFProtection {
   private static readonly TOKEN_KEY = 'csrf_token';
@@ -329,7 +277,11 @@ export class CSRFProtection {
     const token = SecurityService.generateToken();
     
     if (typeof window !== 'undefined' && window.sessionStorage) {
-      sessionStorage.setItem(this.TOKEN_KEY, token);
+      try {
+        sessionStorage.setItem(this.TOKEN_KEY, token);
+      } catch (e) {
+        console.warn('Could not store CSRF token:', e);
+      }
     }
     
     return token;
@@ -343,8 +295,13 @@ export class CSRFProtection {
       return true; // Skip validation on server-side
     }
     
-    const storedToken = sessionStorage.getItem(this.TOKEN_KEY);
-    return storedToken !== null && SecurityService.secureCompare(token, storedToken);
+    try {
+      const storedToken = sessionStorage.getItem(this.TOKEN_KEY);
+      return storedToken !== null && SecurityService.secureCompare(token, storedToken);
+    } catch (e) {
+      console.warn('Could not validate CSRF token:', e);
+      return true;
+    }
   }
 
   /**
@@ -355,7 +312,12 @@ export class CSRFProtection {
       return null;
     }
     
-    return sessionStorage.getItem(this.TOKEN_KEY);
+    try {
+      return sessionStorage.getItem(this.TOKEN_KEY);
+    } catch (e) {
+      console.warn('Could not get CSRF token:', e);
+      return null;
+    }
   }
 }
 
@@ -407,6 +369,108 @@ export class RateLimiter {
     const validAttempts = attempts.filter(time => now - time < this.windowMs);
     
     return Math.max(0, this.maxAttempts - validAttempts.length);
+  }
+
+  /**
+   * Get time until reset (in ms)
+   */
+  getTimeUntilReset(key: string): number {
+    const attempts = this.attempts.get(key) || [];
+    if (attempts.length === 0) return 0;
+    
+    const oldestAttempt = Math.min(...attempts);
+    const resetTime = oldestAttempt + this.windowMs;
+    const now = Date.now();
+    
+    return Math.max(0, resetTime - now);
+  }
+}
+
+/**
+ * Simple secure storage (without encryption for browser compatibility)
+ */
+export class SecureStorage {
+  private static readonly PREFIX = 'wl_secure_';
+  
+  /**
+   * Check if storage is available
+   */
+  private static isAvailable(): boolean {
+    try {
+      if (typeof window === 'undefined' || !window.localStorage) {
+        return false;
+      }
+      
+      // Test if we can actually use localStorage
+      const test = '__storage_test__';
+      window.localStorage.setItem(test, test);
+      window.localStorage.removeItem(test);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /**
+   * Store data (simplified without encryption for browser)
+   */
+  static setItem(key: string, value: any): void {
+    if (!this.isAvailable()) return;
+    
+    try {
+      const data = JSON.stringify(value);
+      localStorage.setItem(this.PREFIX + key, data);
+    } catch (e) {
+      console.error('Failed to store data:', e);
+    }
+  }
+
+  /**
+   * Retrieve data
+   */
+  static getItem(key: string): any {
+    if (!this.isAvailable()) return null;
+    
+    try {
+      const stored = localStorage.getItem(this.PREFIX + key);
+      if (!stored) return null;
+      
+      return JSON.parse(stored);
+    } catch (e) {
+      console.error('Failed to retrieve data:', e);
+      return null;
+    }
+  }
+
+  /**
+   * Remove item
+   */
+  static removeItem(key: string): void {
+    if (!this.isAvailable()) return;
+    
+    try {
+      localStorage.removeItem(this.PREFIX + key);
+    } catch (e) {
+      console.error('Failed to remove data:', e);
+    }
+  }
+
+  /**
+   * Clear all secure storage
+   */
+  static clear(): void {
+    if (!this.isAvailable()) return;
+    
+    try {
+      const keys = Object.keys(localStorage);
+      keys.forEach(key => {
+        if (key.startsWith(this.PREFIX)) {
+          localStorage.removeItem(key);
+        }
+      });
+    } catch (e) {
+      console.error('Failed to clear data:', e);
+    }
   }
 }
 

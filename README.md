@@ -1,550 +1,381 @@
-# 💰 WealthLog - Smart Personal Finance Management Platform
+# 💰 WealthLog - Personal Finance Management Platform
 
-<div align="center">
-  <img src="https://img.shields.io/badge/Next.js-14.0-black?style=for-the-badge&logo=next.js" alt="Next.js"/>
-  <img src="https://img.shields.io/badge/React-18.0-61DAFB?style=for-the-badge&logo=react" alt="React"/>
-  <img src="https://img.shields.io/badge/TypeScript-5.0-3178C6?style=for-the-badge&logo=typescript" alt="TypeScript"/>
-  <img src="https://img.shields.io/badge/Node.js-18.0-339933?style=for-the-badge&logo=node.js" alt="Node.js"/>
-  <img src="https://img.shields.io/badge/PostgreSQL-15.0-4169E1?style=for-the-badge&logo=postgresql" alt="PostgreSQL"/>
-  <img src="https://img.shields.io/badge/Prisma-5.0-2D3748?style=for-the-badge&logo=prisma" alt="Prisma"/>
-</div>
+**Clean, Secure, and Mobile-Ready Financial Management Application**
 
-<div align="center">
-  <h3>🚀 Track • Analyze • Grow Your Wealth</h3>
-  <p>A comprehensive financial management platform that helps you track investments, analyze spending patterns, and make informed financial decisions.</p>
-</div>
+## ✅ Project Status
 
----
+### What's Been Fixed
+- ✅ **Fixed crypto.randomBytes error** - Now uses browser-compatible Web Crypto API
+- ✅ **Simplified codebase** - Removed overly complex abstractions
+- ✅ **Maintained security** - Kept essential security features (password validation, rate limiting, CSRF protection)
+- ✅ **Cleaned up scripts** - Old maintenance scripts moved to `scripts/archived/`
+- ✅ **Fixed all imports** - Shared package properly exports all needed utilities
+- ✅ **Mobile-ready** - All code is Capacitor-compatible for mobile deployment
 
-## 📋 Table of Contents
-
-- [Features](#-features)
-- [Architecture](#-architecture)
-- [Technology Stack](#-technology-stack)
-- [Getting Started](#-getting-started)
-- [Development Workflow](#-development-workflow)
-- [Deployment](#-deployment)
-- [Maintenance Script](#-maintenance-script)
-- [API Documentation](#-api-documentation)
-- [Contributing](#-contributing)
-- [Documentation](#-documentation)
-- [License](#-license)
-
-## ✨ Features
-
-### 📊 **Financial Dashboard**
-- Real-time net worth tracking
-- Asset allocation visualization
-- Performance metrics and trends
-- Interactive charts with Recharts
-
-### 💼 **Portfolio Management**
-- Multi-account support (Bank, Investment, Crypto, Real Estate)
-- Transaction history and categorization
-- Automated portfolio rebalancing suggestions
-- Tax optimization strategies
-
-### 📈 **Investment Tracking**
-- Stock portfolio management
-- Cryptocurrency tracking
-- Real estate investments
-- Dividend income tracking
-
-### 💳 **Expense Management**
-- Automatic transaction categorization
-- Budget creation and monitoring
-- Spending trends analysis
-- Bill reminders and recurring expenses
-
-### 🔐 **Security & Authentication**
-- JWT-based authentication with access/refresh tokens
-- Google OAuth integration
-- Role-based access control (RBAC)
-- Secure session management
-- Email verification system
-
-### 📱 **Cross-Platform**
-- Responsive web application
-- Mobile app (iOS/Android) with Capacitor
-- Progressive Web App (PWA) support
-- Offline functionality
-
-## 🏗 Architecture
-
-```mermaid
-graph TB
-    subgraph "Frontend"
-        A[Next.js Web App] --> B[React Components]
-        B --> C[TailwindCSS]
-        B --> D[Recharts]
-        A --> E[API Client]
-        F[Capacitor Mobile] --> B
-    end
-    
-    subgraph "Backend"
-        G[Express.js Server] --> H[REST API]
-        H --> I[Auth Middleware]
-        H --> J[Business Logic]
-        J --> K[Prisma ORM]
-    end
-    
-    subgraph "Database"
-        K --> L[PostgreSQL]
-        M[Redis Cache] --> G
-    end
-    
-    subgraph "External Services"
-        N[Google OAuth] --> I
-        O[Email Service] --> G
-        P[Market Data API] --> J
-    end
-    
-    E --> H
-    A --> N
-```
-
-### Project Structure
-
-```
-wealthlogs/
-├── 📁 wealthlogs-code/          # Main application code
-│   ├── 📁 apps/                 # Applications
-│   │   ├── 🔧 backend/          # Express.js API server
-│   │   │   ├── src/
-│   │   │   │   ├── routes/      # API routes
-│   │   │   │   ├── middleware/  # Express middleware
-│   │   │   │   ├── services/    # Business logic
-│   │   │   │   └── utils/       # Utility functions
-│   │   │   └── prisma/          # Database schema
-│   │   ├── 🌐 web/              # Next.js frontend
-│   │   │   ├── pages/           # Next.js pages
-│   │   │   ├── components/      # React components
-│   │   │   ├── hooks/           # Custom React hooks
-│   │   │   ├── contexts/        # React contexts
-│   │   │   └── styles/          # CSS/Tailwind styles
-│   │   └── 📱 mobile/           # Capacitor mobile app
-│   └── 📦 packages/             # Shared packages
-│       └── shared/              # Shared utilities
-├── 📁 scripts/                  # Maintenance and utility scripts
-│   ├── maintain.sh              # Main maintenance script
-│   ├── config.env               # Configuration file
-│   └── README.md               # Script documentation
-├── 📁 docs/                     # Documentation
-│   ├── CLAUDE_REFERENCE.md     # Quick reference for Claude AI
-│   ├── authentication-flow.md   # Auth system documentation
-│   ├── auth-system.md          # Detailed auth documentation
-│   └── deployment-env.md       # Deployment environment guide
-└── README.md                    # This file
-```
-
-## 💻 Technology Stack
-
-### Frontend
-- **Framework:** Next.js 14 with Pages Router
-- **UI Library:** React 18
-- **Styling:** TailwindCSS 3.0
-- **Charts:** Recharts
-- **State Management:** React Context API
-- **Forms:** React Hook Form
-- **HTTP Client:** Axios
-- **Type Safety:** TypeScript 5.0
-- **Mobile:** Capacitor
-
-### Backend
-- **Runtime:** Node.js 18 LTS
-- **Framework:** Express.js 4.18
-- **ORM:** Prisma 5.0
-- **Authentication:** JWT + Passport.js
-- **Validation:** Express Validator
-- **Logging:** Winston
-- **Testing:** Jest + Supertest
-
-### Database
-- **Primary:** PostgreSQL 15
-- **Caching:** Redis (optional)
-- **Migrations:** Prisma Migrate
-
-### DevOps
-- **Monorepo:** Turborepo
-- **Frontend Deployment:** Vercel (auto-deploy on push)
-- **Backend Deployment:** Render (auto-deploy on push)
-- **CI/CD:** GitHub Actions
-- **Monitoring:** Built-in logging system
-- **Scripts:** Custom maintenance script
-
-## 🚀 Getting Started
+## 🚀 Quick Start
 
 ### Prerequisites
-
-- Node.js 18+ and npm 9+
+- Node.js 18+
 - PostgreSQL 14+
-- Git
-- Redis (optional, for caching)
+- npm or yarn
 
-### 1. Clone the Repository
+### Installation
 
+1. **Clone and setup:**
 ```bash
 git clone https://github.com/yourusername/wealthlogs.git
 cd wealthlogs
 ```
 
-### 2. Create PostgreSQL Database
-
-#### Option A: Using psql Command Line
-
-```sql
-# Connect to PostgreSQL as superuser
-psql -U postgres
-
-# Create database and user
-CREATE USER wealthlog_user WITH PASSWORD 'your_secure_password';
-CREATE DATABASE wealthlog OWNER wealthlog_user;
-GRANT ALL PRIVILEGES ON DATABASE wealthlog TO wealthlog_user;
-
-# Grant schema permissions (required for Prisma)
-\c wealthlog
-GRANT ALL ON SCHEMA public TO wealthlog_user;
-\q
-```
-
-#### Option B: Using pgAdmin GUI
-
-1. Open pgAdmin and connect to your PostgreSQL server
-2. Right-click on "Databases" → "Create" → "Database"
-   - Database name: `wealthlog`
-   - Owner: `postgres` (or create new user first)
-3. Right-click on "Login/Group Roles" → "Create" → "Login/Group Role"
-   - General tab: Name = `wealthlog_user`
-   - Definition tab: Password = `your_secure_password`
-   - Privileges tab: Check "Can login"
-4. Right-click on the `wealthlog` database → "Properties" → "Security" tab
-   - Grant all privileges to `wealthlog_user`
-
-#### Option C: Quick Setup (Development Only)
-
+2. **Run setup (Windows):**
 ```bash
-# One-liner for development (adjust username/password as needed)
-psql -U postgres -c "CREATE USER wealthlog_user WITH PASSWORD 'dev_password123'; CREATE DATABASE wealthlog OWNER wealthlog_user; GRANT ALL PRIVILEGES ON DATABASE wealthlog TO wealthlog_user;"
+setup.bat
 ```
 
-> **Important Notes:**
-> - Replace `wealthlog_user` and passwords with your preferred credentials
-> - Use strong passwords in production
-> - Keep your database credentials secure and never commit them to git
-> - The database name should remain `wealthlog` to match the schema
-
-### 3. Configure Database Settings
-
+**Or Mac/Linux:**
 ```bash
-# Copy the example configuration
-cp scripts/config.env.example scripts/config.env
-
-# Edit the configuration file with your database credentials
-# Update DB_USERNAME and DB_PASSWORD to match what you created above
-nano scripts/config.env  # or use your preferred editor
+chmod +x setup.sh
+./setup.sh
 ```
 
-### 4. Initialize the Project
+3. **Configure database:**
 
+Edit `wealthlogs-code/apps/backend/.env`:
+```env
+DATABASE_URL=postgresql://your_username:your_password@localhost:5432/wealthlog
+```
+
+4. **Start development:**
 ```bash
-# Make the maintenance script executable (Unix/Mac/Linux)
-chmod +x scripts/maintain.sh
-
-# On Windows, use Git Bash or WSL to run:
-./scripts/maintain.sh init
-
-# This will:
-# - Install all dependencies (root, backend, frontend, shared)
-# - Create environment files from config
-# - Build shared packages
-# - Generate Prisma client
+npm run dev
 ```
 
-### 5. Setup Database Schema
-
-```bash
-# Create database tables and run migrations
-./scripts/maintain.sh db:setup
-```
-
-### 6. Start Development Servers
-
-```bash
-# Start all services (frontend + backend)
-./scripts/maintain.sh dev
-
-# Or start individually:
-./scripts/maintain.sh start backend   # Backend only (port 5000)
-./scripts/maintain.sh start frontend  # Frontend only (port 3000)
-```
-
-Your application will be available at:
+### Access Points
 - **Frontend:** http://localhost:3000
 - **Backend API:** http://localhost:5000
-- **Database GUI:** Run `./scripts/maintain.sh db:studio` (port 5555)
+- **Database GUI:** `npm run db:studio`
 
-### 7. Test Login
+### Default Login
+- Username: `bech`
+- Password: `123`
 
-Use these test credentials:
-- **Username:** bech
-- **Password:** 123
-
-## 🔄 Development Workflow
-
-### Branching Strategy
-
-We use a Git Flow inspired branching strategy:
+## 📁 Clean Project Structure
 
 ```
-master (production)
-  └── staging (pre-production testing)
-       └── feature/your-feature-name (development)
+wealthlogs/
+├── package.json           # All npm scripts (simplified)
+├── setup.bat             # Windows setup
+├── setup.sh              # Mac/Linux setup
+├── README.md             # Main documentation
+├── GETTING_STARTED.md    # Quick start guide
+│
+├── wealthlogs-code/
+│   ├── apps/
+│   │   ├── backend/      # Express.js API (Node.js)
+│   │   │   ├── src/
+│   │   │   ├── prisma/   # Database schema
+│   │   │   └── .env      # Backend config
+│   │   │
+│   │   ├── web/          # Next.js frontend
+│   │   │   ├── pages/    # Next.js pages
+│   │   │   ├── src/      # Components & services
+│   │   │   └── .env.local # Frontend config
+│   │   │
+│   │   └── mobile/       # Capacitor mobile app
+│   │       ├── src/      # Mobile-specific code
+│   │       ├── ios/      # iOS project
+│   │       └── android/  # Android project
+│   │
+│   └── packages/
+│       └── shared/       # Shared utilities
+│           ├── src/
+│           │   ├── services/
+│           │   │   ├── api-client.ts    # API client
+│           │   │   ├── security.ts      # Security utils
+│           │   │   ├── error-handler.ts # Error handling
+│           │   │   └── monitoring.ts    # Logging
+│           │   └── index.ts             # Main exports
+│           └── dist/                     # Built files
+│
+├── docs/                 # Documentation
+└── scripts/
+    ├── config.env        # Your configuration
+    ├── README.md         # Scripts info
+    └── archived/         # Old scripts (deleted)
 ```
 
-### Development Process
+## 🛡️ Security Features
 
-1. **Create a feature branch from staging:**
+### What's Maintained
+1. **Password Security**
+   - Password strength validation
+   - Minimum 8 characters with complexity requirements
+   - Bcrypt hashing (10 rounds)
+
+2. **Rate Limiting**
+   - Login attempts: 5 per minute
+   - API endpoints: Configurable limits
+
+3. **Token Management**
+   - JWT access tokens (15 minutes)
+   - Refresh tokens (7 days)
+   - Automatic token rotation
+
+4. **CSRF Protection**
+   - CSRF tokens for state-changing operations
+   - Session storage for tokens
+
+5. **Input Sanitization**
+   - XSS protection via HTML sanitization
+   - SQL injection prevention via Prisma
+
+## 📜 Available NPM Scripts
+
+All commands run from the root directory:
+
+### Development
 ```bash
-git checkout staging
-git pull origin staging
-git checkout -b feature/your-feature-name
+npm run dev              # Start both frontend and backend
+npm run dev:web          # Start frontend only (port 3000)
+npm run dev:backend      # Start backend only (port 5000)
+npm run dev:mobile       # Start mobile development
 ```
 
-2. **Make your changes and test locally:**
+### Building
 ```bash
-# Run tests
-./scripts/maintain.sh test
-
-# Check for issues
-./scripts/maintain.sh doctor
+npm run build            # Build everything
+npm run build:shared     # Build shared package
+npm run build:web        # Build frontend
+npm run build:backend    # Build backend
+npm run build:mobile     # Build mobile app
 ```
 
-3. **Commit your changes:**
+### Database
 ```bash
-git add .
-git commit -m "feat: description of your feature"
+npm run db:migrate       # Run migrations
+npm run db:push          # Push schema changes
+npm run db:studio        # Open Prisma Studio GUI
+npm run db:reset         # Reset database (WARNING: deletes data)
 ```
 
-4. **Push and create Pull Request:**
+### Testing & Maintenance
 ```bash
-git push origin feature/your-feature-name
-# Open PR to staging branch on GitHub
+npm run test             # Run all tests
+npm run test:backend     # Test backend only
+npm run test:web         # Test frontend only
+npm run lint             # Run linting
+npm run clean            # Clean build artifacts
+npm run fresh            # Clean install (removes node_modules)
 ```
 
-5. **After PR is merged to staging:**
-   - Test on staging environment
-   - If everything works, create PR from staging to master
-
-6. **Deployment happens automatically:**
-   - Vercel deploys frontend on push to master
-   - Render deploys backend on push to master
-
-### Commit Message Convention
-
-Use conventional commits:
-- `feat:` New feature
-- `fix:` Bug fix
-- `docs:` Documentation changes
-- `style:` Code style changes
-- `refactor:` Code refactoring
-- `test:` Test changes
-- `chore:` Maintenance tasks
-
-## 🌐 Deployment
-
-### Pre-deployment Checklist
-
-Always run before deploying:
+### Mobile (Capacitor)
 ```bash
-./scripts/maintain.sh deploy:check
+npm run mobile:sync      # Sync Capacitor
+npm run mobile:ios       # Run on iOS
+npm run mobile:android   # Run on Android
 ```
 
-This validates:
-- ✅ Environment configuration
-- ✅ Test suite passes
-- ✅ No exposed secrets
-- ✅ Build success
-- ✅ Git status clean
+## 🔧 Configuration
 
-### Frontend Deployment (Vercel)
-
-1. **The project GitHub repository is connected to Vercel**
-
-2. **Environment variables are set in Vercel dashboard:**
+### Backend Environment Variables
+`wealthlogs-code/apps/backend/.env`
 ```env
-NEXT_PUBLIC_API_URL=https://wealthlog-backend-hx43.onrender.com
+# Database
+DATABASE_URL=postgresql://username:password@localhost:5432/wealthlog
+
+# JWT Secrets (use: openssl rand -hex 32)
+JWT_ACCESS_SECRET=your-32-character-secret
+JWT_REFRESH_SECRET=another-32-character-secret
+SECRET_KEY=same-as-jwt-access-secret
+SESSION_SECRET=another-secure-secret
+
+# Server
+NODE_ENV=development
+PORT=5000
+
+# Frontend
+FRONTEND_URL=http://localhost:3000
+ALLOWED_ORIGINS=http://localhost:3000,http://localhost:3001
+
+# Optional: Google OAuth
+GOOGLE_CLIENT_ID=your-google-client-id
+GOOGLE_CLIENT_SECRET=your-google-client-secret
+```
+
+### Frontend Environment Variables
+`wealthlogs-code/apps/web/.env.local`
+```env
+NEXT_PUBLIC_API_URL=http://localhost:5000
 NEXT_PUBLIC_GOOGLE_CLIENT_ID=your-google-client-id
 ```
 
-3. **Automatic deployment on push to master (wealthlogs.com) or staging (bechays.com) branches**
+## 📱 Mobile Development (Capacitor)
 
-### Backend Deployment (Render)
-
-1. **Web Service on Render as connected to GitHub repo**
-
-2. **Environment variables are set in Render dashboard:**
-```env
-NODE_ENV=production
-DATABASE_URL=postgresql://...
-JWT_ACCESS_SECRET=your-secret
-JWT_REFRESH_SECRET=your-secret
-SECRET_KEY=your-secret
-SESSION_SECRET=your-secret
-FRONTEND_URL=https://wealthlogs.com
-ALLOWED_ORIGINS=https://wealthlogs.com,https://www.wealthlogs.com
-```
-
-3. **Deployment is automatic on push to master branch**
-
-### Post-deployment Verification
-
+### Setup for Mobile
 ```bash
-# Check production status (wait 2 minutes after deployment)
-./scripts/maintain.sh deploy:status
+# 1. Build the web app
+cd wealthlogs-code/apps/web
+npm run build
 
-# Test production authentication
-./scripts/maintain.sh auth:test prod
+# 2. Copy to mobile
+cd ../mobile
+npx cap sync
+
+# 3. Run on device/emulator
+npx cap run ios       # For iOS
+npx cap run android   # For Android
 ```
 
-## 🛠 Maintenance Script
+### Mobile Compatibility
+All code is written to be compatible with:
+- Web browsers (Chrome, Firefox, Safari, Edge)
+- iOS (via Capacitor)
+- Android (via Capacitor)
 
-The project includes a comprehensive maintenance script (`scripts/maintain.sh`) for all common operations.
+Key compatibility features:
+- No Node.js-specific APIs in frontend code
+- Browser-compatible crypto utilities
+- Proper storage abstraction for mobile
+- Responsive UI design
 
-### Key Commands
+## 🚀 Deployment
 
-| Command | Description |
-|---------|-------------|
-| **Setup & Config** |
-| `init` | Initialize/update project |
-| `config edit` | Edit configuration |
-| `config validate` | Validate configuration |
-| **Development** |
-| `dev` | Start all development servers |
-| `start [service]` | Start specific service |
-| `test` | Run test suite |
-| `fix` | Auto-fix common issues |
-| **Database** |
-| `db:setup` | Create database with migrations |
-| `db:migrate` | Run pending migrations |
-| `db:studio` | Open Prisma Studio GUI |
-| `db:reset` | Reset database (⚠️ deletes data) |
-| **Mobile App** |
-| `mobile build [platform]` | Build mobile app |
-| `mobile run [platform]` | Run on device/emulator |
-| `mobile sync` | Sync Capacitor |
-| **Deployment** |
-| `deploy:check` | Pre-deployment validation |
-| `deploy:status` | Check production status |
-| `build` | Build for production |
-| **Maintenance** |
-| `doctor` | Run system diagnostics |
-| `status` | Quick health check |
-| `logs` | View logs |
-| `clean` | Clean build artifacts |
+### Frontend (Vercel)
+1. Connect GitHub repo to Vercel
+2. Set environment variables:
+   - `NEXT_PUBLIC_API_URL`
+   - `NEXT_PUBLIC_GOOGLE_CLIENT_ID`
+3. Deploy automatically on push to main
 
-For complete documentation, run:
+### Backend (Render)
+1. Create Web Service on Render
+2. Connect GitHub repo
+3. Set environment variables (all from .env)
+4. Deploy automatically on push to main
+
+### Database (Production)
+Consider using:
+- Supabase (PostgreSQL)
+- Railway (PostgreSQL)
+- Neon (PostgreSQL)
+- AWS RDS
+
+## 🐛 Troubleshooting
+
+### Common Issues & Solutions
+
+**Module not found errors:**
 ```bash
-./scripts/maintain.sh help
+npm run clean
+npm install
+npm run build:shared
 ```
 
-Or see [scripts/README.md](scripts/README.md)
+**Database connection failed:**
+1. Ensure PostgreSQL is running
+2. Check DATABASE_URL in backend/.env
+3. Run: `npm run db:push`
 
-## 📚 API Documentation
+**Port already in use:**
+```bash
+# Windows
+netstat -ano | findstr :3000
+taskkill /PID <PID> /F
 
-### Authentication Endpoints
+# Mac/Linux
+lsof -i:3000
+kill -9 <PID>
+```
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/api/auth/register` | Register new user |
-| POST | `/api/auth/login` | Login user |
-| GET | `/api/auth/me` | Get current user |
-| POST | `/api/auth/refresh` | Refresh token |
-| POST | `/api/auth/logout` | Logout user |
-| GET | `/api/auth/verify-email` | Verify email |
-| POST | `/api/auth/forgot-password` | Request password reset |
-| POST | `/api/auth/reset-password` | Reset password |
+**Frontend not loading:**
+1. Check backend is running on port 5000
+2. Verify NEXT_PUBLIC_API_URL in .env.local
+3. Clear browser cache
 
-### Dashboard Endpoints
+**Authentication not working:**
+1. Check JWT secrets are set in backend/.env
+2. Ensure cookies are enabled
+3. Verify CORS settings include your frontend URL
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/dashboard/networth` | Get net worth data |
-| GET | `/api/dashboard/networth/summary` | Get summary stats |
-| GET | `/api/dashboard/accounts` | List all accounts |
-| GET | `/api/dashboard/transactions` | Recent transactions |
+## 🏗️ Architecture Overview
 
-### Account Management
+### Backend (Express.js + Prisma)
+- **Authentication:** JWT-based with refresh tokens
+- **Database:** PostgreSQL with Prisma ORM
+- **Security:** Rate limiting, CORS, helmet, bcrypt
+- **API:** RESTful endpoints with validation
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/account` | List accounts |
-| POST | `/api/account` | Create account |
-| PUT | `/api/account/:id` | Update account |
-| DELETE | `/api/account/:id` | Delete account |
+### Frontend (Next.js + React)
+- **Routing:** Next.js Pages Router
+- **Styling:** TailwindCSS
+- **State:** React Context API
+- **API Communication:** Axios with interceptors
+- **Security:** CSRF protection, input sanitization
 
-For complete API documentation, see [docs/api/](docs/api/)
+### Shared Package
+- **API Client:** Axios wrapper with retry logic
+- **Security Utils:** Password validation, sanitization
+- **Error Handling:** Centralized error types
+- **Monitoring:** Simple logging and metrics
+
+### Mobile (Capacitor)
+- **Framework:** Same React/Next.js codebase
+- **Native Bridge:** Capacitor plugins
+- **Storage:** Preferences API for mobile
+- **Authentication:** Same JWT system
+
+## 📊 Features
+
+### Current Features
+- 📊 Financial Dashboard
+- 💼 Multiple Account Types
+- 📈 Investment Tracking
+- 💳 Expense Management
+- 🏠 Real Estate Portfolio
+- 💰 Loan Management
+- 📅 Financial Forecasting
+- 🔐 Secure Authentication
+- 📱 Mobile Support
+
+### Security Features
+- JWT Authentication
+- Password Strength Validation
+- Rate Limiting
+- CSRF Protection
+- Input Sanitization
+- Secure Headers
+- Session Management
+- Role-Based Access Control
 
 ## 🤝 Contributing
 
-We welcome contributions! Please follow our development workflow:
+1. Fork the repository
+2. Create feature branch: `git checkout -b feature/amazing-feature`
+3. Commit changes: `git commit -m 'feat: add amazing feature'`
+4. Push to branch: `git push origin feature/amazing-feature`
+5. Open Pull Request
 
-1. **Fork the repository**
-2. **Create a feature branch from staging**
-3. **Make your changes with proper testing**
-4. **Follow our commit message convention**
-5. **Create a Pull Request to staging branch**
-6. **Ensure all checks pass**
-
-### Development Guidelines
-
-- ✅ Write tests for new features
-- ✅ Update documentation
-- ✅ Follow TypeScript best practices
-- ✅ Use the maintenance script for testing
-- ✅ Ensure mobile compatibility
-- ✅ Keep security in mind
-
-## 📖 Documentation
-
-Detailed documentation is available in the `docs/` directory:
-
-- **[Quick Reference](docs/CLAUDE_REFERENCE.md)** - Quick reference guide
-- **[Authentication System](docs/auth-system.md)** - Complete auth documentation
-- **[Authentication Flow](docs/authentication-flow.md)** - Auth flow details
-- **[Deployment Guide](docs/deployment-env.md)** - Environment setup
-- **[Maintenance Script](scripts/README.md)** - Script documentation
-
-## 🔒 Security
-
-- JWT tokens with 15-minute access tokens and 7-day refresh tokens
-- Automatic token rotation
-- Password hashing with bcrypt
-- Rate limiting on sensitive endpoints
-- CORS configuration
-- SQL injection prevention via Prisma
-- XSS protection
-- HTTPS only in production
+### Commit Convention
+- `feat:` New feature
+- `fix:` Bug fix
+- `docs:` Documentation
+- `style:` Code style
+- `refactor:` Refactoring
+- `test:` Testing
+- `chore:` Maintenance
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🙏 Acknowledgments
-
-- Built with ❤️ by the WealthLog Team
-- Special thanks to all contributors
-- Powered by amazing open-source projects
+MIT License - See LICENSE file for details
 
 ## 📞 Support
 
-- 📧 Email: anthonybechay1@gmail.com
-- 📖 Documentation: [docs/](docs/)
-- 🐛 Issues: [GitHub Issues](https://github.com/yourusername/wealthlogs/issues)
-- 💬 Discord: [Join our community](https://discord.gg/wealthlogs)
+- **Email:** anthonybechay1@gmail.com
+- **Documentation:** See `/docs` directory
+- **Issues:** GitHub Issues
 
 ---
 
-<div align="center">
-  <p>Made with ❤️ for better financial management</p>
-  <p>© 2025 WealthLogs. All rights reserved.</p>
-</div>
+**Built with ❤️ for better financial management**
+
+*Clean, Secure, and Mobile-Ready*

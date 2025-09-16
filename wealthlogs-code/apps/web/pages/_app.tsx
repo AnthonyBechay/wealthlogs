@@ -8,8 +8,6 @@ import Link from 'next/link';
 import { ThemeProvider } from 'next-themes';
 import { AuthProvider, useAuth } from '../src/contexts/AuthContext';
 import authService from '../src/services/auth.service';
-import { appWithTranslation } from 'next-i18next';
-import nextI18NextConfig from '../next-i18next.config';
 
 /* Public routes requiring no auth */
 const PUBLIC_PATHS = ['/', '/login', '/register', '/forgot-password', '/reset-password', '/verify-email', '/auth'];
@@ -405,4 +403,4 @@ function MyApp({ Component, pageProps }: AppProps) {
   );
 }
 
-export default appWithTranslation(MyApp, nextI18NextConfig);
+export default MyApp;

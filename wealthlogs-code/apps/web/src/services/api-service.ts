@@ -1,20 +1,19 @@
 /**
- * Enhanced Frontend API Service with Security Features
- * Provides secure API communication with automatic retry, caching, and error handling
+ * Frontend API Service
+ * Clean implementation with basic security features
  */
 
 import {
   ApiClient,
   createApiClient,
   AppError,
-  ErrorHandler,
+  ErrorCode,
   CSRFProtection,
   SecurityService,
   logger,
   metrics,
   RateLimiter
 } from '@wealthlog/shared';
-import { toast } from 'react-toastify'; // Assuming you have react-toastify
 
 // API Configuration
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
@@ -23,61 +22,27 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 let apiClient: ApiClient | null = null;
 
 /**
- * Initialize the API client with security features
+ * Initialize the API client
  */
-export function initializeApiClient() {
+export function initializeApiClient(): ApiClient {
   if (apiClient) return apiClient;
 
   apiClient = createApiClient({
     baseURL: `${API_URL}/api`,
     timeout: 30000,
-    retryAttempts: 3,
-    retryDelay: 1000,
-    enableCache: true,
-    enableCircuitBreaker: true,
-    enableRateLimiting: true,
-    rateLimitMax: 100,
-    rateLimitWindow: 60000
+    withCredentials: true
   });
 
-  // Set up token management
+  // Set up token from localStorage if exists
   const accessToken = localStorage.getItem('accessToken');
   if (accessToken) {
-    apiClient.setTokens(accessToken);
+    apiClient.setToken(accessToken);
   }
 
-  // Add response interceptor for token refresh
-  setupTokenRefreshInterceptor();
-
-  // Add error handling
-  setupGlobalErrorHandling();
-
-  // Generate CSRF token
+  // Generate CSRF token for security
   CSRFProtection.generateToken();
 
   return apiClient;
-}
-
-/**
- * Setup token refresh interceptor
- */
-function setupTokenRefreshInterceptor() {
-  if (!apiClient) return;
-
-  // This is handled internally by the ApiClient class
-  // but we can add additional logic here if needed
-}
-
-/**
- * Setup global error handling
- */
-function setupGlobalErrorHandling() {
-  window.addEventListener('unhandledrejection', (event) => {
-    if (event.reason instanceof AppError) {
-      handleApiError(event.reason);
-      event.preventDefault();
-    }
-  });
 }
 
 /**
@@ -85,38 +50,25 @@ function setupGlobalErrorHandling() {
  */
 function handleApiError(error: AppError) {
   logger.error('API Error', error);
-  metrics.increment('frontend.api.error', { code: error.code });
+  metrics.increment('frontend.api.error');
 
-  // Show user-friendly error messages
+  // Handle specific error codes
   switch (error.code) {
-    case 'AUTH_TOKEN_EXPIRED':
-      toast.warning('Your session has expired. Please login again.');
+    case ErrorCode.AUTH_TOKEN_EXPIRED:
+      // Redirect to login
       window.location.href = '/login';
       break;
     
-    case 'AUTH_UNAUTHORIZED':
-      toast.error('You are not authorized to perform this action.');
+    case ErrorCode.AUTH_UNAUTHORIZED:
+      console.error('Unauthorized access');
       break;
     
-    case 'RATE_LIMIT_EXCEEDED':
-      toast.error('Too many requests. Please slow down.');
-      break;
-    
-    case 'NETWORK_OFFLINE':
-      toast.error('No internet connection. Please check your network.');
-      break;
-    
-    case 'VALIDATION_FAILED':
-      if (error.details) {
-        const messages = Object.values(error.details).flat().join(', ');
-        toast.error(`Validation error: ${messages}`);
-      } else {
-        toast.error('Please check your input and try again.');
-      }
+    case ErrorCode.RATE_LIMIT_EXCEEDED:
+      console.error('Too many requests. Please slow down.');
       break;
     
     default:
-      toast.error(error.message || 'An error occurred. Please try again.');
+      console.error(error.message || 'An error occurred');
   }
 }
 
@@ -127,13 +79,13 @@ export class AuthService {
   private static rateLimiter = new RateLimiter(5, 60000); // 5 attempts per minute
 
   /**
-   * Secure login with rate limiting
+   * Login with rate limiting
    */
   static async login(username: string, password: string) {
     // Client-side rate limiting
     if (!this.rateLimiter.isAllowed('login')) {
       throw new AppError({
-        code: 'RATE_LIMIT_EXCEEDED',
+        code: ErrorCode.RATE_LIMIT_EXCEEDED,
         message: 'Too many login attempts. Please wait.',
         statusCode: 429
       });
@@ -145,29 +97,21 @@ export class AuthService {
       // Validate input
       if (!username || !password) {
         throw new AppError({
-          code: 'VALIDATION_FAILED',
+          code: ErrorCode.VALIDATION_FAILED,
           message: 'Username and password are required',
           statusCode: 400
         });
       }
-
-      // Hash password before sending (optional extra security)
-      // const hashedPassword = SecurityService.hash(password);
 
       const response = await getApiClient().post<any>('/auth/login', {
         username,
         password
       });
 
-      // Store tokens securely
+      // Store tokens
       if (response.accessToken) {
         localStorage.setItem('accessToken', response.accessToken);
-        getApiClient().setTokens(response.accessToken);
-      }
-
-      // Store CSRF token
-      if (response.csrfToken) {
-        sessionStorage.setItem('csrf_token', response.csrfToken);
+        getApiClient().setToken(response.accessToken);
       }
 
       // Reset rate limiter on success
@@ -186,7 +130,7 @@ export class AuthService {
   }
 
   /**
-   * Secure logout
+   * Logout
    */
   static async logout() {
     try {
@@ -194,7 +138,7 @@ export class AuthService {
     } catch (error) {
       // Ignore logout errors
     } finally {
-      // Clear all sensitive data
+      // Clear all auth data
       this.clearAuthData();
       window.location.href = '/login';
     }
@@ -208,7 +152,7 @@ export class AuthService {
     const passwordStrength = SecurityService.getPasswordStrength(data.password);
     if (!passwordStrength.isStrong) {
       throw new AppError({
-        code: 'VALIDATION_FAILED',
+        code: ErrorCode.VALIDATION_FAILED,
         message: 'Password is not strong enough',
         statusCode: 400,
         details: { feedback: passwordStrength.feedback }
@@ -218,7 +162,7 @@ export class AuthService {
     // Check password confirmation
     if (data.password !== data.confirmPassword) {
       throw new AppError({
-        code: 'VALIDATION_FAILED',
+        code: ErrorCode.VALIDATION_FAILED,
         message: 'Passwords do not match',
         statusCode: 400
       });
@@ -237,7 +181,7 @@ export class AuthService {
       
       if (response.accessToken) {
         localStorage.setItem('accessToken', response.accessToken);
-        getApiClient().setTokens(response.accessToken);
+        getApiClient().setToken(response.accessToken);
       }
 
       return response;
@@ -251,9 +195,7 @@ export class AuthService {
    * Get current user
    */
   static async getCurrentUser() {
-    return getApiClient().get('/auth/me', {
-      cacheTTL: 5 * 60 * 1000 // Cache for 5 minutes
-    });
+    return getApiClient().get('/auth/me');
   }
 
   /**
@@ -261,13 +203,10 @@ export class AuthService {
    */
   private static clearAuthData() {
     localStorage.removeItem('accessToken');
+    localStorage.removeItem('refreshToken');
     sessionStorage.removeItem('csrf_token');
-    getApiClient().clearAuth();
-    
-    // Clear sensitive data from memory
-    if (typeof window !== 'undefined') {
-      // Clear any cached user data
-      window.sessionStorage.clear();
+    if (apiClient) {
+      apiClient.setToken(null);
     }
   }
 
@@ -286,7 +225,7 @@ export class AuthService {
     const passwordStrength = SecurityService.getPasswordStrength(newPassword);
     if (!passwordStrength.isStrong) {
       throw new AppError({
-        code: 'VALIDATION_FAILED',
+        code: ErrorCode.VALIDATION_FAILED,
         message: 'New password is not strong enough',
         statusCode: 400,
         details: { feedback: passwordStrength.feedback }
@@ -296,7 +235,7 @@ export class AuthService {
     // Ensure passwords are different
     if (currentPassword === newPassword) {
       throw new AppError({
-        code: 'VALIDATION_FAILED',
+        code: ErrorCode.VALIDATION_FAILED,
         message: 'New password must be different from current password',
         statusCode: 400
       });
@@ -310,25 +249,21 @@ export class AuthService {
 }
 
 /**
- * Dashboard Service with caching
+ * Dashboard Service
  */
 export class DashboardService {
   /**
-   * Get dashboard data with caching
+   * Get dashboard data
    */
   static async getDashboardData() {
-    return getApiClient().get('/dashboard/networth', {
-      cacheTTL: 60000 // Cache for 1 minute
-    });
+    return getApiClient().get('/dashboard/networth');
   }
 
   /**
-   * Get dashboard summary with caching
+   * Get dashboard summary
    */
   static async getDashboardSummary() {
-    return getApiClient().get('/dashboard/networth/summary', {
-      cacheTTL: 60000 // Cache for 1 minute
-    });
+    return getApiClient().get('/dashboard/networth/summary');
   }
 }
 
@@ -343,7 +278,7 @@ export class AccountService {
     // Client-side validation
     if (!data.name || data.name.length < 1) {
       throw new AppError({
-        code: 'VALIDATION_FAILED',
+        code: ErrorCode.VALIDATION_FAILED,
         message: 'Account name is required',
         statusCode: 400
       });
@@ -351,7 +286,7 @@ export class AccountService {
 
     if (data.balance && data.balance < 0) {
       throw new AppError({
-        code: 'VALIDATION_FAILED',
+        code: ErrorCode.VALIDATION_FAILED,
         message: 'Balance cannot be negative',
         statusCode: 400
       });
@@ -361,12 +296,10 @@ export class AccountService {
   }
 
   /**
-   * Get accounts with caching
+   * Get accounts
    */
   static async getAccounts() {
-    return getApiClient().get('/account', {
-      cacheTTL: 30000 // Cache for 30 seconds
-    });
+    return getApiClient().get('/account');
   }
 
   /**
@@ -377,10 +310,9 @@ export class AccountService {
   }
 
   /**
-   * Delete account with confirmation
+   * Delete account
    */
   static async deleteAccount(id: number) {
-    // Add confirmation dialog in UI before calling this
     return getApiClient().delete(`/account/${id}`);
   }
 }
@@ -396,7 +328,7 @@ export class TransactionService {
     // Validate amount
     if (!data.amount || data.amount <= 0) {
       throw new AppError({
-        code: 'VALIDATION_FAILED',
+        code: ErrorCode.VALIDATION_FAILED,
         message: 'Amount must be greater than 0',
         statusCode: 400
       });
@@ -405,7 +337,7 @@ export class TransactionService {
     // Validate date
     if (!data.date || !new Date(data.date).getTime()) {
       throw new AppError({
-        code: 'VALIDATION_FAILED',
+        code: ErrorCode.VALIDATION_FAILED,
         message: 'Valid date is required',
         statusCode: 400
       });
@@ -415,84 +347,123 @@ export class TransactionService {
   }
 
   /**
-   * Get transactions with pagination
+   * Get transactions
    */
   static async getTransactions(params?: any) {
-    return getApiClient().get('/transactions', {
-      params,
-      cacheTTL: 10000 // Cache for 10 seconds
-    });
+    return getApiClient().get('/transactions', { params });
+  }
+
+  /**
+   * Update transaction
+   */
+  static async updateTransaction(id: number, data: any) {
+    return getApiClient().put(`/transactions/${id}`, data);
+  }
+
+  /**
+   * Delete transaction
+   */
+  static async deleteTransaction(id: number) {
+    return getApiClient().delete(`/transactions/${id}`);
   }
 }
 
 /**
- * File Upload Service with security
+ * Trading Service
  */
-export class FileUploadService {
-  private static readonly MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
-  private static readonly ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-  private static readonly ALLOWED_DOCUMENT_TYPES = ['application/pdf', 'application/msword', 'text/plain'];
-
+export class TradingService {
   /**
-   * Upload image with validation
+   * Get trades
    */
-  static async uploadImage(file: File, category: string) {
-    // Validate file type
-    if (!this.ALLOWED_IMAGE_TYPES.includes(file.type)) {
-      throw new AppError({
-        code: 'VALIDATION_FAILED',
-        message: 'Invalid file type. Only JPEG, PNG, GIF, and WebP are allowed.',
-        statusCode: 400
-      });
-    }
-
-    // Validate file size
-    if (file.size > this.MAX_FILE_SIZE) {
-      throw new AppError({
-        code: 'VALIDATION_FAILED',
-        message: `File size must be less than ${this.MAX_FILE_SIZE / 1024 / 1024}MB`,
-        statusCode: 400
-      });
-    }
-
-    // Scan file name for malicious patterns
-    const sanitizedName = SecurityService.sanitizeHtml(file.name);
-    if (sanitizedName !== file.name) {
-      throw new AppError({
-        code: 'VALIDATION_FAILED',
-        message: 'File name contains invalid characters',
-        statusCode: 400
-      });
-    }
-
-    return getApiClient().uploadFile(`/upload/${category}`, file, (progress) => {
-      logger.debug(`Upload progress: ${progress}%`);
-    });
+  static async getTrades(params?: any) {
+    return getApiClient().get('/trades', { params });
   }
 
   /**
-   * Upload document with validation
+   * Create trade
    */
-  static async uploadDocument(file: File) {
-    // Validate file type
-    if (!this.ALLOWED_DOCUMENT_TYPES.includes(file.type)) {
-      throw new AppError({
-        code: 'VALIDATION_FAILED',
-        message: 'Invalid file type. Only PDF, Word, and text files are allowed.',
-        statusCode: 400
-      });
-    }
+  static async createTrade(data: any) {
+    return getApiClient().post('/trades', data);
+  }
 
-    // Validate file size
-    if (file.size > this.MAX_FILE_SIZE) {
-      throw new AppError({
-        code: 'VALIDATION_FAILED',
-        message: `File size must be less than ${this.MAX_FILE_SIZE / 1024 / 1024}MB`,
-        statusCode: 400
-      });
-    }
+  /**
+   * Update trade
+   */
+  static async updateTrade(id: number, data: any) {
+    return getApiClient().put(`/trades/${id}`, data);
+  }
 
-    return getApiClient().uploadFile('/upload/documents', file);
+  /**
+   * Delete trade
+   */
+  static async deleteTrade(id: number) {
+    return getApiClient().delete(`/trades/${id}`);
+  }
+}
+
+/**
+ * Expense Service
+ */
+export class ExpenseService {
+  /**
+   * Get expenses
+   */
+  static async getExpenses(params?: any) {
+    return getApiClient().get('/expenses', { params });
+  }
+
+  /**
+   * Create expense
+   */
+  static async createExpense(data: any) {
+    return getApiClient().post('/expenses', data);
+  }
+
+  /**
+   * Update expense
+   */
+  static async updateExpense(id: number, data: any) {
+    return getApiClient().put(`/expenses/${id}`, data);
+  }
+
+  /**
+   * Delete expense
+   */
+  static async deleteExpense(id: number) {
+    return getApiClient().delete(`/expenses/${id}`);
+  }
+}
+
+/**
+ * Settings Service
+ */
+export class SettingsService {
+  /**
+   * Get general settings
+   */
+  static async getGeneralSettings() {
+    return getApiClient().get('/generalSettings');
+  }
+
+  /**
+   * Update general settings
+   */
+  static async updateGeneralSettings(data: any) {
+    return getApiClient().post('/generalSettings', data);
+  }
+
+  /**
+   * Get trading settings
+   */
+  static async getTradingSettings() {
+    return getApiClient().get('/tradingSettings');
+  }
+
+  /**
+   * Update trading settings
+   */
+  static async updateTradingSettings(data: any) {
+    return getApiClient().post('/tradingSettings', data);
   }
 }
 
@@ -516,7 +487,9 @@ export default {
   DashboardService,
   AccountService,
   TransactionService,
-  FileUploadService,
+  TradingService,
+  ExpenseService,
+  SettingsService,
   getApiClient,
   initializeApiClient
 };

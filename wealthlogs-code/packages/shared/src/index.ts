@@ -1,14 +1,16 @@
 // Main exports for @wealthlog/shared package
+
+// Export API utilities
 export * from './api/index';
 export * from './storage/index';
 export * from './types/index';
 
-// Export new services
-export * from './services/error-handler';
-export * from './services/data-validator';
+// Export services
 export * from './services/security';
 export * from './services/api-client';
+export * from './services/error-handler';
 export * from './services/monitoring';
+export * from './services/data-validator';
 
 // Re-export commonly used utilities
 export { createWealthLogAPI, WealthLogAPI, getPlatform } from './api/index';
@@ -26,22 +28,15 @@ export type {
   Platform
 } from './types/index';
 
-// Re-export new service utilities
+// Export API client utilities
 export { 
-  AppError, 
-  ErrorFactory, 
-  ErrorHandler, 
-  RetryHandler, 
-  CircuitBreaker,
-  ErrorCode 
-} from './services/error-handler';
+  ApiClient,
+  createApiClient,
+  type ApiConfig as ApiClientConfig,  // Alias for backward compatibility
+  type ApiError
+} from './services/api-client';
 
-export { 
-  DataValidator, 
-  ValidationSchemas, 
-  FieldValidators 
-} from './services/data-validator';
-
+// Export security utilities
 export { 
   SecurityService, 
   SecureStorage, 
@@ -49,20 +44,32 @@ export {
   RateLimiter 
 } from './services/security';
 
-export { 
-  ApiClient, 
-  createApiClient, 
-  getApiClient 
-} from './services/api-client';
+// Export error handling
+export {
+  AppError,
+  ErrorCode,
+  ErrorFactory,
+  RetryHandler,
+  type ErrorCodeType
+} from './services/error-handler';
 
+// Export monitoring utilities
 export {
   Logger,
+  LogLevel,
   MetricsCollector,
   PerformanceMonitor,
-  HealthCheck,
   logger,
   metrics,
-  performance,
-  health,
-  LogLevel
+  performanceMonitor as performance
 } from './services/monitoring';
+
+// Export validation utilities
+export {
+  DataValidator,
+  ValidationSchemas,
+  FieldValidators,
+  type ValidationRule,
+  type ValidationSchema,
+  type ValidationResult
+} from './services/data-validator';
